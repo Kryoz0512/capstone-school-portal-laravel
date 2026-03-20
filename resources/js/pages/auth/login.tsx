@@ -83,7 +83,7 @@ export default function Login({ status }: Props) {
                             <Button
                                 type="submit"
                                 disabled={processing}
-                                className="w-full bg-green-700 hover:bg-green-900 text-primary font-medium mt-6"
+                                className="w-full bg-green-700 hover:bg-green-900 text-white font-medium mt-6"
                             >
                                 {processing ? 'Signing in...' : 'Sign In'}
                             </Button>

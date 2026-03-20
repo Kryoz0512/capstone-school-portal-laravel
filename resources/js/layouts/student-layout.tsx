@@ -1,8 +1,8 @@
 import { ReactNode } from 'react'
-import AdminSidebar from '@/components/admin-sidebar'
-import AdminHeader from '@/components/admin-header'
+import StudentSidebar from '@/components/student-sidebar'
+import StudentHeader from '@/components/student-header'
 
-type AdminLayoutProps = {
+type StudentLayoutProps = {
     children: ReactNode
     user?: {
         name: string
@@ -11,16 +11,16 @@ type AdminLayoutProps = {
     }
 }
 
-export default function AdminLayout({ children, user }: AdminLayoutProps) {
+export default function StudentLayout({ children, user }: StudentLayoutProps) {
     return (
         <div className="flex min-h-screen bg-white">
             {/* Sidebar - Fixed */}
-            <AdminSidebar />
+            <StudentSidebar />
 
             {/* Main Content - With left margin for fixed sidebar */}
             <div className="flex-1 flex flex-col ml-64">
                 {/* Header */}
-                <AdminHeader user={user} />
+                <StudentHeader user={user} />
 
                 {/* Page Content */}
                 <main className="flex-1 p-8 bg-gray-50">

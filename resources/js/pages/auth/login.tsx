@@ -1,120 +1,124 @@
-import { Form, Head } from '@inertiajs/react';
-import InputError from '@/components/input-error';
-import PasswordInput from '@/components/password-input';
-import TextLink from '@/components/text-link';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
-import AuthLayout from '@/layouts/auth-layout';
-import { register } from '@/routes';
-import { store } from '@/routes/login';
-import { request } from '@/routes/password';
+import { Head, useForm } from '@inertiajs/react'
+import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Alert } from '@/components/ui/alert'
+import { FormEvent } from 'react'
 
 type Props = {
-    status?: string;
-    canResetPassword: boolean;
-    canRegister: boolean;
-};
+    status?: string
+}
 
-export default function Login({
-    status,
-    canResetPassword,
-    canRegister,
-}: Props) {
+export default function Login({ status }: Props) {
+    const { data, setData, post, processing, errors } = useForm({
+        email: '',
+        password: '',
+        remember: false,
+    })
+
+    const handleLogin = (e: FormEvent) => {
+        e.preventDefault()
+        post('/login') 
+    }
+
     return (
-        <AuthLayout
-            title="Log in to your account"
-            description="Enter your email and password below to log in"
-        >
-            <Head title="Log in" />
+        <>
+            <Head title="Login" />
+            <div className="min-h-screen bg-green-700 flex items-center justify-center p-4">
+                <Card className="w-full max-w-md shadow-lg bg-white">
+                    <div className="p-8">
+                        <div className="mb-8 text-center">
+                            <div className="w-35 h-35 flex items-center justify-center mx-auto mb-4">
+                                <img src="/santorlogo.png" alt="Santor Logo" />
+                            </div>
+                            <h1 className="text-2xl font-bold text-green-700">
+                                Santor National Highschool
+                            </h1>
+                            <p className="text-black text-sm mt-2">Sign in to your account</p>
+                        </div>
 
-            <Form
-                {...store.form()}
-                resetOnSuccess={['password']}
-                className="flex flex-col gap-6"
-            >
-                {({ processing, errors }) => (
-                    <>
-                        <div className="grid gap-6">
-                            <div className="grid gap-2">
-                                <Label htmlFor="email">Email address</Label>
+                        <form onSubmit={handleLogin} className="space-y-4">
+                            <div>
+                                <label
+                                    htmlFor="email"
+                                    className="block text-sm font-medium text-black mb-2"
+                                >
+                                    Email Address
+                                </label>
                                 <Input
                                     id="email"
                                     type="email"
-                                    name="email"
+                                    placeholder="you@school.edu"
+                                    value={data.email}
+                                    onChange={(e) => setData('email', e.target.value)}
                                     required
-                                    autoFocus
-                                    tabIndex={1}
-                                    autoComplete="email"
-                                    placeholder="email@example.com"
+                                    className="w-full text-black"
                                 />
-                                <InputError message={errors.email} />
+                                {errors.email && (
+                                    <p className="text-red-500 text-xs mt-1">{errors.email}</p>
+                                )}
                             </div>
 
-                            <div className="grid gap-2">
-                                <div className="flex items-center">
-                                    <Label htmlFor="password">Password</Label>
-                                    {canResetPassword && (
-                                        <TextLink
-                                            href={request()}
-                                            className="ml-auto text-sm"
-                                            tabIndex={5}
-                                        >
-                                            Forgot password?
-                                        </TextLink>
-                                    )}
-                                </div>
-                                <PasswordInput
+                            <div>
+                                <label
+                                    htmlFor="password"
+                                    className="block text-sm font-medium text-black mb-2"
+                                >
+                                    Password
+                                </label>
+                                <Input
                                     id="password"
-                                    name="password"
+                                    type="password"
+                                    placeholder="••••••••"
+                                    value={data.password}
+                                    onChange={(e) => setData('password', e.target.value)}
                                     required
-                                    tabIndex={2}
-                                    autoComplete="current-password"
-                                    placeholder="Password"
+                                    className="w-full text-black"
                                 />
-                                <InputError message={errors.password} />
-                            </div>
-
-                            <div className="flex items-center space-x-3">
-                                <Checkbox
-                                    id="remember"
-                                    name="remember"
-                                    tabIndex={3}
-                                />
-                                <Label htmlFor="remember">Remember me</Label>
+                                {errors.password && (
+                                    <p className="text-red-500 text-xs mt-1">{errors.password}</p>
+                                )}
                             </div>
 
                             <Button
                                 type="submit"
-                                className="mt-4 w-full"
-                                tabIndex={4}
                                 disabled={processing}
-                                data-test="login-button"
+                                className="w-full bg-green-700 hover:bg-green-900 text-primary font-medium mt-6"
                             >
-                                {processing && <Spinner />}
-                                Log in
+                                {processing ? 'Signing in...' : 'Sign In'}
                             </Button>
-                        </div>
+                        </form>
 
-                        {canRegister && (
-                            <div className="text-center text-sm text-muted-foreground">
-                                Don't have an account?{' '}
-                                <TextLink href={register()} tabIndex={5}>
-                                    Sign up
-                                </TextLink>
-                            </div>
+                        {errors.email && (
+                            <Alert className="flex mt-4 bg-red-50 border border-red-200 text-red-700">
+                                {errors.email}
+                            </Alert>
                         )}
-                    </>
-                )}
-            </Form>
 
-            {status && (
-                <div className="mb-4 text-center text-sm font-medium text-green-600">
-                    {status}
-                </div>
-            )}
-        </AuthLayout>
-    );
+                        {status && (
+                            <Alert className="flex mt-4 bg-green-50 border border-green-200 text-green-700">
+                                {status}
+                            </Alert>
+                        )}
+
+                        <div className="mt-6 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                            <p className="text-xs font-semibold text-blue-900 mb-2">
+                                Test Credentials:
+                            </p>
+                            <div className="text-xs text-blue-800 space-y-1">
+                                <p>
+                                    <strong>Student:</strong> student@school.edu / student123
+                                </p>
+                                <p>
+                                    <strong>Faculty & Staff:</strong>
+                                </p>
+                                <p className="ml-2">Teacher: teacher@school.edu / teacher123</p>
+                                <p className="ml-2">Admin: admin@school.edu / admin123</p>
+                            </div>
+                        </div>
+                    </div>
+                </Card>
+            </div>
+        </>
+    )
 }

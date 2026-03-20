@@ -3,7 +3,7 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Alert } from '@/components/ui/alert'
-import { FormEvent } from 'react'
+import { type FormEvent } from 'react'
 
 type Props = {
     status?: string

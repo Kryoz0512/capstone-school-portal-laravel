@@ -2,13 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class StudentController extends Controller
 {
     public function dashboard()
     {
-        return Inertia::render('student/dashboard/page');
+        return Inertia::render('student/dashboard/page', [
+            'auth' => [
+                'user' => Auth::user()
+            ]
+        ]);
     }
 }

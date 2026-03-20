@@ -1,0 +1,37 @@
+import { router } from '@inertiajs/react'
+
+type HeaderProps = {
+    user?: {
+        name: string
+        email: string
+        role: string
+    }
+}
+
+export default function AdminHeader({ user }: HeaderProps) {
+    const currentDate = new Date().toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'short',
+        day: 'numeric'
+    })
+
+    return (
+        <header className="bg-white border-b border-gray-200 px-8 py-4">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
+                </div>
+                <div className="flex items-center gap-6">
+                    <div className="text-right">
+                        <p className="text-sm text-gray-500">{currentDate}</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <div className="text-center">
+                            <p className="text-sm font-medium text-gray-900">Admin Account</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+    )
+}

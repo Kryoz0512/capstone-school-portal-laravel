@@ -3,12 +3,15 @@ import AdminLayout from '@/layouts/admin-layout'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import AddRoomModal from '@/components/modals/add-room-modal'
+import EditRoomModal from '@/components/modals/edit-room-modal'
+import DeleteRoomModal from '@/components/modals/delete-room-modal'
 import { Pencil, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 
 type Room = {
     id: number
-    roomNumber: string
+    room_number: string
     capacity: number
     status: 'Active' | 'Maintenance'
 }
@@ -26,24 +29,31 @@ type Props = {
 }
 
 export default function RoomListings({ auth, rooms = [] }: Props) {
+    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+    const [selectedRoom, setSelectedRoom] = useState<Room | null>(null)
+    const [roomToDelete, setRoomToDelete] = useState<{ id: number; room_number: string } | null>(null)
     const [searchTerm, setSearchTerm] = useState('')
     const [capacityFilter, setCapacityFilter] = useState('All')
     const [statusFilter, setStatusFilter] = useState('All')
 
-    // Sample data for demonstration
-    const sampleRooms: Room[] = rooms.length > 0 ? rooms : [
-        { id: 1, roomNumber: '101', capacity: 45, status: 'Active' },
-        { id: 2, roomNumber: '102', capacity: 45, status: 'Active' },
-        { id: 3, roomNumber: '103', capacity: 50, status: 'Active' },
-        { id: 4, roomNumber: '104', capacity: 40, status: 'Maintenance' }
-    ]
-
-    const filteredRooms = sampleRooms.filter(room => {
-        const matchesSearch = room.roomNumber.toLowerCase().includes(searchTerm.toLowerCase())
+    const filteredRooms = rooms.filter(room => {
+        const matchesSearch = room.room_number.toLowerCase().includes(searchTerm.toLowerCase())
         const matchesCapacity = capacityFilter === 'All' || room.capacity.toString() === capacityFilter
         const matchesStatus = statusFilter === 'All' || room.status === statusFilter
         return matchesSearch && matchesCapacity && matchesStatus
     })
+
+    const handleEdit = (room: Room) => {
+        setSelectedRoom(room)
+        setIsEditModalOpen(true)
+    }
+
+    const handleDelete = (room: Room) => {
+        setRoomToDelete({ id: room.id, room_number: room.room_number })
+        setIsDeleteModalOpen(true)
+    }
 
     return (
         <AdminLayout user={auth?.user}>
@@ -58,10 +68,22 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
                             Search and filter available rooms
                         </p>
                     </div>
-                    <Button className="bg-green-600 hover:bg-green-700 text-white">
+                    <Button 
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                        onClick={() => setIsModalOpen(true)}
+                    >
                         + Add Room
                     </Button>
                 </div>
+
+                <AddRoomModal open={isModalOpen} onOpenChange={setIsModalOpen} />
+                <EditRoomModal open={isEditModalOpen} onOpenChange={setIsEditModalOpen} room={selectedRoom} />
+                <DeleteRoomModal 
+                    open={isDeleteModalOpen} 
+                    onOpenChange={setIsDeleteModalOpen} 
+                    roomId={roomToDelete?.id || null}
+                    roomNumber={roomToDelete?.room_number || ''}
+                />
 
                 {/* Filters Section */}
                 <div className="bg-white rounded-lg border border-gray-200 p-6">
@@ -120,7 +142,10 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
 
                     <div className="p-4 border-b border-gray-200">
                         <p className="text-sm text-gray-600">
-                            Showing 1 to {filteredRooms.length} of {filteredRooms.length} entries
+                            {filteredRooms.length > 0 
+                                ? `Showing 1 to ${filteredRooms.length} of ${filteredRooms.length} entries`
+                                : 'No rooms found'
+                            }
                         </p>
                     </div>
 
@@ -143,37 +168,51 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                {filteredRooms.map((room) => (
-                                    <tr key={room.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 text-sm text-gray-900">
-                                            {room.roomNumber}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">
-                                            {room.capacity}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span
-                                                className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                                                    room.status === 'Active'
-                                                        ? 'bg-green-100 text-green-800'
-                                                        : 'bg-cyan-100 text-cyan-800'
-                                                }`}
-                                            >
-                                                {room.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-2">
-                                                <button className="text-gray-600 hover:text-green-600">
-                                                    <Pencil className="w-4 h-4" />
-                                                </button>
-                                                <button className="text-gray-600 hover:text-red-600">
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
+                                {filteredRooms.length > 0 ? (
+                                    filteredRooms.map((room) => (
+                                        <tr key={room.id} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 text-sm text-gray-900">
+                                                {room.room_number}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">
+                                                {room.capacity}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span
+                                                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                                                        room.status === 'Active'
+                                                            ? 'bg-green-100 text-green-800'
+                                                            : 'bg-cyan-100 text-cyan-800'
+                                                    }`}
+                                                >
+                                                    {room.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-2">
+                                                    <button 
+                                                        className="text-gray-600 hover:text-green-600"
+                                                        onClick={() => handleEdit(room)}
+                                                    >
+                                                        <Pencil className="w-4 h-4" />
+                                                    </button>
+                                                    <button 
+                                                        className="text-gray-600 hover:text-red-600"
+                                                        onClick={() => handleDelete(room)}
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500">
+                                            No rooms available. Click "+ Add Room" to create one.
                                         </td>
                                     </tr>
-                                ))}
+                                )}
                             </tbody>
                         </table>
                     </div>

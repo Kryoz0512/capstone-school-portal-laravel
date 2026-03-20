@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\TeacherController;
+use App\Http\Controllers\RoomController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
@@ -75,13 +76,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('admin/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
     
     // Admin Enrollment routes
+    Route::get('admin/enrollment/room-listings', [RoomController::class, 'index'])->name('admin.enrollment.room-listings');
+    Route::post('admin/enrollment/rooms', [RoomController::class, 'store'])->name('admin.enrollment.rooms.store');
+    Route::put('admin/enrollment/rooms/{id}', [RoomController::class, 'update'])->name('admin.enrollment.rooms.update');
+    Route::delete('admin/enrollment/rooms/{id}', [RoomController::class, 'destroy'])->name('admin.enrollment.rooms.destroy');
+    
     Route::get('admin/enrollment/room-schedule', function () {
         return \Inertia\Inertia::render('admin/enrollment/room-schedule/page');
     })->name('admin.enrollment.room-schedule');
-    
-    Route::get('admin/enrollment/room-listings', function () {
-        return \Inertia\Inertia::render('admin/enrollment/room-listings/page');
-    })->name('admin.enrollment.room-listings');
     
     Route::get('admin/enrollment/class-sections', function () {
         return \Inertia\Inertia::render('admin/enrollment/class-sections/page');

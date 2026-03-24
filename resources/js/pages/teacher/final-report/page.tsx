@@ -1,9 +1,9 @@
-import { Head } from '@inertiajs/react'
+import { Head, router } from '@inertiajs/react'
 import TeacherLayout from '@/layouts/teacher-layout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Printer } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 type Student = {
     id: number
@@ -11,11 +11,48 @@ type Student = {
     studentName: string
     gradeLevel: string
     section: string
-    finalAverage: number
-    remarks: 'Passed' | 'Failed'
+    quarter1: number | null
+    quarter2: number | null
+    quarter3: number | null
+    quarter4: number | null
+    finalAverage: number | null
+    remarks: 'Passed' | 'Failed' | null
+}
+
+type GradeLevel = {
+    id: number
+    name: string
+}
+
+type Section = {
+    id: number
+    name: string
+    grade_level_id: number
+    grade_level_name: string
+}
+
+type Subject = {
+    id: number
+    name: string
+}
+
+type SchoolYear = {
+    value: string
+    label: string
 }
 
 type Props = {
+    gradeLevels: GradeLevel[]
+    sections: Section[]
+    subjects: Subject[]
+    schoolYears: SchoolYear[]
+    students: Student[]
+    filters: {
+        grade_level_id: number | null
+        section_id: number | null
+        subject_id: number | null
+        school_year: string
+    }
     auth?: {
         user: {
             id: number
@@ -26,25 +63,77 @@ type Props = {
     }
 }
 
-export default function FinalReport({ auth }: Props) {
-    const [gradeLevel, setGradeLevel] = useState('Grade 10')
-    const [section, setSection] = useState('Section A')
-    const [subject, setSubject] = useState('English')
-    const [schoolYear, setSchoolYear] = useState('2024-2025')
+export default function FinalReport({ gradeLevels, sections, subjects, schoolYears, students, filters, auth }: Props) {
+    const [gradeLevel, setGradeLevel] = useState(filters.grade_level_id?.toString() || '')
+    const [section, setSection] = useState(filters.section_id?.toString() || '')
+    const [subject, setSubject] = useState(filters.subject_id?.toString() || '')
+    const [schoolYear, setSchoolYear] = useState(filters.school_year || '')
 
-    const students: Student[] = [
-        { id: 1, lrn: '123456789001', studentName: 'John Garcia', gradeLevel: '10', section: 'A', finalAverage: 85, remarks: 'Passed' },
-        { id: 2, lrn: '123456789002', studentName: 'Maria Santos', gradeLevel: '10', section: 'A', finalAverage: 92, remarks: 'Passed' },
-        { id: 3, lrn: '123456789003', studentName: 'Pedro Lopez', gradeLevel: '10', section: 'A', finalAverage: 68, remarks: 'Failed' },
-        { id: 4, lrn: '123456789004', studentName: 'Rosa Martinez', gradeLevel: '10', section: 'A', finalAverage: 88, remarks: 'Passed' }
-    ]
+    // Get selected details for print
+    const selectedSection = sections.find(s => s.id.toString() === section)
+    const selectedSubject = subjects.find(s => s.id.toString() === subject)
+    const selectedGradeLevel = gradeLevels.find(g => g.id.toString() === gradeLevel)
+
+    // Update filters when selections change
+    useEffect(() => {
+        const params = new URLSearchParams()
+        if (gradeLevel) params.set('grade_level_id', gradeLevel)
+        if (section) params.set('section_id', section)
+        if (subject) params.set('subject_id', subject)
+        if (schoolYear) params.set('school_year', schoolYear)
+
+        router.get(`/teacher/final-report?${params.toString()}`, {}, {
+            preserveState: true,
+            preserveScroll: true,
+        })
+    }, [gradeLevel, section, subject, schoolYear])
+
+    const handlePrint = () => {
+        window.print()
+    }
 
     return (
         <TeacherLayout user={auth?.user}>
             <Head title="Final Grade Report" />
 
+            {/* Print Styles */}
+            <style>{`
+                @media print {
+                    body * {
+                        visibility: hidden;
+                    }
+                    #printable-area, #printable-area * {
+                        visibility: visible;
+                    }
+                    #printable-area {
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        width: 100%;
+                        padding: 20px;
+                    }
+                    .no-print {
+                        display: none !important;
+                    }
+                    table {
+                        border-collapse: collapse;
+                        width: 100%;
+                    }
+                    th, td {
+                        border: 1px solid #000;
+                        padding: 8px;
+                        text-align: left;
+                    }
+                    th {
+                        background-color: #f3f4f6 !important;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                }
+            `}</style>
+
             <div className="space-y-6">
-                <div>
+                <div className="no-print">
                     <h1 className="text-2xl font-bold text-gray-900">Final Grade Report</h1>
                     <p className="text-sm text-gray-500 mt-1">
                         Read-only final grades summary
@@ -52,104 +141,219 @@ export default function FinalReport({ auth }: Props) {
                 </div>
 
                 {/* Filters */}
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
-                    <h2 className="text-sm font-semibold text-gray-900 mb-4">Filters</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Grade Level</label>
-                            <Select value={gradeLevel} onValueChange={setGradeLevel}>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Grade 10">Grade 10</SelectItem>
-                                    <SelectItem value="Grade 9">Grade 9</SelectItem>
-                                </SelectContent>
-                            </Select>
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm no-print">
+                    <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                        <h2 className="text-base font-semibold text-gray-900">Filter Options</h2>
+                        <p className="text-sm text-gray-500 mt-1">Select criteria to view final grades</p>
+                    </div>
+                    <div className="p-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className="space-y-2">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Grade Level <span className="text-red-500">*</span>
+                                </label>
+                                <Select value={gradeLevel} onValueChange={setGradeLevel}>
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Select grade level" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {gradeLevels.map((level) => (
+                                            <SelectItem key={level.id} value={level.id.toString()}>
+                                                {level.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            
+                            <div className="space-y-2">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Section <span className="text-red-500">*</span>
+                                </label>
+                                <Select value={section} onValueChange={setSection} disabled={!gradeLevel || sections.length === 0}>
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder={gradeLevel ? "Select section" : "Select grade first"} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {sections.map((sec) => (
+                                            <SelectItem key={sec.id} value={sec.id.toString()}>
+                                                {sec.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            
+                            <div className="space-y-2">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Subject <span className="text-red-500">*</span>
+                                </label>
+                                <Select value={subject} onValueChange={setSubject} disabled={subjects.length === 0}>
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Select subject" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {subjects.map((subj) => (
+                                            <SelectItem key={subj.id} value={subj.id.toString()}>
+                                                {subj.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            
+                            <div className="space-y-2">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    School Year <span className="text-red-500">*</span>
+                                </label>
+                                <Select value={schoolYear} onValueChange={setSchoolYear}>
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {schoolYears.map((year) => (
+                                            <SelectItem key={year.value} value={year.value}>
+                                                {year.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Section</label>
-                            <Select value={section} onValueChange={setSection}>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Section A">Section A</SelectItem>
-                                    <SelectItem value="Section B">Section B</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
-                            <Select value={subject} onValueChange={setSubject}>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="English">English</SelectItem>
-                                    <SelectItem value="Mathematics">Mathematics</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">School Year</label>
-                            <Select value={schoolYear} onValueChange={setSchoolYear}>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="2024-2025">2024-2025</SelectItem>
-                                    <SelectItem value="2023-2024">2023-2024</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        
+                        {!section || !subject ? (
+                            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                <p className="text-sm text-blue-800">
+                                    <span className="font-medium">Note:</span> Please select all required fields to view final grades.
+                                </p>
+                            </div>
+                        ) : null}
                     </div>
                 </div>
 
-                {/* Table */}
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                    <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-                        <p className="text-sm text-gray-600">Showing 1 to 4 of 4 entries</p>
-                        <Button variant="outline" size="sm">
-                            <Printer className="w-4 h-4 mr-2" />
-                            Print
-                        </Button>
+                {/* Printable Area */}
+                <div id="printable-area">
+                    {/* Print Header */}
+                    <div className="hidden print:block mb-6 text-center">
+                        <h1 className="text-2xl font-bold mb-2">Santor National High School</h1>
+                        <h2 className="text-xl font-semibold mb-4">Final Grade Report</h2>
+                        <div className="text-sm space-y-1 mb-4">
+                            {selectedGradeLevel && (
+                                <p><span className="font-medium">Grade Level:</span> {selectedGradeLevel.name}</p>
+                            )}
+                            {selectedSection && (
+                                <p><span className="font-medium">Section:</span> {selectedSection.name}</p>
+                            )}
+                            {selectedSubject && (
+                                <p><span className="font-medium">Subject:</span> {selectedSubject.name}</p>
+                            )}
+                            <p><span className="font-medium">School Year:</span> {schoolYear}</p>
+                            <p><span className="font-medium">Teacher:</span> {auth?.user?.name}</p>
+                            <p><span className="font-medium">Total Students:</span> {students.length}</p>
+                        </div>
                     </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-gray-100">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Student LRN</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Student Name</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Grade Level</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Section</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Final Average</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Remarks</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                                {students.map((student) => (
-                                    <tr key={student.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 text-sm text-gray-900">{student.lrn}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{student.studentName}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{student.gradeLevel}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{student.section}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{student.finalAverage}</td>
-                                        <td className="px-6 py-4">
-                                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                                                student.remarks === 'Passed' 
-                                                    ? 'bg-green-100 text-green-800' 
-                                                    : 'bg-red-100 text-red-800'
-                                            }`}>
-                                                {student.remarks}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                    {/* Table */}
+                    {section && subject ? (
+                        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                            <div className="p-4 border-b border-gray-200 flex items-center justify-between no-print">
+                                <p className="text-sm text-gray-600">
+                                    Showing {students.length} student{students.length !== 1 ? 's' : ''}
+                                </p>
+                                <Button variant="outline" size="sm" onClick={handlePrint}>
+                                    <Printer className="w-4 h-4 mr-2" />
+                                    Print
+                                </Button>
+                            </div>
+
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-gray-100">
+                                        <tr>
+                                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">No.</th>
+                                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Student LRN</th>
+                                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Student Name</th>
+                                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Grade Level</th>
+                                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Section</th>
+                                            <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Q1</th>
+                                            <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Q2</th>
+                                            <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Q3</th>
+                                            <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Q4</th>
+                                            <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Final</th>
+                                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Remarks</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
+                                        {students.length > 0 ? (
+                                            students.map((student, index) => (
+                                                <tr key={student.id} className="hover:bg-gray-50">
+                                                    <td className="px-4 py-4 text-sm text-gray-900">{index + 1}</td>
+                                                    <td className="px-4 py-4 text-sm text-gray-900">{student.lrn}</td>
+                                                    <td className="px-4 py-4 text-sm text-gray-900">{student.studentName}</td>
+                                                    <td className="px-4 py-4 text-sm text-gray-900">{student.gradeLevel}</td>
+                                                    <td className="px-4 py-4 text-sm text-gray-900">{student.section}</td>
+                                                    <td className="px-4 py-4 text-sm text-gray-900 text-center">
+                                                        {student.quarter1 !== null ? student.quarter1 : '-'}
+                                                    </td>
+                                                    <td className="px-4 py-4 text-sm text-gray-900 text-center">
+                                                        {student.quarter2 !== null ? student.quarter2 : '-'}
+                                                    </td>
+                                                    <td className="px-4 py-4 text-sm text-gray-900 text-center">
+                                                        {student.quarter3 !== null ? student.quarter3 : '-'}
+                                                    </td>
+                                                    <td className="px-4 py-4 text-sm text-gray-900 text-center">
+                                                        {student.quarter4 !== null ? student.quarter4 : '-'}
+                                                    </td>
+                                                    <td className="px-4 py-4 text-sm font-medium text-gray-900 text-center">
+                                                        {student.finalAverage !== null ? student.finalAverage : '-'}
+                                                    </td>
+                                                    <td className="px-4 py-4">
+                                                        {student.remarks ? (
+                                                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                                                                student.remarks === 'Passed' 
+                                                                    ? 'bg-green-100 text-green-800' 
+                                                                    : 'bg-red-100 text-red-800'
+                                                            }`}>
+                                                                {student.remarks}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-gray-400">-</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={11} className="px-6 py-8 text-center text-sm text-gray-500">
+                                                    No students found or no final grades available
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Print Footer */}
+                            <div className="hidden print:block mt-12 pt-8 border-t border-gray-300">
+                                <div className="grid grid-cols-2 gap-8">
+                                    <div>
+                                        <p className="text-sm mb-8">Prepared by:</p>
+                                        <div className="border-t border-black pt-1">
+                                            <p className="text-sm font-medium">{auth?.user?.name}</p>
+                                            <p className="text-xs text-gray-600">Teacher</p>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm mb-8">Date: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center no-print">
+                            <p className="text-gray-500">Please select section and subject to view final grades</p>
+                        </div>
+                    )}
                 </div>
             </div>
         </TeacherLayout>

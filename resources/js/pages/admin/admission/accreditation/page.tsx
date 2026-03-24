@@ -1,16 +1,24 @@
-import { Head } from '@inertiajs/react'
+import { Head, router } from '@inertiajs/react'
 import AdminLayout from '@/layouts/admin-layout'
-import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
+import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { useState } from 'react'
+import AddAccreditationModal from '@/components/modals/add-accreditation-modal'
+import EditAccreditationModal from '@/components/modals/edit-accreditation-modal'
+import DeleteAccreditationModal from '@/components/modals/delete-accreditation-modal'
 
-type School = {
+type Accreditation = {
     id: number
-    schoolCode: string
-    schoolName: string
-    schoolType: string
-    schoolAddress: string
+    accreditation_type: string
+    accrediting_body: string
+    certificate_number: string
+    date_issued: string
+    valid_from: string
+    valid_until: string
+    status: string
+    description: string | null
+    document_path: string | null
 }
 
 type Props = {
@@ -22,86 +30,90 @@ type Props = {
             role: string
         }
     }
+    accreditations?: Accreditation[]
 }
 
-export default function SchoolAccreditation({ auth }: Props) {
-    const [schoolType, setSchoolType] = useState('')
+export default function AccreditationPage({ auth, accreditations = [] }: Props) {
+    const [searchTerm, setSearchTerm] = useState('')
+    const [showAddModal, setShowAddModal] = useState(false)
+    const [showEditModal, setShowEditModal] = useState(false)
+    const [showDeleteModal, setShowDeleteModal] = useState(false)
+    const [selectedAccreditation, setSelectedAccreditation] = useState<Accreditation | null>(null)
 
-    const schools: School[] = [
-        { id: 1, schoolCode: 'SNHS-001', schoolName: 'Santor National High School', schoolType: 'Public', schoolAddress: '123 Main St, City, Country' },
-        { id: 2, schoolCode: 'PNHS-002', schoolName: 'Pittsburg National High School', schoolType: 'Private', schoolAddress: '456 Oak Ave, City, Country' }
-    ]
+    const filteredAccreditations = accreditations.filter(accreditation =>
+        accreditation.accreditation_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        accreditation.accrediting_body.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        accreditation.certificate_number.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+
+    const handleEdit = (accreditation: Accreditation) => {
+        setSelectedAccreditation(accreditation)
+        setShowEditModal(true)
+    }
+
+    const handleDelete = (accreditation: Accreditation) => {
+        setSelectedAccreditation(accreditation)
+        setShowDeleteModal(true)
+    }
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'Active':
+                return 'bg-green-100 text-green-800'
+            case 'Expired':
+                return 'bg-red-100 text-red-800'
+            case 'Pending':
+                return 'bg-yellow-100 text-yellow-800'
+            case 'Suspended':
+                return 'bg-gray-100 text-gray-800'
+            default:
+                return 'bg-gray-100 text-gray-800'
+        }
+    }
 
     return (
         <AdminLayout user={auth?.user}>
-            <Head title="School Accreditation" />
+            <Head title="Accreditation" />
 
             <div className="space-y-6">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">School Accreditation</h1>
-                    <p className="text-sm text-gray-500 mt-1">
-                        Manage school accreditation information
-                    </p>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900">Accreditation</h1>
+                        <p className="text-sm text-gray-500 mt-1">
+                            Manage school accreditations and certifications
+                        </p>
+                    </div>
+                    <Button
+                        onClick={() => setShowAddModal(true)}
+                        className="bg-green-600 hover:bg-green-700"
+                    >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Accreditation
+                    </Button>
                 </div>
 
+                {/* Search */}
                 <div className="bg-white rounded-lg border border-gray-200 p-6">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-6">Add School</h2>
-
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    School Code <span className="text-red-500">*</span>
-                                </label>
-                                <Input type="text" placeholder="Enter school code" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    School Name <span className="text-red-500">*</span>
-                                </label>
-                                <Input type="text" placeholder="Enter school name" />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    School Type <span className="text-red-500">*</span>
-                                </label>
-                                <Select value={schoolType} onValueChange={setSchoolType}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select school type" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="public">Public</SelectItem>
-                                        <SelectItem value="private">Private</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    School Address <span className="text-red-500">*</span>
-                                </label>
-                                <Input type="text" placeholder="Enter school address" />
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end">
-                            <Button className="bg-green-600 hover:bg-green-700 text-white">
-                                Add
-                            </Button>
-                        </div>
+                    <h2 className="text-sm font-semibold text-gray-900 mb-4">Search</h2>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Search by Type, Body, or Certificate Number
+                        </label>
+                        <Input
+                            type="text"
+                            placeholder="Search accreditations..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="max-w-md"
+                        />
                     </div>
                 </div>
 
+                {/* Table */}
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                     <div className="p-4 border-b border-gray-200">
-                        <h2 className="text-sm font-semibold text-gray-900">Accredited Schools</h2>
-                    </div>
-
-                    <div className="p-4 border-b border-gray-200">
                         <p className="text-sm text-gray-600">
-                            Showing 1 to {schools.length} of {schools.length} entries
+                            Showing {filteredAccreditations.length} of {accreditations.length} accreditations
                         </p>
                     </div>
 
@@ -109,26 +121,84 @@ export default function SchoolAccreditation({ auth }: Props) {
                         <table className="w-full">
                             <thead className="bg-gray-100">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">School Code</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">School Name</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">School Type</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">School Address</th>
+                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Type</th>
+                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Accrediting Body</th>
+                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Certificate No.</th>
+                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Valid From</th>
+                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Valid Until</th>
+                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Status</th>
+                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                {schools.map((school) => (
-                                    <tr key={school.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 text-sm text-gray-900">{school.schoolCode}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{school.schoolName}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{school.schoolType}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{school.schoolAddress}</td>
+                                {filteredAccreditations.length > 0 ? (
+                                    filteredAccreditations.map((accreditation) => (
+                                        <tr key={accreditation.id} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 text-sm text-gray-900">{accreditation.accreditation_type}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">{accreditation.accrediting_body}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">{accreditation.certificate_number}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">
+                                                {new Date(accreditation.valid_from).toLocaleDateString()}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">
+                                                {new Date(accreditation.valid_until).toLocaleDateString()}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm">
+                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(accreditation.status)}`}>
+                                                    {accreditation.status}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm">
+                                                <div className="flex items-center gap-2">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => handleEdit(accreditation)}
+                                                    >
+                                                        <Pencil className="w-4 h-4" />
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => handleDelete(accreditation)}
+                                                    >
+                                                        <Trash2 className="w-4 h-4 text-red-600" />
+                                                    </Button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-500">
+                                            {accreditations.length === 0
+                                                ? 'No accreditations found. Click "Add Accreditation" to create one.'
+                                                : 'No accreditations match your search.'}
+                                        </td>
                                     </tr>
-                                ))}
+                                )}
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
+
+            <AddAccreditationModal
+                open={showAddModal}
+                onOpenChange={setShowAddModal}
+            />
+
+            <EditAccreditationModal
+                open={showEditModal}
+                onOpenChange={setShowEditModal}
+                accreditation={selectedAccreditation}
+            />
+
+            <DeleteAccreditationModal
+                open={showDeleteModal}
+                onOpenChange={setShowDeleteModal}
+                accreditation={selectedAccreditation}
+            />
         </AdminLayout>
     )
 }

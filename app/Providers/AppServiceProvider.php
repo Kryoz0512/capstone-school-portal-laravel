@@ -24,6 +24,19 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        $this->configureMorphMap();
+    }
+
+    /**
+     * Configure morph map for polymorphic relationships.
+     */
+    protected function configureMorphMap(): void
+    {
+        \Illuminate\Database\Eloquent\Relations\Relation::morphMap([
+            'student' => \App\Models\Student::class,
+            'teacher' => \App\Models\Teacher::class,
+            'admin' => \App\Models\Admin::class,
+        ]);
     }
 
     /**

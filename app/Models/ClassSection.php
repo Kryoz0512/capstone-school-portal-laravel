@@ -13,8 +13,7 @@ class ClassSection extends Model
 
     protected $fillable = [
         'grade_level_id',
-        'adviser_id',
-        'name',
+        'section_name',
     ];
 
     // Relationships
@@ -23,9 +22,9 @@ class ClassSection extends Model
         return $this->belongsTo(GradeLevel::class, 'grade_level_id');
     }
 
-    public function adviser()
+    public function adviserSections()
     {
-        return $this->belongsTo(Teacher::class, 'adviser_id');
+        return $this->hasMany(AdviserSection::class, 'class_section_id');
     }
 
     public function enrollments()
@@ -36,5 +35,10 @@ class ClassSection extends Model
     public function schedules()
     {
         return $this->hasMany(Schedule::class, 'class_section_id');
+    }
+
+    public function students()
+    {
+        return $this->hasMany(Student::class, 'current_section_id');
     }
 }

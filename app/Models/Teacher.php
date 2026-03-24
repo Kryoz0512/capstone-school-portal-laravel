@@ -13,8 +13,14 @@ class Teacher extends Model
 
     protected $fillable = [
         'user_id',
-        'specialization',
+        'name',
+        'employee_number',
+        'subject',
+        'position',
+        'phone',
+        'address',
         'hire_date',
+        'updated_by',
     ];
 
     protected function casts(): array
@@ -40,9 +46,9 @@ class Teacher extends Model
         );
     }
 
-    public function classSections()
+    public function adviserSections()
     {
-        return $this->hasMany(ClassSection::class, 'adviser_id');
+        return $this->hasMany(AdviserSection::class, 'teacher_id');
     }
 
     public function schedules()
@@ -53,5 +59,10 @@ class Teacher extends Model
     public function grades()
     {
         return $this->hasMany(Grade::class, 'teacher_id');
+    }
+
+    public function updatedBy()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
     }
 }

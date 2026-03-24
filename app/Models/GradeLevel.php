@@ -19,6 +19,11 @@ class GradeLevel extends Model
     ];
 
     // Relationships
+    public function subjects()
+    {
+        return $this->hasMany(Subject::class, 'grade_level_id');
+    }
+
     public function students()
     {
         return $this->hasMany(Student::class, 'current_grade_level_id');

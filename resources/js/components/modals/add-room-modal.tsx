@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useForm } from '@inertiajs/react'
+import InputError from '../input-error'
 
 type AddRoomModalProps = {
     open: boolean
@@ -16,7 +17,7 @@ export default function AddRoomModal({ open, onOpenChange }: AddRoomModalProps) 
         status: 'Active' as 'Active' | 'Maintenance'
     })
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = (e: React.ChangeEvent<HTMLFormElement>) => {
         e.preventDefault()
         post('/admin/enrollment/rooms', {
             onSuccess: () => {
@@ -41,14 +42,15 @@ export default function AddRoomModal({ open, onOpenChange }: AddRoomModalProps) 
                             Room Number <span className="text-red-500">*</span>
                         </label>
                         <Input
-                            required
+                            // required
                             value={data.room_number}
                             onChange={(e) => setData('room_number', e.target.value)}
                             placeholder="e.g., 101, 102, Lab-1"
                         />
-                        {errors.room_number && (
+                        <InputError message={errors.room_number}/>
+                        {/* {errors.room_number && (
                             <p className="text-xs text-red-500 mt-1">{errors.room_number}</p>
-                        )}
+                        )} */}
                         <p className="text-xs text-gray-500 mt-1">Enter the room number or identifier</p>
                     </div>
 
@@ -57,16 +59,17 @@ export default function AddRoomModal({ open, onOpenChange }: AddRoomModalProps) 
                             Capacity <span className="text-red-500">*</span>
                         </label>
                         <Input
-                            required
+                            // required
                             type="number"
                             min="1"
                             value={data.capacity}
                             onChange={(e) => setData('capacity', e.target.value)}
                             placeholder="e.g., 40, 45, 50"
                         />
-                        {errors.capacity && (
+                        <InputError message={errors.capacity}/>
+                        {/* {errors.capacity && (
                             <p className="text-xs text-red-500 mt-1">{errors.capacity}</p>
-                        )}
+                        )} */}
                         <p className="text-xs text-gray-500 mt-1">Maximum number of students</p>
                     </div>
 

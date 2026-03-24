@@ -1,6 +1,8 @@
 import { Head } from '@inertiajs/react'
 import AdminLayout from '@/layouts/admin-layout'
 import { Pencil } from 'lucide-react'
+import EditStudentAssignmentModal from '@/components/modals/edit-student-assignment-modal'
+import { useState } from 'react'
 
 type Student = {
     id: number
@@ -9,7 +11,20 @@ type Student = {
     gender: string
     age: number
     gradeLevel: string
+    gradeLevelId: number | null
     section: string
+    studentStatus: string
+}
+
+type GradeLevel = {
+    id: number
+    name: string
+}
+
+type Section = {
+    id: number
+    name: string
+    grade_level_id: number
 }
 
 type Props = {
@@ -21,15 +36,23 @@ type Props = {
             role: string
         }
     }
+    students?: Student[]
+    gradeLevels?: GradeLevel[]
+    sections?: Section[]
 }
 
-export default function StudentNotEnrolled({ auth }: Props) {
-    const students: Student[] = [
-        { id: 1, studentName: 'John Martinez', lrn: '123456789', gender: 'Male', age: 16, gradeLevel: '', section: '' },
-        { id: 2, studentName: 'Maria Santos', lrn: '123456790', gender: 'Female', age: 15, gradeLevel: '', section: '' },
-        { id: 3, studentName: 'Carlos Reyes', lrn: '123456791', gender: 'Male', age: 17, gradeLevel: '', section: '' },
-        { id: 4, studentName: 'Ana Cruz', lrn: '123456792', gender: 'Female', age: 16, gradeLevel: '', section: '' }
-    ]
+export default function StudentNotEnrolled({ auth, students = [], gradeLevels = [], sections = [] }: Props) {
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+    const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
+
+    const totalStudents = students.length
+    const pendingAssignment = students.filter(s => !s.gradeLevel || !s.section).length
+    const assigned = students.filter(s => s.gradeLevel && s.section).length
+
+    const handleEdit = (student: Student) => {
+        setSelectedStudent(student)
+        setIsEditModalOpen(true)
+    }
 
     return (
         <AdminLayout user={auth?.user}>
@@ -43,19 +66,27 @@ export default function StudentNotEnrolled({ auth }: Props) {
                     </p>
                 </div>
 
+                <EditStudentAssignmentModal 
+                    open={isEditModalOpen}
+                    onOpenChange={setIsEditModalOpen}
+                    student={selectedStudent}
+                    gradeLevels={gradeLevels}
+                    sections={sections}
+                />
+
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                         <p className="text-sm text-blue-600 font-medium">Total Students</p>
-                        <p className="text-3xl font-bold text-blue-900 mt-2">4</p>
+                        <p className="text-3xl font-bold text-blue-900 mt-2">{totalStudents}</p>
                     </div>
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                         <p className="text-sm text-yellow-600 font-medium">Pending Assignment</p>
-                        <p className="text-3xl font-bold text-yellow-900 mt-2">4</p>
+                        <p className="text-3xl font-bold text-yellow-900 mt-2">{pendingAssignment}</p>
                     </div>
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                         <p className="text-sm text-green-600 font-medium">Assigned</p>
-                        <p className="text-3xl font-bold text-green-900 mt-2">0</p>
+                        <p className="text-3xl font-bold text-green-900 mt-2">{assigned}</p>
                     </div>
                 </div>
 
@@ -88,21 +119,32 @@ export default function StudentNotEnrolled({ auth }: Props) {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                {students.map((student) => (
-                                    <tr key={student.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 text-sm text-gray-900">{student.studentName}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{student.lrn}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{student.gender}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{student.age}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-500">-</td>
-                                        <td className="px-6 py-4 text-sm text-gray-500">-</td>
-                                        <td className="px-6 py-4">
-                                            <button className="text-gray-600 hover:text-green-600">
-                                                <Pencil className="w-4 h-4" />
-                                            </button>
+                                {students.length > 0 ? (
+                                    students.map((student) => (
+                                        <tr key={student.id} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 text-sm text-gray-900">{student.studentName}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">{student.lrn}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">{student.gender}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">{student.age || '-'}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-500">{student.gradeLevel || '-'}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-500">{student.section || '-'}</td>
+                                            <td className="px-6 py-4">
+                                                <button 
+                                                    className="text-gray-600 hover:text-green-600"
+                                                    onClick={() => handleEdit(student)}
+                                                >
+                                                    <Pencil className="w-4 h-4" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-500">
+                                            No students found. Students will appear here after registration.
                                         </td>
                                     </tr>
-                                ))}
+                                )}
                             </tbody>
                         </table>
                     </div>

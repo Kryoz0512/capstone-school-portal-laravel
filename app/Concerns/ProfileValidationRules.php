@@ -17,6 +17,8 @@ trait ProfileValidationRules
         return [
             'name' => $this->nameRules(),
             'email' => $this->emailRules($userId),
+            'current_password' => ['nullable', 'current_password'],
+            'password' => ['nullable', 'required_with:current_password', 'string', 'min:8', 'confirmed'],
         ];
     }
 

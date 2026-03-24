@@ -1,19 +1,39 @@
-import { Head } from '@inertiajs/react'
+import { Head, router } from '@inertiajs/react'
 import StudentLayout from '@/layouts/student-layout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 type Grade = {
     id: number
     subject: string
     teacher: string
-    quarter1: number
-    quarter2: number
-    quarter3: number
-    quarter4: number
+    quarter1: number | null
+    quarter2: number | null
+    quarter3: number | null
+    quarter4: number | null
+    finalGrade: number | null
+}
+
+type SchoolYear = {
+    value: string
+    label: string
+}
+
+type StudentInfo = {
+    lrn: string
+    name: string
+    gradeLevel: string
+    section: string
+    adviser: string
 }
 
 type Props = {
+    grades: Grade[]
+    schoolYears: SchoolYear[]
+    studentInfo: StudentInfo
+    filters: {
+        school_year: string
+    }
     auth?: {
         user: {
             id: number
@@ -24,23 +44,18 @@ type Props = {
     }
 }
 
-export default function ReportCard({ auth }: Props) {
-    const [schoolYear, setSchoolYear] = useState('2024-2025')
+export default function ReportCard({ grades, schoolYears, studentInfo, filters, auth }: Props) {
+    const [schoolYear, setSchoolYear] = useState(filters.school_year || '')
 
-    const studentInfo = {
-        lrn: '123456789012',
-        name: 'Maria Santos',
-        gradeSection: 'Grade 10 - A',
-        adviser: 'Mr. Rodriguez'
-    }
-
-    const grades: Grade[] = [
-        { id: 1, subject: 'English', teacher: 'Ms. Johnson', quarter1: 88, quarter2: 90, quarter3: 92, quarter4: 91 },
-        { id: 2, subject: 'Mathematics', teacher: 'Mr. Smith', quarter1: 78, quarter2: 82, quarter3: 85, quarter4: 86 },
-        { id: 3, subject: 'Science', teacher: 'Dr. Garcia', quarter1: 92, quarter2: 94, quarter3: 95, quarter4: 94 },
-        { id: 4, subject: 'Social Studies', teacher: 'Ms. Williams', quarter1: 86, quarter2: 87, quarter3: 88, quarter4: 88 },
-        { id: 5, subject: 'Filipino', teacher: 'Mr. Cruz', quarter1: 89, quarter2: 91, quarter3: 90, quarter4: 90 }
-    ]
+    // Update filter when selection changes
+    useEffect(() => {
+        if (schoolYear) {
+            router.get(`/student/report-card?school_year=${schoolYear}`, {}, {
+                preserveState: true,
+                preserveScroll: true,
+            })
+        }
+    }, [schoolYear])
 
     return (
         <StudentLayout user={auth?.user}>
@@ -54,7 +69,7 @@ export default function ReportCard({ auth }: Props) {
 
                 {/* Student Info Card */}
                 <div className="bg-gray-50 rounded-lg border border-gray-200 p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                         <div>
                             <p className="text-sm text-gray-600 mb-1">Student LRN:</p>
                             <p className="text-base font-semibold text-gray-900">{studentInfo.lrn}</p>
@@ -64,8 +79,12 @@ export default function ReportCard({ auth }: Props) {
                             <p className="text-base font-semibold text-gray-900">{studentInfo.name}</p>
                         </div>
                         <div>
-                            <p className="text-sm text-gray-600 mb-1">Grade & Section:</p>
-                            <p className="text-base font-semibold text-gray-900">{studentInfo.gradeSection}</p>
+                            <p className="text-sm text-gray-600 mb-1">Grade Level:</p>
+                            <p className="text-base font-semibold text-gray-900">{studentInfo.gradeLevel}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-600 mb-1">Section:</p>
+                            <p className="text-base font-semibold text-gray-900">{studentInfo.section}</p>
                         </div>
                         <div>
                             <p className="text-sm text-gray-600 mb-1">Section Adviser:</p>
@@ -83,8 +102,11 @@ export default function ReportCard({ auth }: Props) {
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="2024-2025">2024-2025</SelectItem>
-                                <SelectItem value="2023-2024">2023-2024</SelectItem>
+                                {schoolYears.map((year) => (
+                                    <SelectItem key={year.value} value={year.value}>
+                                        {year.label}
+                                    </SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
@@ -92,32 +114,50 @@ export default function ReportCard({ auth }: Props) {
 
                 {/* Grades Table */}
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-green-700 text-white">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-sm font-medium">Subject</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium">Teacher</th>
-                                    <th className="px-6 py-3 text-center text-sm font-medium">Quarter 1</th>
-                                    <th className="px-6 py-3 text-center text-sm font-medium">Quarter 2</th>
-                                    <th className="px-6 py-3 text-center text-sm font-medium">Quarter 3</th>
-                                    <th className="px-6 py-3 text-center text-sm font-medium">Quarter 4</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                                {grades.map((grade) => (
-                                    <tr key={grade.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 text-sm text-gray-900">{grade.subject}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{grade.teacher}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900 text-center">{grade.quarter1}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900 text-center">{grade.quarter2}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900 text-center">{grade.quarter3}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900 text-center">{grade.quarter4}</td>
+                    {grades.length > 0 ? (
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-green-700 text-white">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-sm font-medium">Subject</th>
+                                        <th className="px-6 py-3 text-left text-sm font-medium">Teacher</th>
+                                        <th className="px-6 py-3 text-center text-sm font-medium">Quarter 1</th>
+                                        <th className="px-6 py-3 text-center text-sm font-medium">Quarter 2</th>
+                                        <th className="px-6 py-3 text-center text-sm font-medium">Quarter 3</th>
+                                        <th className="px-6 py-3 text-center text-sm font-medium">Quarter 4</th>
+                                        <th className="px-6 py-3 text-center text-sm font-medium">Final Grade</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                    {grades.map((grade) => (
+                                        <tr key={grade.id} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 text-sm text-gray-900">{grade.subject}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">{grade.teacher}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-900 text-center">
+                                                {grade.quarter1 ?? '-'}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-900 text-center">
+                                                {grade.quarter2 ?? '-'}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-900 text-center">
+                                                {grade.quarter3 ?? '-'}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-900 text-center">
+                                                {grade.quarter4 ?? '-'}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm font-semibold text-gray-900 text-center">
+                                                {grade.finalGrade ?? '-'}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="p-8 text-center text-gray-500">
+                            No grades found for this school year
+                        </div>
+                    )}
                 </div>
             </div>
         </StudentLayout>

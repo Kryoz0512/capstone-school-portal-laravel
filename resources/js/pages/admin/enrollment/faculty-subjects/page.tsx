@@ -2,17 +2,35 @@ import { Head } from '@inertiajs/react'
 import AdminLayout from '@/layouts/admin-layout'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import AssignSubjectModal from '@/components/modals/assign-subject-modal'
+import EditAssignmentModal from '@/components/modals/edit-assignment-modal'
+import DeleteAssignmentModal from '@/components/modals/delete-assignment-modal'
 import { Pencil, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 
 type Assignment = {
     id: number
-    subjectCode: string
-    subjectName: string
-    gradeLevel: number
+    subject_code: string
+    subject_name: string
+    grade_level: string
     description: string
-    assignedTeacher: string
-    status: 'Assigned'
+    teacher_name: string
+    teacher_id: number
+    subject_id: number
+}
+
+type Subject = {
+    id: number
+    code: string
+    name: string
+    description: string
+    grade_level_id: number
+    grade_level: string
+}
+
+type Teacher = {
+    id: number
+    name: string
 }
 
 type Props = {
@@ -24,19 +42,48 @@ type Props = {
             role: string
         }
     }
+    assignments: Assignment[]
+    gradeLevels: GradeLevel[]
+    subjects: Subject[]
+    teachers: Teacher[]
 }
 
-export default function FacultySubjects({ auth }: Props) {
+type GradeLevel = {
+    id: number
+    name: string
+}
+
+export default function FacultySubjects({ auth, assignments = [], gradeLevels = [], subjects = [], teachers = [] }: Props) {
     const [gradeFilter, setGradeFilter] = useState('All Grades')
     const [subjectFilter, setSubjectFilter] = useState('All Subjects')
+    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+    const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null)
 
-    const assignments: Assignment[] = [
-        { id: 1, subjectCode: 'ENG 10', subjectName: 'English', gradeLevel: 10, description: 'Basic English', assignedTeacher: 'Mr. Smith', status: 'Assigned' },
-        { id: 2, subjectCode: 'MATH 10', subjectName: 'Mathematics', gradeLevel: 10, description: 'Algebra & Geometry', assignedTeacher: 'Ms. Johnson', status: 'Assigned' },
-        { id: 3, subjectCode: 'SCI 10', subjectName: 'Science', gradeLevel: 10, description: 'Physics & Chemistry', assignedTeacher: 'Mr. Garcia', status: 'Assigned' },
-        { id: 4, subjectCode: 'HIST 9', subjectName: 'History', gradeLevel: 9, description: 'World History', assignedTeacher: 'Ms. Lopez', status: 'Assigned' },
-        { id: 5, subjectCode: 'PE 10', subjectName: 'Physical Education', gradeLevel: 10, description: 'Sports & Wellness', assignedTeacher: 'Mr. Davis', status: 'Assigned' }
-    ]
+    const handleEdit = (assignment: Assignment) => {
+        setSelectedAssignment(assignment)
+        setIsEditModalOpen(true)
+    }
+
+    const handleDelete = (assignment: Assignment) => {
+        setSelectedAssignment(assignment)
+        setIsDeleteModalOpen(true)
+    }
+
+    // Get unique subject names from assignments only
+    const uniqueSubjectNames = Array.from(new Set(assignments.map(a => a.subject_name))).sort()
+
+    // Filter assignments based on selected filters
+    const filteredAssignments = assignments.filter(assignment => {
+        const matchesGrade = gradeFilter === 'All Grades' || assignment.grade_level.includes(gradeFilter)
+        const matchesSubject = subjectFilter === 'All Subjects' || assignment.subject_name === subjectFilter
+        return matchesGrade && matchesSubject
+    })
+
+    const totalSubjects = filteredAssignments.length
+    const alignedAssignments = filteredAssignments.length
+    const unmetAssignments = 0
 
     return (
         <AdminLayout user={auth?.user}>
@@ -50,24 +97,50 @@ export default function FacultySubjects({ auth }: Props) {
                             Manage subject assignments and validate teacher-subject alignment
                         </p>
                     </div>
-                    <Button className="bg-green-600 hover:bg-green-700 text-white">
+                    <Button 
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                        onClick={() => setIsModalOpen(true)}
+                    >
                         + Assign Subject
                     </Button>
                 </div>
+
+                <AssignSubjectModal 
+                    open={isModalOpen} 
+                    onOpenChange={setIsModalOpen}
+                    gradeLevels={gradeLevels}
+                    subjects={subjects}
+                    teachers={teachers}
+                />
+
+                <EditAssignmentModal 
+                    open={isEditModalOpen}
+                    onOpenChange={setIsEditModalOpen}
+                    assignment={selectedAssignment}
+                    gradeLevels={gradeLevels}
+                    subjects={subjects}
+                    teachers={teachers}
+                />
+
+                <DeleteAssignmentModal 
+                    open={isDeleteModalOpen}
+                    onOpenChange={setIsDeleteModalOpen}
+                    assignment={selectedAssignment}
+                />
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                         <p className="text-sm text-blue-600 font-medium">Total Subjects</p>
-                        <p className="text-3xl font-bold text-blue-900 mt-2">5</p>
+                        <p className="text-3xl font-bold text-blue-900 mt-2">{totalSubjects}</p>
                     </div>
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                         <p className="text-sm text-green-600 font-medium">Aligned Assignments</p>
-                        <p className="text-3xl font-bold text-green-900 mt-2">5</p>
+                        <p className="text-3xl font-bold text-green-900 mt-2">{alignedAssignments}</p>
                     </div>
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                         <p className="text-sm text-yellow-600 font-medium">Unmet Assignment</p>
-                        <p className="text-3xl font-bold text-yellow-900 mt-2">0</p>
+                        <p className="text-3xl font-bold text-yellow-900 mt-2">{unmetAssignments}</p>
                     </div>
                 </div>
 
@@ -85,6 +158,8 @@ export default function FacultySubjects({ auth }: Props) {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="All Grades">All Grades</SelectItem>
+                                    <SelectItem value="7">Grade 7</SelectItem>
+                                    <SelectItem value="8">Grade 8</SelectItem>
                                     <SelectItem value="9">Grade 9</SelectItem>
                                     <SelectItem value="10">Grade 10</SelectItem>
                                 </SelectContent>
@@ -100,8 +175,11 @@ export default function FacultySubjects({ auth }: Props) {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="All Subjects">All Subjects</SelectItem>
-                                    <SelectItem value="English">English</SelectItem>
-                                    <SelectItem value="Mathematics">Mathematics</SelectItem>
+                                    {uniqueSubjectNames.map((subjectName) => (
+                                        <SelectItem key={subjectName} value={subjectName}>
+                                            {subjectName}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -115,7 +193,7 @@ export default function FacultySubjects({ auth }: Props) {
                     </div>
 
                     <div className="p-4 border-b border-gray-200">
-                        <p className="text-sm text-gray-600">Showing 1 to 5 of 5 entries</p>
+                        <p className="text-sm text-gray-600">Showing 1 to {filteredAssignments.length} of {assignments.length} entries</p>
                     </div>
 
                     <div className="overflow-x-auto">
@@ -132,30 +210,44 @@ export default function FacultySubjects({ auth }: Props) {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                {assignments.map((assignment) => (
-                                    <tr key={assignment.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 text-sm text-gray-900">{assignment.subjectCode}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{assignment.subjectName}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{assignment.gradeLevel}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{assignment.description}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{assignment.assignedTeacher}</td>
-                                        <td className="px-6 py-4">
-                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                {assignment.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-2">
-                                                <button className="text-gray-600 hover:text-green-600">
-                                                    <Pencil className="w-4 h-4" />
-                                                </button>
-                                                <button className="text-gray-600 hover:text-red-600">
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
+                                {filteredAssignments.length > 0 ? (
+                                    filteredAssignments.map((assignment) => (
+                                        <tr key={assignment.id} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 text-sm text-gray-900">{assignment.subject_code}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">{assignment.subject_name}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">{assignment.grade_level}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">{assignment.description}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">{assignment.teacher_name}</td>
+                                            <td className="px-6 py-4">
+                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                    Assigned
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-2">
+                                                    <button 
+                                                        className="text-gray-600 hover:text-green-600"
+                                                        onClick={() => handleEdit(assignment)}
+                                                    >
+                                                        <Pencil className="w-4 h-4" />
+                                                    </button>
+                                                    <button 
+                                                        className="text-gray-600 hover:text-red-600"
+                                                        onClick={() => handleDelete(assignment)}
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-500">
+                                            No assignments found. Click "+ Assign Subject" to create one.
                                         </td>
                                     </tr>
-                                ))}
+                                )}
                             </tbody>
                         </table>
                     </div>

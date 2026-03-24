@@ -2,11 +2,16 @@ import { Head } from '@inertiajs/react'
 import AdminLayout from '@/layouts/admin-layout'
 import { Button } from '@/components/ui/button'
 import AddAdminModal from '@/components/modals/add-admin-modal'
+import EditAdminModal from '@/components/modals/edit-admin-modal'
+import DeleteAdminModal from '@/components/modals/delete-admin-modal'
 import { Pencil, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 
 type Admin = {
     id: number
+    user_id: number
+    first_name: string
+    last_name: string
     name: string
     email: string
     position: string
@@ -14,6 +19,7 @@ type Admin = {
 }
 
 type Props = {
+    admins: Admin[]
     auth?: {
         user: {
             id: number
@@ -24,17 +30,23 @@ type Props = {
     }
 }
 
-export default function AdminManagement({ auth }: Props) {
-    const [isModalOpen, setIsModalOpen] = useState(false)
-
-    const admins: Admin[] = [
-        { id: 1, name: 'John Doe', email: 'john.doe@snhs.edu.ph', position: 'Principal', role: 'Admin' },
-        { id: 2, name: 'Jane Smith', email: 'jane.smith@snhs.edu.ph', position: 'Registrar', role: 'Staff' }
-    ]
+export default function AdminManagement({ admins, auth }: Props) {
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+    const [selectedAdmin, setSelectedAdmin] = useState<Admin | null>(null)
 
     const totalAdmins = admins.length
-    const adminCount = admins.filter(a => a.role === 'Admin').length
-    const staffCount = admins.filter(a => a.role === 'Staff').length
+
+    const handleEdit = (admin: Admin) => {
+        setSelectedAdmin(admin)
+        setIsEditModalOpen(true)
+    }
+
+    const handleDelete = (admin: Admin) => {
+        setSelectedAdmin(admin)
+        setIsDeleteModalOpen(true)
+    }
 
     return (
         <AdminLayout user={auth?.user}>
@@ -50,27 +62,33 @@ export default function AdminManagement({ auth }: Props) {
                     </div>
                     <Button 
                         className="bg-green-600 hover:bg-green-700 text-white"
-                        onClick={() => setIsModalOpen(true)}
+                        onClick={() => setIsAddModalOpen(true)}
                     >
                         + New Admin
                     </Button>
                 </div>
 
-                <AddAdminModal open={isModalOpen} onOpenChange={setIsModalOpen} />
+                <AddAdminModal open={isAddModalOpen} onOpenChange={setIsAddModalOpen} />
+                <EditAdminModal 
+                    open={isEditModalOpen} 
+                    onOpenChange={setIsEditModalOpen}
+                    admin={selectedAdmin}
+                />
+                <DeleteAdminModal 
+                    open={isDeleteModalOpen} 
+                    onOpenChange={setIsDeleteModalOpen}
+                    admin={selectedAdmin}
+                />
 
                 {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                         <p className="text-sm text-blue-600 font-medium">Total Admins</p>
                         <p className="text-3xl font-bold text-blue-900 mt-2">{totalAdmins}</p>
                     </div>
-                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                        <p className="text-sm text-purple-600 font-medium">Admins</p>
-                        <p className="text-3xl font-bold text-purple-900 mt-2">{adminCount}</p>
-                    </div>
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                        <p className="text-sm text-green-600 font-medium">Staff</p>
-                        <p className="text-3xl font-bold text-green-900 mt-2">{staffCount}</p>
+                        <p className="text-sm text-green-600 font-medium">Active Accounts</p>
+                        <p className="text-3xl font-bold text-green-900 mt-2">{totalAdmins}</p>
                     </div>
                 </div>
 
@@ -79,12 +97,10 @@ export default function AdminManagement({ auth }: Props) {
                     <div className="flex items-start gap-2">
                         <div className="text-blue-600 mt-0.5">ℹ️</div>
                         <div>
-                            <p className="text-sm font-medium text-blue-900">Admin Roles & Permissions:</p>
-                            <ul className="text-sm text-blue-700 mt-2 space-y-1">
-                                <li>✓ <span className="font-medium">Super Admin:</span> Full system access, user management, settings</li>
-                                <li>✓ <span className="font-medium">Admin:</span> Enrollment, registration, scheduling, teacher management</li>
-                                <li>✓ <span className="font-medium">Staff:</span> Limited access to enrollment, registration, and reports</li>
-                            </ul>
+                            <p className="text-sm font-medium text-blue-900">Admin Access:</p>
+                            <p className="text-sm text-blue-700 mt-2">
+                                All admin accounts have full system access including user management, enrollment, registration, scheduling, and reports.
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -102,47 +118,49 @@ export default function AdminManagement({ auth }: Props) {
                         </p>
                     </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-gray-100">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Name</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Email</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Position</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Role</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                                {admins.map((admin) => (
-                                    <tr key={admin.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 text-sm text-gray-900">{admin.name}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{admin.email}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{admin.position}</td>
-                                        <td className="px-6 py-4">
-                                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                                                admin.role === 'Admin' 
-                                                    ? 'bg-blue-100 text-blue-800' 
-                                                    : 'bg-green-100 text-green-800'
-                                            }`}>
-                                                {admin.role}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-2">
-                                                <button className="text-gray-600 hover:text-green-600">
-                                                    <Pencil className="w-4 h-4" />
-                                                </button>
-                                                <button className="text-gray-600 hover:text-red-600">
-                                                    <Trash2 className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        </td>
+                    {admins.length === 0 ? (
+                        <div className="p-8 text-center">
+                            <p className="text-gray-500">No admin accounts found. Click "New Admin" to create one.</p>
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-gray-100">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Name</th>
+                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Email</th>
+                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Position</th>
+                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Actions</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                    {admins.map((admin) => (
+                                        <tr key={admin.id} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 text-sm text-gray-900">{admin.name}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">{admin.email}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">{admin.position}</td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-2">
+                                                    <button 
+                                                        className="text-gray-600 hover:text-green-600"
+                                                        onClick={() => handleEdit(admin)}
+                                                    >
+                                                        <Pencil className="w-4 h-4" />
+                                                    </button>
+                                                    <button 
+                                                        className="text-gray-600 hover:text-red-600"
+                                                        onClick={() => handleDelete(admin)}
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             </div>
         </AdminLayout>

@@ -1,8 +1,9 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useState, useEffect } from 'react'
+import { useForm } from '@inertiajs/react'
+import { store } from '@/routes/admin'
 
 type AddAdminModalProps = {
     open: boolean
@@ -10,43 +11,43 @@ type AddAdminModalProps = {
 }
 
 export default function AddAdminModal({ open, onOpenChange }: AddAdminModalProps) {
-    const [formData, setFormData] = useState({
-        firstName: '',
-        lastName: '',
-        email: '',
+    const { data, setData, post, processing, errors, reset } = useForm({
+        first_name: '',
+        last_name: '',
         position: '',
-        role: 'Staff' as 'Admin' | 'Staff',
         password: ''
     })
 
-    useEffect(() => {
-        if (formData.firstName || formData.lastName) {
-            const firstName = formData.firstName.toLowerCase().trim()
-            const lastName = formData.lastName.toLowerCase().trim()
-            const generatedEmail = firstName && lastName 
-                ? `${lastName}.${firstName}@snhs.edu.ph`
-                : firstName 
-                    ? `${firstName}@snhs.edu.ph`
-                    : lastName
-                        ? `${lastName}@snhs.edu.ph`
-                        : ''
-            setFormData(prev => ({ ...prev, email: generatedEmail }))
-        } else {
-            setFormData(prev => ({ ...prev, email: '' }))
-        }
-    }, [formData.firstName, formData.lastName])
+    const [generatedEmail, setGeneratedEmail] = useState('')
 
-    const handleSubmit = (e: React.FormEvent) => {
+    // Helper function to capitalize first letter of each word
+    const toTitleCase = (str: string) => {
+        return str
+            .toLowerCase()
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ')
+    }
+
+    useEffect(() => {
+        if (data.first_name && data.last_name) {
+            const firstName = data.first_name.toLowerCase().trim().replace(/\s+/g, '')
+            const lastName = data.last_name.toLowerCase().trim().replace(/\s+/g, '')
+            const email = `snhs-${lastName}.${firstName}@snhs.edu.ph`
+            setGeneratedEmail(email)
+        } else {
+            setGeneratedEmail('')
+        }
+    }, [data.first_name, data.last_name])
+
+    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
-        console.log('Form data:', formData)
-        onOpenChange(false)
-        setFormData({
-            firstName: '',
-            lastName: '',
-            email: '',
-            position: '',
-            role: 'Staff',
-            password: ''
+        post(store.url(), {
+            onSuccess: () => {
+                reset()
+                setGeneratedEmail('')
+                onOpenChange(false)
+            }
         })
     }
 
@@ -67,15 +68,18 @@ export default function AddAdminModal({ open, onOpenChange }: AddAdminModalProps
                             </label>
                             <Input
                                 required
-                                value={formData.firstName}
+                                value={data.first_name}
                                 onChange={(e) => {
                                     const value = e.target.value.replace(/[^a-zA-Z\s]/g, '')
-                                    setFormData({ ...formData, firstName: value })
+                                    setData('first_name', toTitleCase(value))
                                 }}
                                 placeholder="Enter first name"
                                 pattern="[A-Za-z\s]+"
                                 title="Only letters are allowed"
                             />
+                            {errors.first_name && (
+                                <p className="text-xs text-red-500 mt-1">{errors.first_name}</p>
+                            )}
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -83,15 +87,18 @@ export default function AddAdminModal({ open, onOpenChange }: AddAdminModalProps
                             </label>
                             <Input
                                 required
-                                value={formData.lastName}
+                                value={data.last_name}
                                 onChange={(e) => {
                                     const value = e.target.value.replace(/[^a-zA-Z\s]/g, '')
-                                    setFormData({ ...formData, lastName: value })
+                                    setData('last_name', toTitleCase(value))
                                 }}
                                 placeholder="Enter last name"
                                 pattern="[A-Za-z\s]+"
                                 title="Only letters are allowed"
                             />
+                            {errors.last_name && (
+                                <p className="text-xs text-red-500 mt-1">{errors.last_name}</p>
+                            )}
                         </div>
                     </div>
 
@@ -102,12 +109,12 @@ export default function AddAdminModal({ open, onOpenChange }: AddAdminModalProps
                         <Input
                             required
                             type="email"
-                            value={formData.email}
+                            value={generatedEmail}
                             readOnly
                             className="bg-gray-50"
-                            placeholder="lastname.firstname@snhs.edu.ph"
+                            placeholder="snhs-lastname.firstname@snhs.edu.ph"
                         />
-                        <p className="text-xs text-gray-500 mt-1">Auto-generated from first and last name</p>
+                        <p className="text-xs text-gray-500 mt-1">Auto-generated as SNHS-lastname.firstname@snhs.edu.ph</p>
                     </div>
 
                     <div>
@@ -116,31 +123,13 @@ export default function AddAdminModal({ open, onOpenChange }: AddAdminModalProps
                         </label>
                         <Input
                             required
-                            value={formData.position}
-                            onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                            value={data.position}
+                            onChange={(e) => setData('position', e.target.value)}
                             placeholder="e.g., Principal, Registrar, Admin Staff"
                         />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Role <span className="text-red-500">*</span>
-                        </label>
-                        <Select
-                            value={formData.role}
-                            onValueChange={(value: 'Admin' | 'Staff') => setFormData({ ...formData, role: value })}
-                        >
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="Admin">Admin</SelectItem>
-                                <SelectItem value="Staff">Staff</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <p className="text-xs text-gray-500 mt-1">
-                            Admin: Full access | Staff: Limited access
-                        </p>
+                        {errors.position && (
+                            <p className="text-xs text-red-500 mt-1">{errors.position}</p>
+                        )}
                     </div>
 
                     <div>
@@ -150,27 +139,36 @@ export default function AddAdminModal({ open, onOpenChange }: AddAdminModalProps
                         <Input
                             required
                             type="password"
-                            value={formData.password}
-                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                            value={data.password}
+                            onChange={(e) => setData('password', e.target.value)}
                             placeholder="Enter password"
                             minLength={8}
                         />
                         <p className="text-xs text-gray-500 mt-1">Minimum 8 characters</p>
+                        {errors.password && (
+                            <p className="text-xs text-red-500 mt-1">{errors.password}</p>
+                        )}
                     </div>
 
                     <div className="flex items-center justify-end gap-3 pt-4 border-t">
                         <Button
                             type="button"
                             variant="outline"
-                            onClick={() => onOpenChange(false)}
+                            onClick={() => {
+                                reset()
+                                setGeneratedEmail('')
+                                onOpenChange(false)
+                            }}
+                            disabled={processing}
                         >
                             Cancel
                         </Button>
                         <Button
                             type="submit"
                             className="bg-green-600 hover:bg-green-700"
+                            disabled={processing}
                         >
-                            Create Admin
+                            {processing ? 'Creating...' : 'Create Admin'}
                         </Button>
                     </div>
                 </form>

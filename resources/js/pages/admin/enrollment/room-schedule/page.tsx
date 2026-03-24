@@ -8,7 +8,10 @@ type Schedule = {
     room: string
     subject: string
     teacher: string
-    dateTime: string
+    day: string
+    time: string
+    section: string
+    gradeLevel: string
 }
 
 type Props = {
@@ -26,32 +29,7 @@ type Props = {
 export default function RoomSchedule({ auth, schedules = [] }: Props) {
     const [searchTerm, setSearchTerm] = useState('')
 
-    // Sample data for demonstration
-    const sampleSchedules: Schedule[] = schedules.length > 0 ? schedules : [
-        {
-            id: 1,
-            room: '101',
-            subject: 'English',
-            teacher: 'Ms. Johnson',
-            dateTime: '2024-12-01 08:00 AM'
-        },
-        {
-            id: 2,
-            room: '102',
-            subject: 'Mathematics',
-            teacher: 'Mr. Smith',
-            dateTime: '2024-12-01 09:15 AM'
-        },
-        {
-            id: 3,
-            room: 'Lab 201',
-            subject: 'Science',
-            teacher: 'Dr. Garcia',
-            dateTime: '2024-12-01 01:00 PM'
-        }
-    ]
-
-    const filteredSchedules = sampleSchedules.filter(schedule =>
+    const filteredSchedules = schedules.filter(schedule =>
         schedule.room.toLowerCase().includes(searchTerm.toLowerCase())
     )
 
@@ -86,7 +64,7 @@ export default function RoomSchedule({ auth, schedules = [] }: Props) {
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                     <div className="p-4 border-b border-gray-200">
                         <p className="text-sm text-gray-600">
-                            Showing 1 to {filteredSchedules.length} of {filteredSchedules.length} entries
+                            Showing {filteredSchedules.length} of {schedules.length} entries
                         </p>
                     </div>
 
@@ -98,33 +76,62 @@ export default function RoomSchedule({ auth, schedules = [] }: Props) {
                                         Room
                                     </th>
                                     <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                                        Grade Level
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                                        Section
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
                                         Subject
                                     </th>
                                     <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
                                         Teacher
                                     </th>
                                     <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
-                                        Date / Time
+                                        Day
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">
+                                        Time
                                     </th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                {filteredSchedules.map((schedule) => (
-                                    <tr key={schedule.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 text-sm text-gray-900">
-                                            {schedule.room}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">
-                                            {schedule.subject}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">
-                                            {schedule.teacher}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">
-                                            {schedule.dateTime}
+                                {filteredSchedules.length > 0 ? (
+                                    filteredSchedules.map((schedule) => (
+                                        <tr key={schedule.id} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 text-sm text-gray-900">
+                                                {schedule.room}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">
+                                                {schedule.gradeLevel}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">
+                                                {schedule.section}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">
+                                                {schedule.subject}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">
+                                                {schedule.teacher}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">
+                                                {schedule.day}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">
+                                                {schedule.time}
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-500">
+                                            {schedules.length === 0 
+                                                ? 'No schedules found. Add schedules in Load Scheduling to see them here.'
+                                                : 'No schedules match your search.'
+                                            }
                                         </td>
                                     </tr>
-                                ))}
+                                )}
                             </tbody>
                         </table>
                     </div>

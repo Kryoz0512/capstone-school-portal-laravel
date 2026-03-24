@@ -8,7 +8,9 @@ import {
     FileText,
     User,
     LogOut,
-    ChevronRight
+    ChevronRight,
+    Settings,
+    Archive
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
@@ -33,6 +35,7 @@ export default function AdminSidebar({ currentPath }: SidebarProps) {
             registrar: path.includes('/admin/registrar'),
             records: path.includes('/admin/records'),
             usermanagement: path.includes('/admin/user-management'),
+            maintenance: path.includes('/admin/maintenance'),
         }
     }
 
@@ -47,6 +50,7 @@ export default function AdminSidebar({ currentPath }: SidebarProps) {
             registrar: path.includes('/admin/registrar'),
             records: path.includes('/admin/records'),
             usermanagement: path.includes('/admin/user-management'),
+            maintenance: path.includes('/admin/maintenance'),
         })
     }, [])
 
@@ -242,6 +246,38 @@ export default function AdminSidebar({ currentPath }: SidebarProps) {
                     <FileText className="w-5 h-5" />
                     <span>Documents</span>
                 </Link>
+
+                {/* Archive */}
+                <Link
+                    href="/admin/archive"
+                    className="flex items-center gap-3 px-6 py-3 hover:bg-green-600 transition-colors"
+                >
+                    <Archive className="w-5 h-5" />
+                    <span>Archive</span>
+                </Link>
+
+                {/* Maintenance */}
+                <div>
+                    <button
+                        onClick={() => toggleMenu('maintenance')}
+                        className="w-full flex items-center justify-between px-6 py-3 hover:bg-green-600 transition-colors"
+                    >
+                        <div className="flex items-center gap-3">
+                            <Settings className="w-5 h-5" />
+                            <span>Maintenance</span>
+                        </div>
+                        <ChevronRight
+                            className={`w-4 h-4 transition-transform ${expandedMenus.maintenance ? 'rotate-90' : ''}`}
+                        />
+                    </button>
+                    {expandedMenus.maintenance && (
+                        <div className="bg-green-800">
+                            <Link href="/admin/maintenance/login-slides" className="block px-12 py-2 text-sm hover:bg-green-600">
+                                Login Slides
+                            </Link>
+                        </div>
+                    )}
+                </div>
 
                 {/* Profile */}
                 <Link

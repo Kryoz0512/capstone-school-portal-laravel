@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react'
+import { Head, router } from '@inertiajs/react'
 import StudentLayout from '@/layouts/student-layout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
@@ -9,12 +9,21 @@ type Subject = {
     id: number
     subjectCode: string
     subjectName: string
-    credits: number
     instructor: string
     status: 'Active'
 }
 
+type SchoolYear = {
+    value: string
+    label: string
+}
+
 type Props = {
+    subjects: Subject[]
+    schoolYears: SchoolYear[]
+    filters: {
+        school_year: string
+    }
     auth?: {
         user: {
             id: number
@@ -25,18 +34,24 @@ type Props = {
     }
 }
 
-export default function EnrolledSubjects({ auth }: Props) {
-    const [schoolYear, setSchoolYear] = useState('2025-2026')
+export default function EnrolledSubjects({ subjects, schoolYears, filters, auth }: Props) {
     const [search, setSearch] = useState('')
 
-    const subjects: Subject[] = [
-        { id: 1, subjectCode: 'ENG-401', subjectName: 'English 4', credits: 4, instructor: 'Mr. Johnson', status: 'Active' },
-        { id: 2, subjectCode: 'MATH-401', subjectName: 'Mathematics 4', credits: 4, instructor: 'Ms. Garcia', status: 'Active' },
-        { id: 3, subjectCode: 'SCI-401', subjectName: 'Science 4', credits: 4, instructor: 'Dr. Smith', status: 'Active' },
-        { id: 4, subjectCode: 'SS-401', subjectName: 'Social Studies 4', credits: 3, instructor: 'Mr. Lopez', status: 'Active' },
-        { id: 5, subjectCode: 'PE-401', subjectName: 'Physical Education 4', credits: 2, instructor: 'Coach Martinez', status: 'Active' },
-        { id: 6, subjectCode: 'FIL-401', subjectName: 'Filipino 4', credits: 3, instructor: 'Ms. Santos', status: 'Active' }
-    ]
+    const handleSchoolYearChange = (value: string) => {
+        router.get('/student/enrolled-subjects', { school_year: value }, {
+            preserveState: true,
+            preserveScroll: true,
+        })
+    }
+
+    const filteredSubjects = subjects.filter(subject => {
+        const searchLower = search.toLowerCase()
+        return (
+            subject.subjectName.toLowerCase().includes(searchLower) ||
+            subject.subjectCode.toLowerCase().includes(searchLower) ||
+            subject.instructor.toLowerCase().includes(searchLower)
+        )
+    })
 
     return (
         <StudentLayout user={auth?.user}>
@@ -54,13 +69,16 @@ export default function EnrolledSubjects({ auth }: Props) {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">School Year</label>
-                            <Select value={schoolYear} onValueChange={setSchoolYear}>
+                            <Select value={filters.school_year} onValueChange={handleSchoolYearChange}>
                                 <SelectTrigger>
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="2025-2026">2025-2026</SelectItem>
-                                    <SelectItem value="2024-2025">2024-2025</SelectItem>
+                                    {schoolYears.map((year) => (
+                                        <SelectItem key={year.value} value={year.value}>
+                                            {year.label}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -82,38 +100,38 @@ export default function EnrolledSubjects({ auth }: Props) {
                 {/* Subject Summary */}
                 <div className="bg-white rounded-lg border border-gray-200 p-6">
                     <h2 className="text-lg font-semibold text-gray-900 mb-4">Subject Summary</h2>
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Subject Code</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Subject Name</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Credits</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Instructor</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                                {subjects.map((subject) => (
-                                    <tr key={subject.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 text-sm text-gray-900">{subject.subjectCode}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{subject.subjectName}</td>
-                                        <td className="px-6 py-4">
-                                            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-800 text-sm font-medium">
-                                                {subject.credits}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{subject.instructor}</td>
-                                        <td className="px-6 py-4">
-                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                {subject.status}
-                                            </span>
-                                        </td>
+                    {filteredSubjects.length > 0 ? (
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Subject Code</th>
+                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Subject Name</th>
+                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Instructor</th>
+                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Status</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                    {filteredSubjects.map((subject) => (
+                                        <tr key={subject.id} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 text-sm text-gray-900">{subject.subjectCode}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">{subject.subjectName}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">{subject.instructor}</td>
+                                            <td className="px-6 py-4">
+                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                    {subject.status}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <p className="text-sm text-gray-500 text-center py-8">
+                            {search ? 'No subjects found matching your search.' : 'No enrolled subjects found.'}
+                        </p>
+                    )}
                 </div>
             </div>
         </StudentLayout>

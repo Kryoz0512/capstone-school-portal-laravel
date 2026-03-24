@@ -12,7 +12,9 @@ class Grade extends Model
     protected $table = 'tbl_grades';
 
     protected $fillable = [
-        'enrollment_id',
+        'student_id',
+        'class_section_id',
+        'school_year',
         'subject_id',
         'teacher_id',
         'quarter_1',
@@ -35,9 +37,14 @@ class Grade extends Model
     }
 
     // Relationships
-    public function enrollment()
+    public function student()
     {
-        return $this->belongsTo(Enrollment::class, 'enrollment_id');
+        return $this->belongsTo(Student::class, 'student_id');
+    }
+
+    public function classSection()
+    {
+        return $this->belongsTo(ClassSection::class, 'class_section_id');
     }
 
     public function subject()

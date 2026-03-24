@@ -15,10 +15,10 @@ class Schedule extends Model
         'class_section_id',
         'subject_id',
         'teacher_id',
+        'room_id',
         'day_of_week',
         'start_time',
         'end_time',
-        'room',
     ];
 
     protected function casts(): array
@@ -43,5 +43,18 @@ class Schedule extends Model
     public function teacher()
     {
         return $this->belongsTo(Teacher::class, 'teacher_id');
+    }
+
+    public function room()
+    {
+        return $this->belongsTo(Room::class, 'room_id');
+    }
+
+    /**
+     * Get all grade sheets for this schedule (polymorphic).
+     */
+    public function gradeSheets()
+    {
+        return $this->morphMany(GradeSheet::class, 'gradeable');
     }
 }

@@ -1,18 +1,53 @@
-import { Head } from '@inertiajs/react'
+import { Head, router } from '@inertiajs/react'
 import TeacherLayout from '@/layouts/teacher-layout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Pencil } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import EditGradeModal from '@/components/modals/edit-grade-modal'
 
 type Student = {
     id: number
     lrn: string
     studentName: string
-    grade: number
-    remarks: 'Passed' | 'Failed'
+    grade: number | null
+    remarks: 'Passed' | 'Failed' | 'Incomplete' | 'Dropped' | null
+    gradeId: number | null
+}
+
+type GradeLevel = {
+    id: number
+    name: string
+}
+
+type Section = {
+    id: number
+    name: string
+    grade_level_id: number
+}
+
+type Subject = {
+    id: number
+    name: string
+}
+
+type SchoolYear = {
+    value: string
+    label: string
 }
 
 type Props = {
+    gradeLevels: GradeLevel[]
+    sections: Section[]
+    subjects: Subject[]
+    students: Student[]
+    schoolYears: SchoolYear[]
+    filters: {
+        grade_level_id: number | null
+        section_id: number | null
+        subject_id: number | null
+        quarter: string
+        school_year: string
+    }
     auth?: {
         user: {
             id: number
@@ -23,20 +58,34 @@ type Props = {
     }
 }
 
-export default function GradeSheets({ auth }: Props) {
-    const [gradeLevel, setGradeLevel] = useState('Grade 10')
-    const [section, setSection] = useState('Section A')
-    const [subject, setSubject] = useState('English')
-    const [quarter, setQuarter] = useState('Quarter 1')
-    const [schoolYear, setSchoolYear] = useState('2024-2025')
+export default function GradeSheets({ gradeLevels, sections, subjects, students, schoolYears, filters, auth }: Props) {
+    const [gradeLevel, setGradeLevel] = useState(filters.grade_level_id?.toString() || '')
+    const [section, setSection] = useState(filters.section_id?.toString() || '')
+    const [subject, setSubject] = useState(filters.subject_id?.toString() || '')
+    const [quarter, setQuarter] = useState(filters.quarter || '1')
+    const [schoolYear, setSchoolYear] = useState(filters.school_year || '')
+    const [editModalOpen, setEditModalOpen] = useState(false)
+    const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
 
-    const students: Student[] = [
-        { id: 1, lrn: '123456789001', studentName: 'John Garcia', grade: 85, remarks: 'Passed' },
-        { id: 2, lrn: '123456789002', studentName: 'Maria Santos', grade: 92, remarks: 'Passed' },
-        { id: 3, lrn: '123456789003', studentName: 'Pedro Lopez', grade: 68, remarks: 'Failed' },
-        { id: 4, lrn: '123456789004', studentName: 'Rosa Martinez', grade: 88, remarks: 'Passed' },
-        { id: 5, lrn: '123456789005', studentName: 'Antonio Reyes', grade: 76, remarks: 'Passed' }
-    ]
+    const handleEditClick = (student: Student) => {
+        setSelectedStudent(student)
+        setEditModalOpen(true)
+    }
+
+    // Update filters when selections change
+    useEffect(() => {
+        const params = new URLSearchParams()
+        if (gradeLevel) params.set('grade_level_id', gradeLevel)
+        if (section) params.set('section_id', section)
+        if (subject) params.set('subject_id', subject)
+        if (quarter) params.set('quarter', quarter)
+        if (schoolYear) params.set('school_year', schoolYear)
+
+        router.get(`/teacher/grade-sheets?${params.toString()}`, {}, {
+            preserveState: true,
+            preserveScroll: true,
+        })
+    }, [gradeLevel, section, subject, quarter, schoolYear])
 
     return (
         <TeacherLayout user={auth?.user}>
@@ -51,118 +100,196 @@ export default function GradeSheets({ auth }: Props) {
                 </div>
 
                 {/* Filters */}
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
-                    <h2 className="text-sm font-semibold text-gray-900 mb-4">Filters</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Grade Level</label>
-                            <Select value={gradeLevel} onValueChange={setGradeLevel}>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Grade 10">Grade 10</SelectItem>
-                                    <SelectItem value="Grade 9">Grade 9</SelectItem>
-                                </SelectContent>
-                            </Select>
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+                    <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                        <h2 className="text-base font-semibold text-gray-900">Filter Options</h2>
+                        <p className="text-sm text-gray-500 mt-1">Select criteria to view student grades</p>
+                    </div>
+                    <div className="p-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                            <div className="space-y-2">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Grade Level <span className="text-red-500">*</span>
+                                </label>
+                                <Select value={gradeLevel} onValueChange={setGradeLevel}>
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Select grade level" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {gradeLevels.map((level) => (
+                                            <SelectItem key={level.id} value={level.id.toString()}>
+                                                {level.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            
+                            <div className="space-y-2">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Section <span className="text-red-500">*</span>
+                                </label>
+                                <Select value={section} onValueChange={setSection} disabled={!gradeLevel || sections.length === 0}>
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder={gradeLevel ? "Select section" : "Select grade first"} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {sections.map((sec) => (
+                                            <SelectItem key={sec.id} value={sec.id.toString()}>
+                                                {sec.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            
+                            <div className="space-y-2">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Subject <span className="text-red-500">*</span>
+                                </label>
+                                <Select value={subject} onValueChange={setSubject} disabled={subjects.length === 0}>
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Select subject" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {subjects.map((subj) => (
+                                            <SelectItem key={subj.id} value={subj.id.toString()}>
+                                                {subj.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            
+                            <div className="space-y-2">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    Quarter <span className="text-red-500">*</span>
+                                </label>
+                                <Select value={quarter} onValueChange={setQuarter}>
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="1">1st Quarter</SelectItem>
+                                        <SelectItem value="2">2nd Quarter</SelectItem>
+                                        <SelectItem value="3">3rd Quarter</SelectItem>
+                                        <SelectItem value="4">4th Quarter</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            
+                            <div className="space-y-2">
+                                <label className="block text-sm font-medium text-gray-700">
+                                    School Year <span className="text-red-500">*</span>
+                                </label>
+                                <Select value={schoolYear} onValueChange={setSchoolYear}>
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {schoolYears.map((year) => (
+                                            <SelectItem key={year.value} value={year.value}>
+                                                {year.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Section</label>
-                            <Select value={section} onValueChange={setSection}>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Section A">Section A</SelectItem>
-                                    <SelectItem value="Section B">Section B</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
-                            <Select value={subject} onValueChange={setSubject}>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="English">English</SelectItem>
-                                    <SelectItem value="Mathematics">Mathematics</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Quarter</label>
-                            <Select value={quarter} onValueChange={setQuarter}>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Quarter 1">Quarter 1</SelectItem>
-                                    <SelectItem value="Quarter 2">Quarter 2</SelectItem>
-                                    <SelectItem value="Quarter 3">Quarter 3</SelectItem>
-                                    <SelectItem value="Quarter 4">Quarter 4</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">School Year</label>
-                            <Select value={schoolYear} onValueChange={setSchoolYear}>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="2024-2025">2024-2025</SelectItem>
-                                    <SelectItem value="2023-2024">2023-2024</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        
+                        {!section || !subject ? (
+                            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                <p className="text-sm text-blue-800">
+                                    <span className="font-medium">Note:</span> Please select all required fields to view student grades.
+                                </p>
+                            </div>
+                        ) : null}
                     </div>
                 </div>
 
                 {/* Table */}
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                    <div className="p-4 border-b border-gray-200">
-                        <p className="text-sm text-gray-600">Showing 1 to 5 of 5 entries</p>
-                    </div>
+                {section && subject ? (
+                    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                        <div className="p-4 border-b border-gray-200">
+                            <p className="text-sm text-gray-600">
+                                Showing {students.length} student{students.length !== 1 ? 's' : ''}
+                            </p>
+                        </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-gray-100">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Student LRN</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Student Name</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Grade</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Remarks</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                                {students.map((student) => (
-                                    <tr key={student.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 text-sm text-gray-900">{student.lrn}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{student.studentName}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{student.grade}</td>
-                                        <td className="px-6 py-4">
-                                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                                                student.remarks === 'Passed' 
-                                                    ? 'bg-green-100 text-green-800' 
-                                                    : 'bg-red-100 text-red-800'
-                                            }`}>
-                                                {student.remarks}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <button className="text-gray-600 hover:text-green-600">
-                                                <Pencil className="w-4 h-4" />
-                                            </button>
-                                        </td>
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead className="bg-gray-100">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Student LRN</th>
+                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Student Name</th>
+                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Grade</th>
+                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Remarks</th>
+                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Actions</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                    {students.length > 0 ? (
+                                        students.map((student) => (
+                                            <tr key={student.id} className="hover:bg-gray-50">
+                                                <td className="px-6 py-4 text-sm text-gray-900">{student.lrn}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-900">{student.studentName}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-900">
+                                                    {student.grade !== null ? student.grade : '-'}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    {student.remarks ? (
+                                                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                                                            student.remarks === 'Passed' 
+                                                                ? 'bg-green-100 text-green-800' 
+                                                                : student.remarks === 'Failed'
+                                                                ? 'bg-red-100 text-red-800'
+                                                                : 'bg-yellow-100 text-yellow-800'
+                                                        }`}>
+                                                            {student.remarks}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-gray-400">-</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <button 
+                                                        onClick={() => handleEditClick(student)}
+                                                        className="text-gray-600 hover:text-green-600"
+                                                    >
+                                                        <Pencil className="w-4 h-4" />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-500">
+                                                No students found in this section
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </div>
+                ) : (
+                    <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+                        <p className="text-gray-500">Please select a section and subject to view students</p>
+                    </div>
+                )}
             </div>
+
+            <EditGradeModal
+                open={editModalOpen}
+                onOpenChange={setEditModalOpen}
+                student={selectedStudent}
+                filters={{
+                    section_id: section ? parseInt(section) : null,
+                    subject_id: subject ? parseInt(subject) : null,
+                    quarter: quarter,
+                    school_year: schoolYear
+                }}
+            />
         </TeacherLayout>
     )
 }

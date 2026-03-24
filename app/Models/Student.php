@@ -13,10 +13,16 @@ class Student extends Model
 
     protected $fillable = [
         'user_id',
+        'student_status',
+        'lrn',
+        'school_year',
+        'last_name',
+        'first_name',
+        'middle_name',
+        'gender',
         'current_grade_level_id',
+        'current_section_id',
         'birth_date',
-        'address',
-        'guardian_name',
     ];
 
     protected function casts(): array
@@ -37,8 +43,21 @@ class Student extends Model
         return $this->belongsTo(GradeLevel::class, 'current_grade_level_id');
     }
 
+    public function section()
+    {
+        return $this->belongsTo(ClassSection::class, 'current_section_id');
+    }
+
     public function enrollments()
     {
         return $this->hasMany(Enrollment::class, 'student_id');
+    }
+
+    /**
+     * Get the student's profile (polymorphic relationship).
+     */
+    public function profile()
+    {
+        return $this->morphOne(StudentProfile::class, 'profileable');
     }
 }

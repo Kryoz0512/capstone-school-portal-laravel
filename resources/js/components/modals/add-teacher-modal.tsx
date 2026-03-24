@@ -2,100 +2,121 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { useForm } from '@inertiajs/react'
+import { store } from '@/routes/admin/user-management/teachers'
+import axios from 'axios'
+
+type Subject = {
+    name: string
+}
 
 type AddTeacherModalProps = {
     open: boolean
     onOpenChange: (open: boolean) => void
+    subjects: Subject[]
 }
 
-export default function AddTeacherModal({ open, onOpenChange }: AddTeacherModalProps) {
-    const [formData, setFormData] = useState({
-        employeeNo: '',
+export default function AddTeacherModal({ open, onOpenChange, subjects = [] }: AddTeacherModalProps) {
+    const [employeeNumberError, setEmployeeNumberError] = useState<string>('')
+    const [checkingEmployeeNumber, setCheckingEmployeeNumber] = useState(false)
+    
+    const { data, setData, post, processing, errors, reset } = useForm({
         firstName: '',
         lastName: '',
         email: '',
+        employeeNumber: '',
         subject: '',
-        grade: '',
-        section: '',
         position: '',
         password: ''
     })
 
-    // Auto-generate email pag tinype ung first saka lastname
+    // Auto-generate email when first or last name changes
     useEffect(() => {
-        if (formData.firstName || formData.lastName) {
-            const firstName = formData.firstName.toLowerCase().trim()
-            const lastName = formData.lastName.toLowerCase().trim()
-            const generatedEmail = firstName && lastName 
-                ? `${lastName}.${firstName}@snhs.edu.ph`
-                : firstName 
-                    ? `${firstName}@snhs.edu.ph`
-                    : lastName
-                        ? `${lastName}@snhs.edu.ph`
-                        : ''
-            setFormData(prev => ({ ...prev, email: generatedEmail }))
+        if (data.firstName && data.lastName) {
+            const firstName = data.firstName.trim().replace(/\s+/g, '').toLowerCase()
+            const lastName = data.lastName.trim().replace(/\s+/g, '').toLowerCase()
+            const generatedEmail = `snhs-${lastName}.${firstName}@snhs.edu.ph`
+            setData('email', generatedEmail)
         } else {
-            setFormData(prev => ({ ...prev, email: '' }))
+            setData('email', '')
         }
-    }, [formData.firstName, formData.lastName])
+    }, [data.firstName, data.lastName, setData])
+
+    // Live validation for employee number
+    useEffect(() => {
+        if (!data.employeeNumber || data.employeeNumber.trim() === '') {
+            setEmployeeNumberError('')
+            return
+        }
+
+        const timeoutId = setTimeout(async () => {
+            setCheckingEmployeeNumber(true)
+            try {
+                const response = await axios.post('/admin/user-management/teachers/check-employee-number', {
+                    employee_number: data.employeeNumber
+                })
+                
+                if (response.data.exists) {
+                    setEmployeeNumberError('This employee number is already taken')
+                } else {
+                    setEmployeeNumberError('')
+                }
+            } catch (error) {
+                console.error('Error checking employee number:', error)
+            } finally {
+                setCheckingEmployeeNumber(false)
+            }
+        }, 500) // Debounce for 500ms
+
+        return () => clearTimeout(timeoutId)
+    }, [data.employeeNumber])
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
-        console.log('Form data:', formData)
-        onOpenChange(false)
-        setFormData({
-            employeeNo: '',
-            firstName: '',
-            lastName: '',
-            email: '',
-            subject: '',
-            grade: '',
-            section: '',
-            position: '',
-            password: ''
+        post(store.url(), {
+            onSuccess: () => {
+                onOpenChange(false)
+                reset()
+            }
         })
     }
 
+    const handleClose = () => {
+        onOpenChange(false)
+        reset()
+        setEmployeeNumberError('')
+    }
+
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <Dialog open={open} onOpenChange={handleClose}>
+            <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Add New Teacher</DialogTitle>
                     <DialogDescription>
-                        Create a new teacher account with subject and grade assignment
+                        Create a new teacher account with subject assignment
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Employee Number <span className="text-red-500">*</span>
-                        </label>
-                        <Input
-                            required
-                            value={formData.employeeNo}
-                            onChange={(e) => setFormData({ ...formData, employeeNo: e.target.value })}
-                            placeholder="e.g., T-001, T-002"
-                        />
-                        <p className="text-xs text-gray-500 mt-1">Must be unique (e.g., T-001)</p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 First Name <span className="text-red-500">*</span>
                             </label>
                             <Input
                                 required
-                                value={formData.firstName}
+                                value={data.firstName}
                                 onChange={(e) => {
-                                    const value = e.target.value.replace(/[^a-zA-Z\s]/g, '')
-                                    setFormData({ ...formData, firstName: value })
+                                    const value = e.target.value
+                                        .replace(/[^a-zA-Z\s]/g, '')
+                                        .replace(/\b\w/g, (char) => char.toUpperCase())
+                                    setData('firstName', value)
                                 }}
                                 placeholder="Enter first name"
                                 pattern="[A-Za-z\s]+"
                                 title="Only letters are allowed"
                             />
+                            {errors.firstName && <p className="text-xs text-red-500 mt-1">{errors.firstName}</p>}
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -103,15 +124,18 @@ export default function AddTeacherModal({ open, onOpenChange }: AddTeacherModalP
                             </label>
                             <Input
                                 required
-                                value={formData.lastName}
+                                value={data.lastName}
                                 onChange={(e) => {
-                                    const value = e.target.value.replace(/[^a-zA-Z\s]/g, '')
-                                    setFormData({ ...formData, lastName: value })
+                                    const value = e.target.value
+                                        .replace(/[^a-zA-Z\s]/g, '')
+                                        .replace(/\b\w/g, (char) => char.toUpperCase())
+                                    setData('lastName', value)
                                 }}
                                 placeholder="Enter last name"
                                 pattern="[A-Za-z\s]+"
                                 title="Only letters are allowed"
                             />
+                            {errors.lastName && <p className="text-xs text-red-500 mt-1">{errors.lastName}</p>}
                         </div>
                     </div>
 
@@ -122,90 +146,85 @@ export default function AddTeacherModal({ open, onOpenChange }: AddTeacherModalP
                         <Input
                             required
                             type="email"
-                            value={formData.email}
+                            value={data.email}
                             readOnly
                             className="bg-gray-50"
-                            placeholder="lastname.firstname@snhs.edu.ph"
+                            placeholder="snhs-lastname.firstname@snhs.edu.ph"
                         />
-                        <p className="text-xs text-gray-500 mt-1">Auto-generated from first and last name</p>
+                        <p className="text-xs text-gray-500 mt-1">Auto-generated as SNHS-lastname.firstname@snhs.edu.ph</p>
+                        {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Subject <span className="text-red-500">*</span>
-                            </label>
-                            <Select
-                                value={formData.subject}
-                                onValueChange={(value) => setFormData({ ...formData, subject: value })}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select subject" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Mathematics">Mathematics</SelectItem>
-                                    <SelectItem value="Science">Science</SelectItem>
-                                    <SelectItem value="English">English</SelectItem>
-                                    <SelectItem value="Filipino">Filipino</SelectItem>
-                                    <SelectItem value="Social Studies">Social Studies</SelectItem>
-                                    <SelectItem value="Physical Education">Physical Education</SelectItem>
-                                    <SelectItem value="Computer Science">Computer Science</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Grade Level <span className="text-red-500">*</span>
-                            </label>
-                            <Select
-                                value={formData.grade}
-                                onValueChange={(value) => setFormData({ ...formData, grade: value })}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select grade" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="7">Grade 7</SelectItem>
-                                    <SelectItem value="8">Grade 8</SelectItem>
-                                    <SelectItem value="9">Grade 9</SelectItem>
-                                    <SelectItem value="10">Grade 10</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Employee Number <span className="text-red-500">*</span>
+                        </label>
+                        <Input
+                            required
+                            value={data.employeeNumber}
+                            onChange={(e) => setData('employeeNumber', e.target.value)}
+                            placeholder="e.g., EMP-2024-001"
+                            className={employeeNumberError ? 'border-red-500' : ''}
+                        />
+                        {checkingEmployeeNumber && (
+                            <p className="text-xs text-gray-500 mt-1">Checking availability...</p>
+                        )}
+                        {employeeNumberError && (
+                            <p className="text-xs text-red-500 mt-1">{employeeNumberError}</p>
+                        )}
+                        {errors.employeeNumber && (
+                            <p className="text-xs text-red-500 mt-1">{errors.employeeNumber}</p>
+                        )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Section <span className="text-red-500">*</span>
-                            </label>
-                            <Input
-                                required
-                                value={formData.section}
-                                onChange={(e) => setFormData({ ...formData, section: e.target.value })}
-                                placeholder="e.g., A, B, C"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Position <span className="text-red-500">*</span>
-                            </label>
-                            <Select
-                                value={formData.position}
-                                onValueChange={(value) => setFormData({ ...formData, position: value })}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select position" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Teacher I">Teacher I</SelectItem>
-                                    <SelectItem value="Teacher II">Teacher II</SelectItem>
-                                    <SelectItem value="Teacher III">Teacher III</SelectItem>
-                                    <SelectItem value="Master Teacher I">Master Teacher I</SelectItem>
-                                    <SelectItem value="Master Teacher II">Master Teacher II</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Subject <span className="text-red-500">*</span>
+                        </label>
+                        <Select
+                            value={data.subject}
+                            onValueChange={(value) => setData('subject', value)}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select subject" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {subjects.length > 0 ? (
+                                    subjects.map((subject, index) => (
+                                        <SelectItem key={index} value={subject.name}>
+                                            {subject.name}
+                                        </SelectItem>
+                                    ))
+                                ) : (
+                                    <SelectItem value="no-subjects" disabled>
+                                        No subjects available
+                                    </SelectItem>
+                                )}
+                            </SelectContent>
+                        </Select>
+                        {errors.subject && <p className="text-xs text-red-500 mt-1">{errors.subject}</p>}
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Position <span className="text-red-500">*</span>
+                        </label>
+                        <Select
+                            value={data.position}
+                            onValueChange={(value) => setData('position', value)}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select position" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Teacher I">Teacher I</SelectItem>
+                                <SelectItem value="Teacher II">Teacher II</SelectItem>
+                                <SelectItem value="Teacher III">Teacher III</SelectItem>
+                                <SelectItem value="Master Teacher I">Master Teacher I</SelectItem>
+                                <SelectItem value="Master Teacher II">Master Teacher II</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        {errors.position && <p className="text-xs text-red-500 mt-1">{errors.position}</p>}
                     </div>
 
                     <div>
@@ -215,27 +234,30 @@ export default function AddTeacherModal({ open, onOpenChange }: AddTeacherModalP
                         <Input
                             required
                             type="password"
-                            value={formData.password}
-                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                            value={data.password}
+                            onChange={(e) => setData('password', e.target.value)}
                             placeholder="Enter password"
                             minLength={8}
                         />
                         <p className="text-xs text-gray-500 mt-1">Minimum 8 characters</p>
+                        {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}
                     </div>
 
                     <div className="flex items-center justify-end gap-3 pt-4 border-t">
                         <Button
                             type="button"
                             variant="outline"
-                            onClick={() => onOpenChange(false)}
+                            onClick={handleClose}
+                            disabled={processing}
                         >
                             Cancel
                         </Button>
                         <Button
                             type="submit"
                             className="bg-green-600 hover:bg-green-700"
+                            disabled={processing || !!employeeNumberError || checkingEmployeeNumber}
                         >
-                            Create Teacher
+                            {processing ? 'Creating...' : 'Create Teacher'}
                         </Button>
                     </div>
                 </form>

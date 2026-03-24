@@ -1,24 +1,46 @@
-import { Head } from '@inertiajs/react'
+import { Head, usePage, useForm } from '@inertiajs/react'
 import AdminLayout from '@/layouts/admin-layout'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useState } from 'react'
 
 type Props = {
-    auth?: {
-        user: {
-            id: number
-            name: string
-            email: string
-            role: string
-        }
+    profile: {
+        id: number
+        first_name: string
+        last_name: string
+        full_name: string
+        email: string
+        position: string
+        role: string
+        initials: string
     }
 }
 
-export default function ProfileSettings({ auth }: Props) {
+export default function ProfileSettings({ profile }: Props) {
+    const { auth } = usePage<{ auth: { user: { id: number; name: string; email: string; role: string } } }>().props
     const [showCurrentPassword, setShowCurrentPassword] = useState(false)
     const [showNewPassword, setShowNewPassword] = useState(false)
     const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+    const [showSuccessDialog, setShowSuccessDialog] = useState(false)
+
+    const { data, setData, put, processing, errors, reset, recentlySuccessful } = useForm({
+        current_password: '',
+        password: '',
+        password_confirmation: '',
+    })
+
+    const handlePasswordChange = (e: React.FormEvent) => {
+        e.preventDefault()
+        put('/admin/profile/password', {
+            preserveScroll: true,
+            onSuccess: () => {
+                reset()
+                setShowSuccessDialog(true)
+            },
+        })
+    }
 
     return (
         <AdminLayout user={auth?.user}>
@@ -36,13 +58,13 @@ export default function ProfileSettings({ auth }: Props) {
                 <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-gray-200 p-6">
                     <div className="flex items-center gap-4">
                         <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                            JA
+                            {profile.initials}
                         </div>
                         <div>
-                            <h2 className="text-xl font-bold text-gray-900">John Administrator</h2>
-                            <p className="text-sm text-gray-600">Administrator</p>
+                            <h2 className="text-xl font-bold text-gray-900">{profile.full_name}</h2>
+                            <p className="text-sm text-gray-600">{profile.position}</p>
                             <div className="flex gap-2 mt-2">
-                                <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">Super Admin</span>
+                                <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">{profile.role}</span>
                                 <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded">Active Account</span>
                             </div>
                         </div>
@@ -59,13 +81,15 @@ export default function ProfileSettings({ auth }: Props) {
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     First Name
                                 </label>
-                                <Input type="text" defaultValue="John" />
+                                <Input type="text" defaultValue={profile.first_name} disabled className="bg-gray-50" />
+                                <p className="text-xs text-gray-500 mt-1">Can only be changed via User Management</p>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Last Name
                                 </label>
-                                <Input type="text" defaultValue="Administrator" />
+                                <Input type="text" defaultValue={profile.last_name} disabled className="bg-gray-50" />
+                                <p className="text-xs text-gray-500 mt-1">Can only be changed via User Management</p>
                             </div>
                         </div>
 
@@ -74,14 +98,15 @@ export default function ProfileSettings({ auth }: Props) {
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Email
                                 </label>
-                                <Input type="email" defaultValue="john.admin@snhs.edu.ph" disabled className="bg-gray-50" />
-                                <p className="text-xs text-gray-500 mt-1">Email can not be changed</p>
+                                <Input type="email" defaultValue={profile.email} disabled className="bg-gray-50" />
+                                <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Phone Number
+                                    Position
                                 </label>
-                                <Input type="tel" defaultValue="(555) 987-6543" />
+                                <Input type="text" defaultValue={profile.position} disabled className="bg-gray-50" />
+                                <p className="text-xs text-gray-500 mt-1">Can only be changed via User Management</p>
                             </div>
                         </div>
 
@@ -90,21 +115,9 @@ export default function ProfileSettings({ auth }: Props) {
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Role
                                 </label>
-                                <Input type="text" defaultValue="Super Admin" disabled className="bg-gray-50" />
+                                <Input type="text" defaultValue={profile.role} disabled className="bg-gray-50" />
                                 <p className="text-xs text-gray-500 mt-1">Role cannot be changed</p>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Department
-                                </label>
-                                <Input type="text" defaultValue="Administration" />
-                            </div>
-                        </div>
-
-                        <div className="pt-4">
-                            <Button className="bg-gray-600 hover:bg-gray-700 text-white">
-                                Save Changes
-                            </Button>
                         </div>
                     </div>
                 </div>
@@ -119,7 +132,7 @@ export default function ProfileSettings({ auth }: Props) {
                         </p>
                     </div>
 
-                    <div className="space-y-4">
+                    <form onSubmit={handlePasswordChange} className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Current Password
@@ -128,6 +141,9 @@ export default function ProfileSettings({ auth }: Props) {
                                 <Input 
                                     type={showCurrentPassword ? "text" : "password"} 
                                     placeholder="Enter current password"
+                                    value={data.current_password}
+                                    onChange={(e) => setData('current_password', e.target.value)}
+                                    required
                                 />
                                 <button
                                     type="button"
@@ -137,6 +153,9 @@ export default function ProfileSettings({ auth }: Props) {
                                     {showCurrentPassword ? '👁️' : '👁️‍🗨️'}
                                 </button>
                             </div>
+                            {errors.current_password && (
+                                <p className="text-xs text-red-500 mt-1">{errors.current_password}</p>
+                            )}
                         </div>
 
                         <div>
@@ -147,6 +166,10 @@ export default function ProfileSettings({ auth }: Props) {
                                 <Input 
                                     type={showNewPassword ? "text" : "password"} 
                                     placeholder="Enter new password"
+                                    value={data.password}
+                                    onChange={(e) => setData('password', e.target.value)}
+                                    required
+                                    minLength={8}
                                 />
                                 <button
                                     type="button"
@@ -156,6 +179,9 @@ export default function ProfileSettings({ auth }: Props) {
                                     {showNewPassword ? '👁️' : '👁️‍🗨️'}
                                 </button>
                             </div>
+                            {errors.password && (
+                                <p className="text-xs text-red-500 mt-1">{errors.password}</p>
+                            )}
                         </div>
 
                         <div>
@@ -166,6 +192,10 @@ export default function ProfileSettings({ auth }: Props) {
                                 <Input 
                                     type={showConfirmPassword ? "text" : "password"} 
                                     placeholder="Confirm new password"
+                                    value={data.password_confirmation}
+                                    onChange={(e) => setData('password_confirmation', e.target.value)}
+                                    required
+                                    minLength={8}
                                 />
                                 <button
                                     type="button"
@@ -175,16 +205,60 @@ export default function ProfileSettings({ auth }: Props) {
                                     {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
                                 </button>
                             </div>
+                            {errors.password_confirmation && (
+                                <p className="text-xs text-red-500 mt-1">{errors.password_confirmation}</p>
+                            )}
                         </div>
 
-                        <div className="pt-4">
-                            <Button className="bg-gray-600 hover:bg-gray-700 text-white">
-                                Change Password
+                        <div className="pt-4 flex items-center gap-4">
+                            <Button 
+                                type="submit" 
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                                disabled={processing}
+                            >
+                                {processing ? 'Updating...' : 'Change Password'}
                             </Button>
                         </div>
-                    </div>
+                    </form>
                 </div>
             </div>
+
+            {/* Success Dialog */}
+            <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <div className="flex items-center justify-center mb-4">
+                            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                                <svg 
+                                    className="w-8 h-8 text-green-600" 
+                                    fill="none" 
+                                    stroke="currentColor" 
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path 
+                                        strokeLinecap="round" 
+                                        strokeLinejoin="round" 
+                                        strokeWidth={2} 
+                                        d="M5 13l4 4L19 7" 
+                                    />
+                                </svg>
+                            </div>
+                        </div>
+                        <DialogTitle className="text-center text-xl">Password Changed Successfully!</DialogTitle>
+                        <DialogDescription className="text-center">
+                            Your password has been updated successfully. Please use your new password the next time you log in.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex justify-center mt-4">
+                        <Button 
+                            onClick={() => setShowSuccessDialog(false)}
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                        >
+                            Got it
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </AdminLayout>
     )
 }

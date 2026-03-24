@@ -60,6 +60,37 @@ class FortifyServiceProvider extends ServiceProvider
     {
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
         Fortify::createUsersUsing(CreateNewUser::class);
+        
+        // Customize authentication error message
+        Fortify::authenticateUsing(function (Request $request) {
+            $user = \App\Models\User::where('email', $request->email)->first();
+
+            if ($user && \Illuminate\Support\Facades\Hash::check($request->password, $user->password)) {
+                // Validate role selection
+                $selectedRole = $request->input('role');
+                
+                // Map 'staff' to 'admin' for validation
+                $roleMap = [
+                    'staff' => 'admin',
+                    'teacher' => 'teacher',
+                    'student' => 'student',
+                ];
+                
+                $expectedRole = $roleMap[$selectedRole] ?? $selectedRole;
+                
+                if ($user->role !== $expectedRole) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'role' => ['You are not registered as a ' . ucfirst($selectedRole) . '. Please select the correct role.'],
+                    ]);
+                }
+                
+                return $user;
+            }
+
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'email' => ['Email or password is incorrect.'],
+            ]);
+        });
     }
 
     /**
@@ -67,9 +98,20 @@ class FortifyServiceProvider extends ServiceProvider
      */
     private function configureViews(): void
     {
-        Fortify::loginView(fn (Request $request) => Inertia::render('auth/login', [
-            'status' => $request->session()->get('status'),
-        ]));
+        Fortify::loginView(function (Request $request) {
+            $slides = \App\Models\LoginSlide::where('is_active', true)
+                ->orderBy('order')
+                ->get()
+                ->map(function ($slide) {
+                    return \Illuminate\Support\Facades\Storage::url($slide->image_path);
+                })
+                ->toArray();
+
+            return Inertia::render('auth/login', [
+                'status' => $request->session()->get('status'),
+                'slides' => $slides,
+            ]);
+        });
 
         Fortify::resetPasswordView(fn (Request $request) => Inertia::render('auth/reset-password', [
             'email' => $request->email,

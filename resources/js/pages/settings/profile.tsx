@@ -40,7 +40,7 @@ export default function Profile({
                     <Heading
                         variant="small"
                         title="Profile information"
-                        description="Update your name and email address"
+                        description="Update your password. Name and email cannot be changed."
                     />
 
                     <Form
@@ -57,13 +57,15 @@ export default function Profile({
 
                                     <Input
                                         id="name"
-                                        className="mt-1 block w-full"
+                                        className="mt-1 block w-full bg-gray-50"
                                         defaultValue={auth.user.name}
                                         name="name"
                                         required
                                         autoComplete="name"
                                         placeholder="Full name"
+                                        disabled
                                     />
+                                    <p className="text-xs text-gray-500">Your name cannot be changed</p>
 
                                     <InputError
                                         className="mt-2"
@@ -77,13 +79,15 @@ export default function Profile({
                                     <Input
                                         id="email"
                                         type="email"
-                                        className="mt-1 block w-full"
+                                        className="mt-1 block w-full bg-gray-50"
                                         defaultValue={auth.user.email}
                                         name="email"
                                         required
                                         autoComplete="username"
                                         placeholder="Email address"
+                                        disabled
                                     />
+                                    <p className="text-xs text-gray-500">Your email cannot be changed</p>
 
                                     <InputError
                                         className="mt-2"
@@ -91,39 +95,73 @@ export default function Profile({
                                     />
                                 </div>
 
-                                {mustVerifyEmail &&
-                                    auth.user.email_verified_at === null && (
-                                        <div>
-                                            <p className="-mt-4 text-sm text-muted-foreground">
-                                                Your email address is
-                                                unverified.{' '}
-                                                <Link
-                                                    href={send()}
-                                                    as="button"
-                                                    className="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
-                                                >
-                                                    Click here to resend the
-                                                    verification email.
-                                                </Link>
-                                            </p>
+                                <div className="border-t pt-6">
+                                    <h3 className="text-lg font-medium text-gray-900 mb-4">Change Password</h3>
+                                    
+                                    <div className="space-y-4">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="current_password">Current Password</Label>
 
-                                            {status ===
-                                                'verification-link-sent' && (
-                                                <div className="mt-2 text-sm font-medium text-green-600">
-                                                    A new verification link has
-                                                    been sent to your email
-                                                    address.
-                                                </div>
-                                            )}
+                                            <Input
+                                                id="current_password"
+                                                type="password"
+                                                className="mt-1 block w-full"
+                                                name="current_password"
+                                                autoComplete="current-password"
+                                                placeholder="Enter current password"
+                                            />
+
+                                            <InputError
+                                                className="mt-2"
+                                                message={errors.current_password}
+                                            />
                                         </div>
-                                    )}
+
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="password">New Password</Label>
+
+                                            <Input
+                                                id="password"
+                                                type="password"
+                                                className="mt-1 block w-full"
+                                                name="password"
+                                                autoComplete="new-password"
+                                                placeholder="Enter new password"
+                                            />
+                                            <p className="text-xs text-gray-500">Minimum 8 characters</p>
+
+                                            <InputError
+                                                className="mt-2"
+                                                message={errors.password}
+                                            />
+                                        </div>
+
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="password_confirmation">Confirm New Password</Label>
+
+                                            <Input
+                                                id="password_confirmation"
+                                                type="password"
+                                                className="mt-1 block w-full"
+                                                name="password_confirmation"
+                                                autoComplete="new-password"
+                                                placeholder="Confirm new password"
+                                            />
+
+                                            <InputError
+                                                className="mt-2"
+                                                message={errors.password_confirmation}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
 
                                 <div className="flex items-center gap-4">
                                     <Button
                                         disabled={processing}
                                         data-test="update-profile-button"
                                     >
-                                        Save
+                                        Save Changes
                                     </Button>
 
                                     <Transition
@@ -133,8 +171,8 @@ export default function Profile({
                                         leave="transition ease-in-out"
                                         leaveTo="opacity-0"
                                     >
-                                        <p className="text-sm text-neutral-600">
-                                            Saved
+                                        <p className="text-sm text-green-600">
+                                            Password updated successfully
                                         </p>
                                     </Transition>
                                 </div>

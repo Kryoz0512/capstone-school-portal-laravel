@@ -1,9 +1,17 @@
 import { Head } from '@inertiajs/react'
 import StudentLayout from '@/layouts/student-layout'
 import { Card, CardContent } from '@/components/ui/card'
-import { User, Phone, Smartphone, ChevronRight } from 'lucide-react'
+import { User, Phone, Smartphone } from 'lucide-react'
+
+type StudentInfo = {
+    name: string
+    lrn: string
+    mobileNumber: string
+    parentMobileNumber: string
+}
 
 type Props = {
+    studentInfo: StudentInfo
     auth?: {
         user: {
             id: number
@@ -14,32 +22,7 @@ type Props = {
     }
 }
 
-export default function StudentDashboard({ auth }: Props) {
-    const studentInfo = {
-        name: 'Maria Santos',
-        lrn: '123456789012',
-        mobileNumber: '+63 912 345 6789',
-        parentMobileNumber: '+63 987 654 3210'
-    }
-
-    const quickAccessItems = [
-        {
-            title: 'Enrolled Subjects',
-            description: 'View all your subjects',
-            href: '/student/enrolled-subjects'
-        },
-        {
-            title: 'Class Schedule',
-            description: 'Your timetable',
-            href: '/student/schedule'
-        },
-        {
-            title: 'Report Card',
-            description: 'Your grades',
-            href: '/student/report-card'
-        }
-    ]
-
+export default function StudentDashboard({ studentInfo, auth }: Props) {
     return (
         <StudentLayout user={auth?.user}>
             <Head title="Dashboard" />
@@ -101,7 +84,7 @@ export default function StudentDashboard({ auth }: Props) {
                         <CardContent className="p-6">
                             <div className="flex items-start justify-between">
                                 <div className="flex-1">
-                                    <p className="text-sm text-gray-500 mb-2">Parent Mobile Number</p>
+                                    <p className="text-sm text-gray-500 mb-2">Guardian Contact Number</p>
                                     <p className="text-lg font-semibold text-gray-900">{studentInfo.parentMobileNumber}</p>
                                 </div>
                                 <div className="p-2 bg-green-100 rounded-lg">
@@ -110,28 +93,6 @@ export default function StudentDashboard({ auth }: Props) {
                             </div>
                         </CardContent>
                     </Card>
-                </div>
-
-                {/* Quick Access */}
-                <div>
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Access</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {quickAccessItems.map((item, index) => (
-                            <a
-                                key={index}
-                                href={item.href}
-                                className="bg-white border-2 border-gray-200 rounded-lg p-6 hover:border-green-700 hover:shadow-md transition-all group"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <h3 className="font-semibold text-gray-900 mb-1">{item.title}</h3>
-                                        <p className="text-sm text-gray-500">{item.description}</p>
-                                    </div>
-                                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-green-700 transition-colors" />
-                                </div>
-                            </a>
-                        ))}
-                    </div>
                 </div>
             </div>
         </StudentLayout>

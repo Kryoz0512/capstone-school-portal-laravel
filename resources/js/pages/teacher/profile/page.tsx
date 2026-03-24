@@ -1,9 +1,30 @@
 import { Head } from '@inertiajs/react'
 import TeacherLayout from '@/layouts/teacher-layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Mail, Phone, MapPin, Calendar, Award, BookOpen } from 'lucide-react'
+import { Mail, Phone, MapPin } from 'lucide-react'
+
+type Teacher = {
+    name: string
+    email: string
+    phone: string
+    address: string
+    employeeNumber: string
+    department: string
+    position: string
+    dateHired: string
+    specialization: string
+}
+
+type AssignedClass = {
+    gradeLevel: string
+    section: string
+    subject: string
+    students: number
+}
 
 type Props = {
+    teacher: Teacher
+    assignedClasses: AssignedClass[]
     auth?: {
         user: {
             id: number
@@ -14,33 +35,7 @@ type Props = {
     }
 }
 
-export default function Profile({ auth }: Props) {
-    const teacher = {
-        name: auth?.user?.name || 'Teacher Name',
-        email: auth?.user?.email || 'teacher@example.com',
-        phone: '+63 912 345 6789',
-        address: 'Santor, Philippines',
-        employeeNumber: 'EMP-2024-001',
-        department: 'English Department',
-        position: 'Senior High School Teacher',
-        dateHired: 'August 15, 2020',
-        specialization: 'English Language & Literature'
-    }
-
-    const assignedClasses = [
-        { gradeLevel: 'Grade 10', section: 'Section A', subject: 'English', students: 35 },
-        { gradeLevel: 'Grade 10', section: 'Section B', subject: 'English', students: 32 },
-        { gradeLevel: 'Grade 9', section: 'Section A', subject: 'English', students: 38 },
-        { gradeLevel: 'Grade 9', section: 'Section B', subject: 'English', students: 36 }
-    ]
-
-    const certifications = [
-        'Licensed Professional Teacher (LPT)',
-        'TESOL Certification',
-        'Master of Arts in Education',
-        'DepEd Training on K-12 Curriculum'
-    ]
-
+export default function Profile({ teacher, assignedClasses, auth }: Props) {
     return (
         <TeacherLayout user={auth?.user}>
             <Head title="Profile" />
@@ -69,7 +64,7 @@ export default function Profile({ auth }: Props) {
                     </CardContent>
                 </Card>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 gap-6">
                     {/* Contact Information */}
                     <Card>
                         <CardHeader>
@@ -100,37 +95,6 @@ export default function Profile({ auth }: Props) {
                             </div>
                         </CardContent>
                     </Card>
-
-                    {/* Professional Information */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Professional Information</CardTitle>
-                            <CardDescription>Your employment details</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-center gap-3">
-                                <BookOpen className="w-5 h-5 text-gray-400" />
-                                <div>
-                                    <p className="text-sm text-gray-500">Department</p>
-                                    <p className="text-sm font-medium">{teacher.department}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <Calendar className="w-5 h-5 text-gray-400" />
-                                <div>
-                                    <p className="text-sm text-gray-500">Date Hired</p>
-                                    <p className="text-sm font-medium">{teacher.dateHired}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <Award className="w-5 h-5 text-gray-400" />
-                                <div>
-                                    <p className="text-sm text-gray-500">Specialization</p>
-                                    <p className="text-sm font-medium">{teacher.specialization}</p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
                 </div>
 
                 {/* Assigned Classes */}
@@ -140,46 +104,32 @@ export default function Profile({ auth }: Props) {
                         <CardDescription>Your current teaching load</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Grade Level</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Section</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Subject</th>
-                                        <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Students</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-200">
-                                    {assignedClasses.map((cls, index) => (
-                                        <tr key={index} className="hover:bg-gray-50">
-                                            <td className="px-4 py-3 text-sm text-gray-900">{cls.gradeLevel}</td>
-                                            <td className="px-4 py-3 text-sm text-gray-900">{cls.section}</td>
-                                            <td className="px-4 py-3 text-sm text-gray-900">{cls.subject}</td>
-                                            <td className="px-4 py-3 text-sm text-gray-900">{cls.students}</td>
+                        {assignedClasses.length > 0 ? (
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Grade Level</th>
+                                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Section</th>
+                                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Subject</th>
+                                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Students</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Certifications */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Certifications & Qualifications</CardTitle>
-                        <CardDescription>Your professional credentials</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <ul className="space-y-2">
-                            {certifications.map((cert, index) => (
-                                <li key={index} className="flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-full bg-green-700"></div>
-                                    <span className="text-sm text-gray-900">{cert}</span>
-                                </li>
-                            ))}
-                        </ul>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
+                                        {assignedClasses.map((cls, index) => (
+                                            <tr key={index} className="hover:bg-gray-50">
+                                                <td className="px-4 py-3 text-sm text-gray-900">{cls.gradeLevel}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-900">{cls.section}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-900">{cls.subject}</td>
+                                                <td className="px-4 py-3 text-sm text-gray-900">{cls.students}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <p className="text-sm text-gray-500 text-center py-4">No assigned classes found</p>
+                        )}
                     </CardContent>
                 </Card>
             </div>

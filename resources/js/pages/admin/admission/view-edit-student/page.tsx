@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react'
+import { Head, router } from '@inertiajs/react'
 import AdminLayout from '@/layouts/admin-layout'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -13,6 +13,11 @@ type Student = {
     section: string
 }
 
+type GradeLevel = {
+    id: number
+    name: string
+}
+
 type Props = {
     auth?: {
         user: {
@@ -22,21 +27,28 @@ type Props = {
             role: string
         }
     }
+    students?: Student[]
+    gradeLevels?: GradeLevel[]
 }
 
-export default function ViewEditStudent({ auth }: Props) {
+export default function ViewEditStudent({ auth, students = [], gradeLevels = [] }: Props) {
     const [nameSearch, setNameSearch] = useState('')
     const [lrnSearch, setLrnSearch] = useState('')
-    const [gradeFilter, setGradeFilter] = useState('All Grades')
+    const [gradeFilter, setGradeFilter] = useState('all')
     const [sectionFilter, setSectionFilter] = useState('')
 
-    const students: Student[] = [
-        { id: 1, studentName: 'John Doe', lrn: 'LRN-001', gradeLevel: '10', section: 'Grade 10-A' },
-        { id: 2, studentName: 'Jane Smith', lrn: 'LRN-002', gradeLevel: '11', section: 'Grade 11-B' },
-        { id: 3, studentName: 'Michael Johnson', lrn: 'LRN-003', gradeLevel: '9', section: 'Grade 9-C' },
-        { id: 4, studentName: 'Sarah Williams', lrn: 'LRN-004', gradeLevel: '12', section: 'Grade 12-A' },
-        { id: 5, studentName: 'Robert Brown', lrn: 'LRN-005', gradeLevel: '10', section: 'Grade 10-B' }
-    ]
+    // Filter students based on search criteria
+    const filteredStudents = students.filter(student => {
+        const matchesName = student.studentName.toLowerCase().includes(nameSearch.toLowerCase())
+        const matchesLrn = student.lrn.toLowerCase().includes(lrnSearch.toLowerCase())
+        const matchesGrade = gradeFilter === 'all' || student.gradeLevel === gradeFilter
+        
+        return matchesName && matchesLrn && matchesGrade
+    })
+
+    const handleEdit = (student: Student) => {
+        router.visit(`/admin/admission/view-edit-student/${student.id}/edit`)
+    }
 
     return (
         <AdminLayout user={auth?.user}>
@@ -85,11 +97,12 @@ export default function ViewEditStudent({ auth }: Props) {
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="All Grades">All Grades</SelectItem>
-                                    <SelectItem value="9">Grade 9</SelectItem>
-                                    <SelectItem value="10">Grade 10</SelectItem>
-                                    <SelectItem value="11">Grade 11</SelectItem>
-                                    <SelectItem value="12">Grade 12</SelectItem>
+                                    <SelectItem value="all">All Grades</SelectItem>
+                                    {gradeLevels.map((grade) => (
+                                        <SelectItem key={grade.id} value={grade.name}>
+                                            {grade.name}
+                                        </SelectItem>
+                                    ))}
                                 </SelectContent>
                             </Select>
                         </div>
@@ -112,7 +125,7 @@ export default function ViewEditStudent({ auth }: Props) {
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                     <div className="p-4 border-b border-gray-200">
                         <p className="text-sm text-gray-600">
-                            Showing 1 to {students.length} of {students.length} entries
+                            Showing {filteredStudents.length} of {students.length} entries
                         </p>
                     </div>
 
@@ -128,19 +141,33 @@ export default function ViewEditStudent({ auth }: Props) {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                {students.map((student) => (
-                                    <tr key={student.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 text-sm text-gray-900">{student.studentName}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{student.lrn}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{student.gradeLevel}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{student.section}</td>
-                                        <td className="px-6 py-4">
-                                            <button className="text-gray-600 hover:text-green-600">
-                                                <Pencil className="w-4 h-4" />
-                                            </button>
+                                {filteredStudents.length > 0 ? (
+                                    filteredStudents.map((student) => (
+                                        <tr key={student.id} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 text-sm text-gray-900">{student.studentName}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">{student.lrn}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">{student.gradeLevel}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">{student.section}</td>
+                                            <td className="px-6 py-4">
+                                                <button 
+                                                    className="text-gray-600 hover:text-green-600"
+                                                    onClick={() => handleEdit(student)}
+                                                >
+                                                    <Pencil className="w-4 h-4" />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-500">
+                                            {students.length === 0 
+                                                ? 'No enrolled students found. Students will appear here after being assigned a section.'
+                                                : 'No students match your search criteria.'
+                                            }
                                         </td>
                                     </tr>
-                                ))}
+                                )}
                             </tbody>
                         </table>
                     </div>

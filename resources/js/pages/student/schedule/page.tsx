@@ -1,15 +1,36 @@
-import { Head } from '@inertiajs/react'
+import { Head, router } from '@inertiajs/react'
 import StudentLayout from '@/layouts/student-layout'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useState, useEffect } from 'react'
 
-type Schedule = {
-    id: number
-    subject: string
+type ScheduleItem = {
     time: string
-    days: string
-    room: string
+    monday: string
+    tuesday: string
+    wednesday: string
+    thursday: string
+    friday: string
+}
+
+type SchoolYear = {
+    value: string
+    label: string
+}
+
+type StudentInfo = {
+    name: string
+    lrn: string
+    gradeLevel: string
+    section: string
 }
 
 type Props = {
+    schedules: ScheduleItem[]
+    schoolYears: SchoolYear[]
+    studentInfo: StudentInfo
+    filters: {
+        school_year: string
+    }
     auth?: {
         user: {
             id: number
@@ -20,23 +41,18 @@ type Props = {
     }
 }
 
-export default function StudentSchedule({ auth }: Props) {
-    const studentInfo = {
-        name: 'Juan Dela Cruz',
-        studentId: 'STU-2025-001',
-        section: 'Grade 10 - Section A'
-    }
+export default function StudentSchedule({ schedules, schoolYears, studentInfo, filters, auth }: Props) {
+    const [schoolYear, setSchoolYear] = useState(filters.school_year || '')
 
-    const schedules: Schedule[] = [
-        { id: 1, subject: 'English', time: '8:00 AM - 9:00 AM', days: 'Monday, Wednesday, Friday', room: 'Room 101' },
-        { id: 2, subject: 'Mathematics', time: '9:15 AM - 10:15 AM', days: 'Monday, Tuesday, Thursday, Friday', room: 'Room 102' },
-        { id: 3, subject: 'Science', time: '10:30 AM - 11:30 AM', days: 'Tuesday, Thursday, Friday', room: 'Lab 201' },
-        { id: 4, subject: 'History', time: '1:00 PM - 2:00 PM', days: 'Monday, Tuesday, Wednesday, Friday', room: 'Room 205' },
-        { id: 5, subject: 'Computer Science', time: '2:15 PM - 3:15 PM', days: 'Monday, Tuesday, Thursday, Friday', room: 'IT Lab 1' },
-        { id: 6, subject: 'Art Appreciation', time: '8:00 AM - 9:30 AM', days: 'Tuesday, Thursday, Friday', room: 'Studio A' },
-        { id: 7, subject: 'Physical Education', time: '10:00 AM - 12:00 PM', days: 'Monday, Wednesday, Friday', room: 'Gymnasium' },
-        { id: 8, subject: 'Social Studies', time: '3:30 PM - 4:30 PM', days: 'Wednesday, Thursday, Friday', room: 'Room 202' }
-    ]
+    // Update filter when selection changes
+    useEffect(() => {
+        if (schoolYear) {
+            router.get(`/student/schedule?school_year=${schoolYear}`, {}, {
+                preserveState: true,
+                preserveScroll: true,
+            })
+        }
+    }, [schoolYear])
 
     return (
         <StudentLayout user={auth?.user}>
@@ -44,20 +60,26 @@ export default function StudentSchedule({ auth }: Props) {
 
             <div className="space-y-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Class Schedule</h1>
-                    <p className="text-sm text-gray-500 mt-1">Your timetable for this school year</p>
+                    <h1 className="text-2xl font-bold text-gray-900">My Schedule</h1>
+                    <p className="text-sm text-gray-500 mt-1">
+                        View your weekly class schedule
+                    </p>
                 </div>
 
                 {/* Student Info */}
                 <div className="bg-white rounded-lg border border-gray-200 p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                         <div>
                             <p className="text-sm text-gray-500 mb-1">Student Name</p>
                             <p className="text-base font-semibold text-gray-900">{studentInfo.name}</p>
                         </div>
                         <div>
-                            <p className="text-sm text-gray-500 mb-1">Student ID</p>
-                            <p className="text-base font-semibold text-gray-900">{studentInfo.studentId}</p>
+                            <p className="text-sm text-gray-500 mb-1">Student LRN</p>
+                            <p className="text-base font-semibold text-gray-900">{studentInfo.lrn}</p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500 mb-1">Grade Level</p>
+                            <p className="text-base font-semibold text-gray-900">{studentInfo.gradeLevel}</p>
                         </div>
                         <div>
                             <p className="text-sm text-gray-500 mb-1">Section</p>
@@ -66,32 +88,85 @@ export default function StudentSchedule({ auth }: Props) {
                     </div>
                 </div>
 
-                {/* Schedule Summary */}
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Schedule Summary</h2>
+                {/* Filter */}
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+                    <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                        <h2 className="text-base font-semibold text-gray-900">Filter Options</h2>
+                    </div>
+                    <div className="p-6">
+                        <div className="max-w-xs">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                School Year <span className="text-red-500">*</span>
+                            </label>
+                            <Select value={schoolYear} onValueChange={setSchoolYear}>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {schoolYears.map((year) => (
+                                        <SelectItem key={year.value} value={year.value}>
+                                            {year.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Schedule Table */}
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-gray-50">
+                            <thead className="bg-gray-100">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Subject</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Time</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Days</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Room</th>
+                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700 w-40">Time</th>
+                                    <th className="px-6 py-3 text-center text-sm font-medium text-gray-700">Monday</th>
+                                    <th className="px-6 py-3 text-center text-sm font-medium text-gray-700">Tuesday</th>
+                                    <th className="px-6 py-3 text-center text-sm font-medium text-gray-700">Wednesday</th>
+                                    <th className="px-6 py-3 text-center text-sm font-medium text-gray-700">Thursday</th>
+                                    <th className="px-6 py-3 text-center text-sm font-medium text-gray-700">Friday</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                {schedules.map((schedule) => (
-                                    <tr key={schedule.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 text-sm text-gray-900">{schedule.subject}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{schedule.time}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-900">{schedule.days}</td>
-                                        <td className="px-6 py-4">
-                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                {schedule.room}
-                                            </span>
+                                {schedules.length > 0 ? (
+                                    schedules.map((item, index) => (
+                                        <tr key={index} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 text-sm font-medium text-gray-900">{item.time}</td>
+                                            <td className="px-6 py-4 text-center">
+                                                <div className={`text-sm ${!item.monday ? 'text-gray-400' : 'text-gray-900 whitespace-pre-line'}`}>
+                                                    {item.monday || '-'}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <div className={`text-sm ${!item.tuesday ? 'text-gray-400' : 'text-gray-900 whitespace-pre-line'}`}>
+                                                    {item.tuesday || '-'}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <div className={`text-sm ${!item.wednesday ? 'text-gray-400' : 'text-gray-900 whitespace-pre-line'}`}>
+                                                    {item.wednesday || '-'}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <div className={`text-sm ${!item.thursday ? 'text-gray-400' : 'text-gray-900 whitespace-pre-line'}`}>
+                                                    {item.thursday || '-'}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <div className={`text-sm ${!item.friday ? 'text-gray-400' : 'text-gray-900 whitespace-pre-line'}`}>
+                                                    {item.friday || '-'}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-500">
+                                            No schedule found for this school year
                                         </td>
                                     </tr>
-                                ))}
+                                )}
                             </tbody>
                         </table>
                     </div>

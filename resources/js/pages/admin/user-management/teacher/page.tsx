@@ -125,7 +125,7 @@ export default function TeacherManagement({ auth, teachers = [], gradeLevels = [
                         </p>
                     </div>
                     <Button 
-                        className="bg-green-600 hover:bg-green-700 text-white"
+                        className="bg-green-600 hover:bg-green-700 text-white shadow-sm"
                         onClick={() => setIsModalOpen(true)}
                     >
                         + New Teacher
@@ -164,7 +164,8 @@ export default function TeacherManagement({ auth, teachers = [], gradeLevels = [
                 </div>
 
                 {/* Filters */}
-                <div className="bg-white rounded-lg border border-gray-200 p-4">
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+                    <h2 className="text-sm font-semibold text-gray-900 mb-4">Filter Options</h2>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div className="md:col-span-2">
                             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -221,50 +222,60 @@ export default function TeacherManagement({ auth, teachers = [], gradeLevels = [
                 </div>
 
                 {/* Table */}
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-gray-100">
+                            <thead className="bg-green-700">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Employee No.</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Name</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Email</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Subject</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Position</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Last Updated</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Actions</th>
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Employee No.</th>
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Name</th>
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Username</th>
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Subject</th>
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Position</th>
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Last Updated</th>
+                                    <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-200">
+                            <tbody className="bg-white divide-y divide-gray-200">
                                 {paginatedTeachers.length > 0 ? (
                                     paginatedTeachers.map((teacher) => (
-                                        <tr key={teacher.id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 text-sm text-gray-900">{teacher.employee_no}</td>
-                                            <td className="px-6 py-4 text-sm text-gray-900">{teacher.name}</td>
-                                            <td className="px-6 py-4 text-sm text-gray-900">{teacher.email}</td>
-                                            <td className="px-6 py-4 text-sm text-gray-900">{teacher.subject}</td>
-                                            <td className="px-6 py-4 text-sm text-gray-900">{teacher.position}</td>
-                                            <td className="px-6 py-4 text-sm text-gray-600">
+                                        <tr key={teacher.id} className="hover:bg-gray-50 transition-colors">
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                                                    {teacher.employee_no}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{teacher.name}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{teacher.email}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                    {teacher.subject}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{teacher.position}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                                                 {teacher.updated_by && teacher.updated_at ? (
-                                                    <div>
-                                                        <div className="text-xs">By: {teacher.updated_by}</div>
+                                                    <div className="space-y-0.5">
+                                                        <div className="text-xs font-medium text-gray-700">By: {teacher.updated_by}</div>
                                                         <div className="text-xs text-gray-500">{teacher.updated_at}</div>
                                                     </div>
                                                 ) : (
-                                                    <span className="text-gray-400">-</span>
+                                                    <span className="text-gray-400 text-xs">No updates</span>
                                                 )}
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-2">
+                                            <td className="px-6 py-4 whitespace-nowrap text-center">
+                                                <div className="flex items-center justify-center gap-2">
                                                     <button 
-                                                        className="text-gray-600 hover:text-green-600"
+                                                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors"
                                                         onClick={() => handleEdit(teacher)}
+                                                        title="Edit teacher"
                                                     >
                                                         <Pencil className="w-4 h-4" />
                                                     </button>
                                                     <button 
-                                                        className="text-gray-600 hover:text-red-600"
+                                                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                                                         onClick={() => handleDelete(teacher)}
+                                                        title="Delete teacher"
                                                     >
                                                         <Trash2 className="w-4 h-4" />
                                                     </button>
@@ -274,11 +285,24 @@ export default function TeacherManagement({ auth, teachers = [], gradeLevels = [
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-500">
-                                            {searchQuery || subjectFilter !== 'all' || positionFilter !== 'all' 
-                                                ? 'No teachers found matching your filters.'
-                                                : 'No teachers found. Click "+ New Teacher" to add one.'
-                                            }
+                                        <td colSpan={7} className="px-6 py-12 text-center">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <svg className="w-12 h-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                                </svg>
+                                                <p className="text-sm font-medium text-gray-900 mb-1">
+                                                    {searchQuery || subjectFilter !== 'all' || positionFilter !== 'all' 
+                                                        ? 'No teachers found'
+                                                        : 'No teachers yet'
+                                                    }
+                                                </p>
+                                                <p className="text-sm text-gray-500">
+                                                    {searchQuery || subjectFilter !== 'all' || positionFilter !== 'all' 
+                                                        ? 'Try adjusting your filters to find what you\'re looking for.'
+                                                        : 'Click "+ New Teacher" to add your first teacher.'
+                                                    }
+                                                </p>
+                                            </div>
                                         </td>
                                     </tr>
                                 )}

@@ -17,11 +17,17 @@ class Admin extends Model
         'last_name',
         'role',
         'position',
+        'updated_by',
     ];
 
     // Relationships
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function updatedBy()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
     }
 }

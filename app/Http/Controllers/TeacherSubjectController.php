@@ -13,21 +13,21 @@ class TeacherSubjectController extends Controller
 {
     public function index()
     {
-        $assignments = DB::table('tbl_teacher_subjects')
-            ->join('tbl_teachers', 'tbl_teacher_subjects.teacher_id', '=', 'tbl_teachers.id')
-            ->join('tbl_subjects', 'tbl_teacher_subjects.subject_id', '=', 'tbl_subjects.id')
-            ->leftJoin('tbl_grade_levels', 'tbl_subjects.grade_level_id', '=', 'tbl_grade_levels.id')
-            ->select(
-                'tbl_teacher_subjects.id',
-                'tbl_subjects.code as subject_code',
-                'tbl_subjects.name as subject_name',
-                'tbl_subjects.description',
-                'tbl_grade_levels.name as grade_level',
-                'tbl_teachers.name as teacher_name',
-                'tbl_teacher_subjects.teacher_id',
-                'tbl_teacher_subjects.subject_id'
-            )
-            ->get();
+        // Get all teachers with their assigned subjects count
+        $teachers = Teacher::all()->map(function ($teacher) {
+            $assignedSubjectsCount = DB::table('tbl_teacher_subjects')
+                ->where('teacher_id', $teacher->id)
+                ->count();
+            
+            return [
+                'id' => $teacher->id,
+                'name' => $teacher->name,
+                'employee_number' => $teacher->employee_number,
+                'subject' => $teacher->subject,
+                'position' => $teacher->position,
+                'assigned_subjects_count' => $assignedSubjectsCount,
+            ];
+        });
 
         $gradeLevels = \App\Models\GradeLevel::all()->map(function ($gradeLevel) {
             return [
@@ -47,20 +47,30 @@ class TeacherSubjectController extends Controller
             ];
         });
 
-        $teachers = Teacher::all()->map(function ($teacher) {
-            return [
-                'id' => $teacher->id,
-                'name' => $teacher->name,
-                'subject' => $teacher->subject, // Add teacher's subject specialization
-            ];
-        });
-
         return Inertia::render('admin/enrollment/faculty-subjects/page', [
-            'assignments' => $assignments,
+            'teachers' => $teachers,
             'gradeLevels' => $gradeLevels,
             'subjects' => $subjects,
-            'teachers' => $teachers,
         ]);
+    }
+
+    public function getTeacherSubjects($teacherId)
+    {
+        $assignments = DB::table('tbl_teacher_subjects')
+            ->join('tbl_subjects', 'tbl_teacher_subjects.subject_id', '=', 'tbl_subjects.id')
+            ->leftJoin('tbl_grade_levels', 'tbl_subjects.grade_level_id', '=', 'tbl_grade_levels.id')
+            ->where('tbl_teacher_subjects.teacher_id', $teacherId)
+            ->select(
+                'tbl_teacher_subjects.id',
+                'tbl_subjects.code as subject_code',
+                'tbl_subjects.name as subject_name',
+                'tbl_subjects.description',
+                'tbl_grade_levels.name as grade_level',
+                'tbl_teacher_subjects.subject_id'
+            )
+            ->get();
+
+        return response()->json($assignments);
     }
 
     public function store(Request $request)
@@ -118,8 +128,12 @@ class TeacherSubjectController extends Controller
 
     public function destroy($id)
     {
-        DB::table('tbl_teacher_subjects')->where('id', $id)->delete();
-
-        return redirect()->back()->with('success', 'Assignment removed successfully');
+        try {
+            DB::table('tbl_teacher_subjects')->where('id', $id)->delete();
+            
+            return response()->json(['message' => 'Assignment removed successfully']);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error removing assignment'], 500);
+        }
     }
 }

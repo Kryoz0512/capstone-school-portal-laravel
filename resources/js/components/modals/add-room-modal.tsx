@@ -3,7 +3,9 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useForm } from '@inertiajs/react'
+import { useState, useEffect } from 'react'
 import InputError from '../input-error'
+import axios from 'axios'
 
 type AddRoomModalProps = {
     open: boolean
@@ -14,14 +16,52 @@ export default function AddRoomModal({ open, onOpenChange }: AddRoomModalProps) 
     const { data, setData, post, processing, errors, reset } = useForm({
         room_number: '',
         capacity: '',
-        status: 'Active' as 'Active' | 'Maintenance'
+        status: 'Active' as 'Active' | 'In Construction' | 'Maintenance'
     })
+
+    const [roomNumberError, setRoomNumberError] = useState('')
+    const [isCheckingRoomNumber, setIsCheckingRoomNumber] = useState(false)
+
+    // Check room number availability
+    useEffect(() => {
+        if (!data.room_number) {
+            setRoomNumberError('')
+            return
+        }
+
+        const timeoutId = setTimeout(async () => {
+            setIsCheckingRoomNumber(true)
+            try {
+                const response = await axios.post('/admin/enrollment/rooms/check-room-number', {
+                    room_number: data.room_number
+                })
+                
+                if (!response.data.available) {
+                    setRoomNumberError(response.data.message)
+                } else {
+                    setRoomNumberError('')
+                }
+            } catch (error) {
+                console.error('Error checking room number:', error)
+            } finally {
+                setIsCheckingRoomNumber(false)
+            }
+        }, 500)
+
+        return () => clearTimeout(timeoutId)
+    }, [data.room_number])
 
     const handleSubmit = (e: React.ChangeEvent<HTMLFormElement>) => {
         e.preventDefault()
+        
+        if (roomNumberError || isCheckingRoomNumber) {
+            return
+        }
+        
         post('/admin/enrollment/rooms', {
             onSuccess: () => {
                 reset()
+                setRoomNumberError('')
                 onOpenChange(false)
             }
         })
@@ -47,6 +87,12 @@ export default function AddRoomModal({ open, onOpenChange }: AddRoomModalProps) 
                             onChange={(e) => setData('room_number', e.target.value)}
                             placeholder="e.g., 101, 102, Lab-1"
                         />
+                        {isCheckingRoomNumber && (
+                            <p className="text-xs text-blue-500 mt-1">Checking availability...</p>
+                        )}
+                        {roomNumberError && (
+                            <p className="text-xs text-red-500 mt-1">{roomNumberError}</p>
+                        )}
                         <InputError message={errors.room_number}/>
                         {/* {errors.room_number && (
                             <p className="text-xs text-red-500 mt-1">{errors.room_number}</p>
@@ -79,13 +125,14 @@ export default function AddRoomModal({ open, onOpenChange }: AddRoomModalProps) 
                         </label>
                         <Select
                             value={data.status}
-                            onValueChange={(value: 'Active' | 'Maintenance') => setData('status', value)}
+                            onValueChange={(value: 'Active' | 'In Construction' | 'Maintenance') => setData('status', value)}
                         >
                             <SelectTrigger>
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="Active">Active</SelectItem>
+                                <SelectItem value="In Construction">In Construction</SelectItem>
                                 <SelectItem value="Maintenance">Maintenance</SelectItem>
                             </SelectContent>
                         </Select>
@@ -93,7 +140,7 @@ export default function AddRoomModal({ open, onOpenChange }: AddRoomModalProps) 
                             <p className="text-xs text-red-500 mt-1">{errors.status}</p>
                         )}
                         <p className="text-xs text-gray-500 mt-1">
-                            Active: Available for use | Maintenance: Under repair
+                            Active: Available for use | In Construction: Being built | Maintenance: Under repair
                         </p>
                     </div>
 
@@ -109,7 +156,7 @@ export default function AddRoomModal({ open, onOpenChange }: AddRoomModalProps) 
                         <Button
                             type="submit"
                             className="bg-green-600 hover:bg-green-700"
-                            disabled={processing}
+                            disabled={processing || isCheckingRoomNumber || !!roomNumberError}
                         >
                             {processing ? 'Creating...' : 'Create Room'}
                         </Button>

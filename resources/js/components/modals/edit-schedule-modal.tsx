@@ -44,7 +44,7 @@ type EditScheduleModalProps = {
     schedule: Schedule | null
     classSections: ClassSection[]
     subjects: Subject[]
-    teachers: Teacher[]
+    teachers?: Teacher[]
     rooms: Room[]
 }
 
@@ -52,17 +52,17 @@ export default function EditScheduleModal({
     open, 
     onOpenChange, 
     schedule,
-    classSections, 
-    subjects, 
-    teachers, 
-    rooms 
+    classSections = [], 
+    subjects = [], 
+    teachers = [], 
+    rooms = [] 
 }: EditScheduleModalProps) {
     const { data, setData, put, processing, errors, reset } = useForm({
-        class_section_id: '',
-        subject_id: '',
-        teacher_id: '',
-        room_id: '',
-        day_of_week: '',
+        class_section_id: undefined,
+        subject_id: undefined,
+        teacher_id: undefined,
+        room_id: undefined,
+        day_of_week: undefined,
         start_time: '',
         end_time: ''
     })
@@ -95,153 +95,169 @@ export default function EditScheduleModal({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Edit Schedule</DialogTitle>
-                    <DialogDescription>
+                    <DialogTitle className="text-xl font-semibold">Edit Schedule</DialogTitle>
+                    <DialogDescription className="text-gray-600">
                         Update the class schedule information
                     </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Section <span className="text-red-500">*</span>
-                            </label>
-                            <Select
-                                value={data.class_section_id}
-                                onValueChange={(value) => setData('class_section_id', value)}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select section" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {classSections.map((section) => (
-                                        <SelectItem key={section.id} value={section.id.toString()}>
-                                            {section.name} - {section.grade_level}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {errors.class_section_id && <p className="text-xs text-red-500 mt-1">{errors.class_section_id}</p>}
-                        </div>
+                <form onSubmit={handleSubmit} className="space-y-6 mt-2">
+                    {/* Class Information */}
+                    <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+                        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Class Information</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Section <span className="text-red-500">*</span>
+                                </label>
+                                <Select
+                                    value={data.class_section_id?.toString()}
+                                    onValueChange={(value) => setData('class_section_id', value)}
+                                >
+                                    <SelectTrigger className="bg-white">
+                                        <SelectValue placeholder="Select section" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {classSections.map((section) => (
+                                            <SelectItem key={section.id} value={section.id.toString()}>
+                                                {section.name} - {section.grade_level}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {errors.class_section_id && <p className="text-xs text-red-500 mt-1">{errors.class_section_id}</p>}
+                            </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Subject <span className="text-red-500">*</span>
-                            </label>
-                            <Select
-                                value={data.subject_id}
-                                onValueChange={(value) => setData('subject_id', value)}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select subject" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {subjects.map((subject) => (
-                                        <SelectItem key={subject.id} value={subject.id.toString()}>
-                                            {subject.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {errors.subject_id && <p className="text-xs text-red-500 mt-1">{errors.subject_id}</p>}
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Teacher <span className="text-red-500">*</span>
-                            </label>
-                            <Select
-                                value={data.teacher_id}
-                                onValueChange={(value) => setData('teacher_id', value)}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select teacher" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {teachers.map((teacher) => (
-                                        <SelectItem key={teacher.id} value={teacher.id.toString()}>
-                                            {teacher.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {errors.teacher_id && <p className="text-xs text-red-500 mt-1">{errors.teacher_id}</p>}
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Room
-                            </label>
-                            <Select
-                                value={data.room_id}
-                                onValueChange={(value) => setData('room_id', value)}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select room" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {rooms.map((room) => (
-                                        <SelectItem key={room.id} value={room.id.toString()}>
-                                            {room.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {errors.room_id && <p className="text-xs text-red-500 mt-1">{errors.room_id}</p>}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Subject <span className="text-red-500">*</span>
+                                </label>
+                                <Select
+                                    value={data.subject_id?.toString()}
+                                    onValueChange={(value) => setData('subject_id', value)}
+                                >
+                                    <SelectTrigger className="bg-white">
+                                        <SelectValue placeholder="Select subject" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {subjects.map((subject) => (
+                                            <SelectItem key={subject.id} value={subject.id.toString()}>
+                                                {subject.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {errors.subject_id && <p className="text-xs text-red-500 mt-1">{errors.subject_id}</p>}
+                            </div>
                         </div>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Day of Week <span className="text-red-500">*</span>
-                        </label>
-                        <Select
-                            value={data.day_of_week}
-                            onValueChange={(value) => setData('day_of_week', value)}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select day" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="Monday">Monday</SelectItem>
-                                <SelectItem value="Tuesday">Tuesday</SelectItem>
-                                <SelectItem value="Wednesday">Wednesday</SelectItem>
-                                <SelectItem value="Thursday">Thursday</SelectItem>
-                                <SelectItem value="Friday">Friday</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        {errors.day_of_week && <p className="text-xs text-red-500 mt-1">{errors.day_of_week}</p>}
+                    {/* Teacher & Location */}
+                    <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+                        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Teacher & Location</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {teachers.length > 0 && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Teacher <span className="text-red-500">*</span>
+                                    </label>
+                                    <Select
+                                        value={data.teacher_id?.toString()}
+                                        onValueChange={(value) => setData('teacher_id', value)}
+                                    >
+                                        <SelectTrigger className="bg-white">
+                                            <SelectValue placeholder="Select teacher" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {teachers.map((teacher) => (
+                                                <SelectItem key={teacher.id} value={teacher.id.toString()}>
+                                                    {teacher.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    {errors.teacher_id && <p className="text-xs text-red-500 mt-1">{errors.teacher_id}</p>}
+                                </div>
+                            )}
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Room
+                                </label>
+                                <Select
+                                    value={data.room_id?.toString()}
+                                    onValueChange={(value) => setData('room_id', value)}
+                                >
+                                    <SelectTrigger className="bg-white">
+                                        <SelectValue placeholder="Select room" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {rooms.map((room) => (
+                                            <SelectItem key={room.id} value={room.id.toString()}>
+                                                {room.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {errors.room_id && <p className="text-xs text-red-500 mt-1">{errors.room_id}</p>}
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Start Time <span className="text-red-500">*</span>
-                            </label>
-                            <Input
-                                type="time"
-                                required
-                                value={data.start_time}
-                                onChange={(e) => setData('start_time', e.target.value)}
-                            />
-                            {errors.start_time && <p className="text-xs text-red-500 mt-1">{errors.start_time}</p>}
-                        </div>
+                    {/* Schedule Time */}
+                    <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+                        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Schedule Time</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Day of Week <span className="text-red-500">*</span>
+                                </label>
+                                <Select
+                                    value={data.day_of_week?.toString()}
+                                    onValueChange={(value) => setData('day_of_week', value)}
+                                >
+                                    <SelectTrigger className="bg-white">
+                                        <SelectValue placeholder="Select day" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Monday">Monday</SelectItem>
+                                        <SelectItem value="Tuesday">Tuesday</SelectItem>
+                                        <SelectItem value="Wednesday">Wednesday</SelectItem>
+                                        <SelectItem value="Thursday">Thursday</SelectItem>
+                                        <SelectItem value="Friday">Friday</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                {errors.day_of_week && <p className="text-xs text-red-500 mt-1">{errors.day_of_week}</p>}
+                            </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                End Time <span className="text-red-500">*</span>
-                            </label>
-                            <Input
-                                type="time"
-                                required
-                                value={data.end_time}
-                                onChange={(e) => setData('end_time', e.target.value)}
-                            />
-                            {errors.end_time && <p className="text-xs text-red-500 mt-1">{errors.end_time}</p>}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Start Time <span className="text-red-500">*</span>
+                                </label>
+                                <Input
+                                    type="time"
+                                    required
+                                    value={data.start_time}
+                                    onChange={(e) => setData('start_time', e.target.value)}
+                                    className="bg-white"
+                                />
+                                {errors.start_time && <p className="text-xs text-red-500 mt-1">{errors.start_time}</p>}
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    End Time <span className="text-red-500">*</span>
+                                </label>
+                                <Input
+                                    type="time"
+                                    required
+                                    value={data.end_time}
+                                    onChange={(e) => setData('end_time', e.target.value)}
+                                    className="bg-white"
+                                />
+                                {errors.end_time && <p className="text-xs text-red-500 mt-1">{errors.end_time}</p>}
+                            </div>
                         </div>
                     </div>
 

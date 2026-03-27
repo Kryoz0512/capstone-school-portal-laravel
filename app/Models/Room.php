@@ -17,4 +17,10 @@ class Room extends Model
     protected $casts = [
         'capacity' => 'integer'
     ];
+
+    // Relationships
+    public function schedules()
+    {
+        return $this->hasMany(Schedule::class, 'room_id');
+    }
 }

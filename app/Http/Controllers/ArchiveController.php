@@ -6,6 +6,7 @@ use App\Models\Archive;
 use App\Models\Teacher;
 use App\Models\Admin;
 use App\Models\Student;
+use App\Models\Room;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -35,6 +36,10 @@ class ArchiveController extends Controller
                 $code = $data['code'] ?? '';
                 $subjectName = $data['name'] ?? '';
                 $name = $code && $subjectName ? "$code - $subjectName" : ($subjectName ?: $code);
+            } elseif ($type === 'Room') {
+                $roomNumber = $data['room_number'] ?? '';
+                $capacity = $data['capacity'] ?? '';
+                $name = $roomNumber ? "Room $roomNumber (Capacity: $capacity)" : 'Unknown Room';
             } elseif (isset($data['name']) && !empty($data['name'])) {
                 $name = $data['name'];
             } elseif (isset($data['first_name']) || isset($data['last_name'])) {
@@ -43,7 +48,6 @@ class ArchiveController extends Controller
                 $name = trim("$firstName $lastName");
             }
             
-            // Fallback if name is still empty
             if (empty($name)) {
                 $name = 'Unknown';
             }
@@ -88,6 +92,8 @@ class ArchiveController extends Controller
                 $this->restoreStudent($data);
             } elseif ($type === 'App\\Models\\Subject') {
                 $this->restoreSubject($data);
+            } elseif ($type === 'App\\Models\\Room') {
+                $this->restoreRoom($data);
             }
             
             // Delete from archive
@@ -178,6 +184,16 @@ class ArchiveController extends Controller
             'name' => $data['name'],
             'description' => $data['description'] ?? null,
             'grade_level_id' => $data['grade_level_id'],
+        ]);
+    }
+
+    private function restoreRoom($data)
+    {
+        // Restore room
+        Room::create([
+            'room_number' => $data['room_number'],
+            'capacity' => $data['capacity'],
+            'status' => $data['status'] ?? 'Active',
         ]);
     }
 

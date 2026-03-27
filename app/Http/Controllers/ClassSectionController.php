@@ -11,12 +11,14 @@ class ClassSectionController extends Controller
 {
     public function index()
     {
-        $sections = ClassSection::with('gradeLevel')->get()->map(function ($section) {
+        $sections = ClassSection::with(['gradeLevel', 'room'])->get()->map(function ($section) {
             return [
                 'id' => $section->id,
                 'section_name' => $section->section_name,
                 'grade_level_id' => $section->grade_level_id,
                 'grade_level' => $section->gradeLevel ? $section->gradeLevel->name : null,
+                'room_id' => $section->room_id,
+                'room' => $section->room ? $section->room->room_number : null,
             ];
         });
 
@@ -27,32 +29,126 @@ class ClassSectionController extends Controller
             ];
         });
 
+        $rooms = \App\Models\Room::where('status', 'Active')->get()->map(function ($room) {
+            return [
+                'id' => $room->id,
+                'room_number' => $room->room_number,
+                'capacity' => $room->capacity,
+            ];
+        });
+
         return Inertia::render('admin/enrollment/class-sections/page', [
             'sections' => $sections,
             'gradeLevels' => $gradeLevels,
+            'rooms' => $rooms,
+        ]);
+    }
+
+    public function checkSectionName(Request $request)
+    {
+        $sectionName = $request->input('section_name');
+        $sectionId = $request->input('section_id'); // For edit mode
+        
+        $query = ClassSection::whereRaw('LOWER(section_name) = ?', [strtolower($sectionName)]);
+        
+        // Exclude current section when editing
+        if ($sectionId) {
+            $query->where('id', '!=', $sectionId);
+        }
+        
+        $exists = $query->exists();
+        
+        return response()->json([
+            'available' => !$exists,
+            'message' => $exists ? 'This section name already exists.' : 'Section name is available.'
+        ]);
+    }
+
+    public function checkRoom(Request $request)
+    {
+        $roomId = $request->input('room_id');
+        $sectionId = $request->input('section_id'); // For edit mode
+        
+        $query = ClassSection::where('room_id', $roomId);
+        
+        // Exclude current section when editing
+        if ($sectionId) {
+            $query->where('id', '!=', $sectionId);
+        }
+        
+        $exists = $query->exists();
+        
+        return response()->json([
+            'available' => !$exists,
+            'message' => $exists ? 'This room is already assigned to another section.' : 'Room is available.'
         ]);
     }
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $request->validate([
             'section_name' => 'required|string|max:255',
             'grade_level_id' => 'required|exists:tbl_grade_levels,id',
+            'room_id' => 'required|exists:tbl_room,id',
         ]);
 
-        ClassSection::create($validated);
+        // Check for case-insensitive duplicate across all grade levels
+        $exists = ClassSection::whereRaw('LOWER(section_name) = ?', [strtolower($request->section_name)])
+                              ->exists();
+
+        if ($exists) {
+            return back()->withErrors(['section_name' => 'This section name already exists.']);
+        }
+
+        // Check if room is already assigned to another section
+        if ($request->room_id) {
+            $roomTaken = ClassSection::where('room_id', $request->room_id)->exists();
+            if ($roomTaken) {
+                return back()->withErrors(['room_id' => 'This room is already assigned to another section.']);
+            }
+        }
+
+        ClassSection::create([
+            'section_name' => $request->section_name,
+            'grade_level_id' => $request->grade_level_id,
+            'room_id' => $request->room_id,
+        ]);
 
         return redirect()->back()->with('success', 'Section created successfully');
     }
 
     public function update(Request $request, ClassSection $classSection)
     {
-        $validated = $request->validate([
+        $request->validate([
             'section_name' => 'required|string|max:255',
             'grade_level_id' => 'required|exists:tbl_grade_levels,id',
+            'room_id' => 'required|exists:tbl_room,id',
         ]);
 
-        $classSection->update($validated);
+        // Check for case-insensitive duplicate across all grade levels (excluding current section)
+        $exists = ClassSection::whereRaw('LOWER(section_name) = ?', [strtolower($request->section_name)])
+                              ->where('id', '!=', $classSection->id)
+                              ->exists();
+
+        if ($exists) {
+            return back()->withErrors(['section_name' => 'This section name already exists.']);
+        }
+
+        // Check if room is already assigned to another section (excluding current section)
+        if ($request->room_id) {
+            $roomTaken = ClassSection::where('room_id', $request->room_id)
+                                    ->where('id', '!=', $classSection->id)
+                                    ->exists();
+            if ($roomTaken) {
+                return back()->withErrors(['room_id' => 'This room is already assigned to another section.']);
+            }
+        }
+
+        $classSection->update([
+            'section_name' => $request->section_name,
+            'grade_level_id' => $request->grade_level_id,
+            'room_id' => $request->room_id,
+        ]);
 
         return redirect()->back()->with('success', 'Section updated successfully');
     }

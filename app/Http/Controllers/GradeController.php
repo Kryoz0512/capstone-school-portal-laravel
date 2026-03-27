@@ -15,6 +15,42 @@ use Inertia\Inertia;
 
 class GradeController extends Controller
 {
+    /**
+     * Generate school years from 2018 to current year + 1
+     * Format: 2018-2019, 2019-2020, etc.
+     * Also includes unique school years from database
+     */
+    private function getSchoolYears()
+    {
+        // Get school years from database
+        $dbSchoolYears = Student::select('school_year')
+            ->distinct()
+            ->pluck('school_year')
+            ->toArray();
+
+        // Generate school years from 2018 to current year + 1
+        $currentYear = (int)date('Y');
+        $generatedYears = [];
+        
+        for ($year = 2018; $year <= $currentYear + 1; $year++) {
+            $generatedYears[] = $year . '-' . ($year + 1);
+        }
+
+        // Merge and get unique values
+        $allYears = array_unique(array_merge($generatedYears, $dbSchoolYears));
+        
+        // Sort in descending order
+        rsort($allYears);
+
+        // Format for select dropdown
+        return collect($allYears)->map(function ($year) {
+            return [
+                'value' => $year,
+                'label' => $year,
+            ];
+        });
+    }
+
     public function index(Request $request)
     {
         $user = Auth::user();
@@ -121,16 +157,7 @@ class GradeController extends Controller
         }
 
         // Get available school years
-        $schoolYears = Student::select('school_year')
-            ->distinct()
-            ->orderBy('school_year', 'desc')
-            ->pluck('school_year')
-            ->map(function ($year) {
-                return [
-                    'value' => $year,
-                    'label' => $year,
-                ];
-            });
+        $schoolYears = $this->getSchoolYears();
 
         return Inertia::render('teacher/grade-sheets/page', [
             'gradeLevels' => $gradeLevels,
@@ -254,4 +281,106 @@ class GradeController extends Controller
 
         return back()->with('success', 'Grade updated successfully.');
     }
+
+    public function adminFinalReports(Request $request)
+    {
+        $user = Auth::user();
+
+        // Get filter parameters
+        $schoolYear = $request->input('school_year');
+        $gradeLevelId = $request->input('grade_level_id');
+        $sectionId = $request->input('section_id');
+
+        // Get current school year if not provided
+        if (!$schoolYear) {
+            $schoolYear = Student::orderBy('school_year', 'desc')
+                ->value('school_year') ?? date('Y') . '-' . (date('Y') + 1);
+        }
+
+        // Get available school years
+        $schoolYears = $this->getSchoolYears();
+
+        // Get grade levels
+        $gradeLevels = GradeLevel::all()->map(function ($level) {
+            return [
+                'id' => $level->id,
+                'name' => $level->name,
+            ];
+        });
+
+        // Get sections based on selected grade level
+        $sections = ClassSection::when($gradeLevelId, function($query) use ($gradeLevelId) {
+            $query->where('grade_level_id', $gradeLevelId);
+        })
+        ->with('gradeLevel')
+        ->get()
+        ->map(function ($section) {
+            return [
+                'id' => $section->id,
+                'name' => $section->section_name,
+                'grade_level_id' => $section->grade_level_id,
+                'grade_level_name' => $section->gradeLevel->name,
+            ];
+        });
+
+        // Get students with their final grades
+        $students = [];
+        if ($sectionId && $schoolYear) {
+            $studentRecords = Student::where('current_section_id', $sectionId)
+                ->where('school_year', $schoolYear)
+                ->with(['gradeLevel', 'section'])
+                ->get();
+
+            // Fetch all grades for these students
+            $studentIds = $studentRecords->pluck('id');
+            $gradeRecords = Grade::whereIn('student_id', $studentIds)
+                ->where('class_section_id', $sectionId)
+                ->where('school_year', $schoolYear)
+                ->get()
+                ->groupBy('student_id');
+
+            $students = $studentRecords->map(function ($student) use ($gradeRecords) {
+                $studentGrades = $gradeRecords->get($student->id, collect());
+
+                // Calculate overall final average from all subjects
+                $finalGrades = $studentGrades->pluck('final_grade')->filter(function($grade) {
+                    return $grade !== null;
+                });
+
+                $overallAverage = null;
+                $overallRemarks = null;
+
+                if ($finalGrades->count() > 0) {
+                    $overallAverage = round($finalGrades->avg(), 2);
+                    $overallRemarks = $overallAverage >= 75 ? 'Passed' : 'Failed';
+                }
+
+                return [
+                    'id' => $student->id,
+                    'lrn' => $student->lrn,
+                    'studentName' => trim($student->first_name . ' ' . $student->last_name),
+                    'gradeLevel' => $student->gradeLevel ? $student->gradeLevel->name : 'N/A',
+                    'section' => $student->section ? $student->section->section_name : 'N/A',
+                    'finalAverage' => $overallAverage,
+                    'remarks' => $overallRemarks,
+                ];
+            })->values();
+        }
+
+        return Inertia::render('admin/records/final-reports/page', [
+            'schoolYears' => $schoolYears,
+            'gradeLevels' => $gradeLevels,
+            'sections' => $sections,
+            'students' => $students,
+            'filters' => [
+                'school_year' => $schoolYear,
+                'grade_level_id' => $gradeLevelId,
+                'section_id' => $sectionId,
+            ],
+            'auth' => [
+                'user' => $user
+            ]
+        ]);
+    }
+
 }

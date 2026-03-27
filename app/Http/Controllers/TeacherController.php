@@ -108,10 +108,10 @@ class TeacherController extends Controller
             'password' => 'required|string|min:8',
         ]);
 
-        // Generate email in format: SNHS-lastname.firstname@snhs.edu.ph
-        $firstName = strtolower(str_replace(' ', '', $validated['firstName']));
-        $lastName = strtolower(str_replace(' ', '', $validated['lastName']));
-        $email = 'snhs-' . $lastName . '.' . $firstName . '@snhs.edu.ph';
+        // Generate email in format: SNHS-LASTNAME-FIRSTNAME
+        $firstName = strtoupper(str_replace(' ', '', $validated['firstName']));
+        $lastName = strtoupper(str_replace(' ', '', $validated['lastName']));
+        $email = 'SNHS-' . $lastName . '-' . $firstName;
 
         // Check if email already exists
         if (User::where('email', $email)->exists()) {
@@ -164,10 +164,10 @@ class TeacherController extends Controller
             'password' => 'nullable|string|min:8',
         ]);
 
-        // Generate email in format: SNHS-lastname.firstname@snhs.edu.ph
-        $firstName = strtolower(str_replace(' ', '', $validated['firstName']));
-        $lastName = strtolower(str_replace(' ', '', $validated['lastName']));
-        $email = 'snhs-' . $lastName . '.' . $firstName . '@snhs.edu.ph';
+        // Generate email in format: SNHS-LASTNAME-FIRSTNAME
+        $firstName = strtoupper(str_replace(' ', '', $validated['firstName']));
+        $lastName = strtoupper(str_replace(' ', '', $validated['lastName']));
+        $email = 'SNHS-' . $lastName . '-' . $firstName;
 
         // Check if email already exists for another user
         if (User::where('email', $email)->where('id', '!=', $teacher->user_id)->exists()) {
@@ -454,11 +454,33 @@ class TeacherController extends Controller
 
     private function getSchoolYears()
     {
-        return Student::select('school_year')
+        // Get school years from database
+        $dbSchoolYears = Student::select('school_year')
             ->distinct()
-            ->orderBy('school_year', 'desc')
             ->pluck('school_year')
-            ->map(fn($year) => ['value' => $year, 'label' => $year]);
+            ->toArray();
+
+        // Generate school years from 2018 to current year + 1
+        $currentYear = (int)date('Y');
+        $generatedYears = [];
+        
+        for ($year = 2018; $year <= $currentYear + 1; $year++) {
+            $generatedYears[] = $year . '-' . ($year + 1);
+        }
+
+        // Merge and get unique values
+        $allYears = array_unique(array_merge($generatedYears, $dbSchoolYears));
+        
+        // Sort in descending order
+        rsort($allYears);
+
+        // Format for select dropdown
+        return collect($allYears)->map(function ($year) {
+            return [
+                'value' => $year,
+                'label' => $year,
+            ];
+        });
     }
 
     private function getFinalReportStudents($sectionId, $subjectId, $schoolYear, Teacher $teacher)

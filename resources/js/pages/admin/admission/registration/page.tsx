@@ -90,7 +90,6 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                     <SelectContent>
                                         <SelectItem value="new">New Student</SelectItem>
                                         <SelectItem value="transferee">Transferee</SelectItem>
-                                        <SelectItem value="returning">Returning Student</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 {data.student_status === 'new' && (

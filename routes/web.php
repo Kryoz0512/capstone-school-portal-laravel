@@ -12,6 +12,7 @@ use App\Http\Controllers\AdviserSectionController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\AccreditationController;
 use App\Http\Controllers\ProfilePictureController;
+use App\Http\Controllers\GradeController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
@@ -72,20 +73,28 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('admin/enrollment/rooms', [RoomController::class, 'store'])->name('admin.enrollment.rooms.store');
     Route::put('admin/enrollment/rooms/{id}', [RoomController::class, 'update'])->name('admin.enrollment.rooms.update');
     Route::delete('admin/enrollment/rooms/{id}', [RoomController::class, 'destroy'])->name('admin.enrollment.rooms.destroy');
+    Route::post('admin/enrollment/rooms/check-room-number', [RoomController::class, 'checkRoomNumber'])->name('admin.enrollment.rooms.check-room-number');
     
     Route::get('admin/enrollment/room-schedule', [App\Http\Controllers\ScheduleController::class, 'roomSchedule'])->name('admin.enrollment.room-schedule');
+    Route::get('admin/enrollment/room-schedule/{room}', [App\Http\Controllers\ScheduleController::class, 'showRoomSchedule'])->name('admin.enrollment.room-schedule.show');
     
     Route::get('admin/enrollment/class-sections', [ClassSectionController::class, 'index'])->name('admin.enrollment.class-sections');
     Route::post('admin/enrollment/class-sections', [ClassSectionController::class, 'store'])->name('admin.enrollment.class-sections.store');
     Route::put('admin/enrollment/class-sections/{classSection}', [ClassSectionController::class, 'update'])->name('admin.enrollment.class-sections.update');
     Route::delete('admin/enrollment/class-sections/{classSection}', [ClassSectionController::class, 'destroy'])->name('admin.enrollment.class-sections.destroy');
+    Route::post('admin/enrollment/class-sections/check-section-name', [ClassSectionController::class, 'checkSectionName'])->name('admin.enrollment.class-sections.check-section-name');
+    Route::post('admin/enrollment/class-sections/check-room', [ClassSectionController::class, 'checkRoom'])->name('admin.enrollment.class-sections.check-room');
     
     Route::get('admin/enrollment/faculty-subjects', [TeacherSubjectController::class, 'index'])->name('admin.enrollment.faculty-subjects');
+    Route::get('admin/enrollment/teacher-subjects/{teacherId}', [TeacherSubjectController::class, 'getTeacherSubjects'])->name('admin.enrollment.teacher-subjects.get');
     Route::post('admin/enrollment/teacher-subjects', [TeacherSubjectController::class, 'store'])->name('admin.enrollment.teacher-subjects.store');
     Route::put('admin/enrollment/teacher-subjects/{id}', [TeacherSubjectController::class, 'update'])->name('admin.enrollment.teacher-subjects.update');
     Route::delete('admin/enrollment/teacher-subjects/{id}', [TeacherSubjectController::class, 'destroy'])->name('admin.enrollment.teacher-subjects.destroy');
     
     Route::get('admin/enrollment/load-scheduling', [ScheduleController::class, 'index'])->name('admin.enrollment.load-scheduling');
+    Route::get('admin/enrollment/load-scheduling/{teacher}', [ScheduleController::class, 'show'])->name('admin.enrollment.load-scheduling.show');
+    Route::get('admin/enrollment/load-scheduling/{teacher}/create', [ScheduleController::class, 'create'])->name('admin.enrollment.load-scheduling.create');
+    Route::get('admin/enrollment/schedules/{schedule}/edit', [ScheduleController::class, 'edit'])->name('admin.enrollment.schedules.edit');
     Route::post('admin/enrollment/schedules', [ScheduleController::class, 'store'])->name('admin.enrollment.schedules.store');
     Route::put('admin/enrollment/schedules/{schedule}', [ScheduleController::class, 'update'])->name('admin.enrollment.schedules.update');
     Route::delete('admin/enrollment/schedules/{schedule}', [ScheduleController::class, 'destroy'])->name('admin.enrollment.schedules.destroy');
@@ -137,9 +146,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('admin/registrar/subjects/{subject}', [SubjectController::class, 'destroy'])->name('admin.registrar.subjects.destroy');
     
     // Admin Records routes
-    Route::get('admin/records/final-reports', function () {
-        return \Inertia\Inertia::render('admin/records/final-reports/page');
-    })->name('admin.records.final-reports');
+    Route::get('admin/records/final-reports', [GradeController::class, 'adminFinalReports'])->name('admin.records.final-reports');
     
     Route::get('admin/records/transcript-of-records', function () {
         return \Inertia\Inertia::render('admin/records/transcript-of-records/page');

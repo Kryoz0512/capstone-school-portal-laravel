@@ -14,12 +14,18 @@ class ClassSection extends Model
     protected $fillable = [
         'grade_level_id',
         'section_name',
+        'room_id',
     ];
 
     // Relationships
     public function gradeLevel()
     {
         return $this->belongsTo(GradeLevel::class, 'grade_level_id');
+    }
+
+    public function room()
+    {
+        return $this->belongsTo(Room::class, 'room_id');
     }
 
     public function adviserSections()

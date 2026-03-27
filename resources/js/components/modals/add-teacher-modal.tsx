@@ -34,9 +34,9 @@ export default function AddTeacherModal({ open, onOpenChange, subjects = [] }: A
     // Auto-generate email when first or last name changes
     useEffect(() => {
         if (data.firstName && data.lastName) {
-            const firstName = data.firstName.trim().replace(/\s+/g, '').toLowerCase()
-            const lastName = data.lastName.trim().replace(/\s+/g, '').toLowerCase()
-            const generatedEmail = `snhs-${lastName}.${firstName}@snhs.edu.ph`
+            const firstName = data.firstName.trim().replace(/\s+/g, '').toUpperCase()
+            const lastName = data.lastName.trim().replace(/\s+/g, '').toUpperCase()
+            const generatedEmail = `SNHS-${lastName}-${firstName}`
             setData('email', generatedEmail)
         } else {
             setData('email', '')
@@ -151,7 +151,7 @@ export default function AddTeacherModal({ open, onOpenChange, subjects = [] }: A
                             className="bg-gray-50"
                             placeholder="snhs-lastname.firstname@snhs.edu.ph"
                         />
-                        <p className="text-xs text-gray-500 mt-1">Auto-generated as SNHS-lastname.firstname@snhs.edu.ph</p>
+                        <p className="text-xs text-gray-500 mt-1">Auto-generated as SNHS-LASTNAME-FIRSTNAME</p>
                         {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
                     </div>
 

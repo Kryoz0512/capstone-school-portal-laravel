@@ -31,9 +31,9 @@ export default function AddAdminModal({ open, onOpenChange }: AddAdminModalProps
 
     useEffect(() => {
         if (data.first_name && data.last_name) {
-            const firstName = data.first_name.toLowerCase().trim().replace(/\s+/g, '')
-            const lastName = data.last_name.toLowerCase().trim().replace(/\s+/g, '')
-            const email = `snhs-${lastName}.${firstName}@snhs.edu.ph`
+            const firstName = data.first_name.toUpperCase().trim().replace(/\s+/g, '')
+            const lastName = data.last_name.toUpperCase().trim().replace(/\s+/g, '')
+            const email = `SNHS-${lastName}-${firstName}`
             setGeneratedEmail(email)
         } else {
             setGeneratedEmail('')
@@ -112,9 +112,9 @@ export default function AddAdminModal({ open, onOpenChange }: AddAdminModalProps
                             value={generatedEmail}
                             readOnly
                             className="bg-gray-50"
-                            placeholder="snhs-lastname.firstname@snhs.edu.ph"
+                            placeholder="SNHS-LASTNAME-FIRSTNAME"
                         />
-                        <p className="text-xs text-gray-500 mt-1">Auto-generated as SNHS-lastname.firstname@snhs.edu.ph</p>
+                        <p className="text-xs text-gray-500 mt-1">Auto-generated as SNHS-LASTNAME-FIRSTNAME</p>
                     </div>
 
                     <div>

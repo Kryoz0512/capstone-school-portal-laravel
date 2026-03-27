@@ -1,8 +1,10 @@
 import { Head } from '@inertiajs/react'
 import AdminLayout from '@/layouts/admin-layout'
-import { Pencil } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Pencil, ChevronLeft, ChevronRight } from 'lucide-react'
 import EditStudentAssignmentModal from '@/components/modals/edit-student-assignment-modal'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 
 type Student = {
     id: number
@@ -44,6 +46,19 @@ type Props = {
 export default function StudentNotEnrolled({ auth, students = [], gradeLevels = [], sections = [] }: Props) {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
+    const [currentPage, setCurrentPage] = useState(1)
+    const [itemsPerPage, setItemsPerPage] = useState(10)
+
+    // Pagination
+    const totalPages = Math.ceil(students.length / itemsPerPage)
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    const paginatedStudents = students.slice(startIndex, endIndex)
+
+    // Reset to page 1 when itemsPerPage changes
+    useMemo(() => {
+        setCurrentPage(1)
+    }, [itemsPerPage])
 
     const totalStudents = students.length
     const pendingAssignment = students.filter(s => !s.gradeLevel || !s.section).length
@@ -101,7 +116,7 @@ export default function StudentNotEnrolled({ auth, students = [], gradeLevels = 
 
                     <div className="p-4 border-b border-gray-200">
                         <p className="text-sm text-gray-600">
-                            Showing 1 to {students.length} of {students.length} entries
+                            Showing {students.length > 0 ? startIndex + 1 : 0} to {Math.min(endIndex, students.length)} of {students.length} entries
                         </p>
                     </div>
 
@@ -119,8 +134,8 @@ export default function StudentNotEnrolled({ auth, students = [], gradeLevels = 
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                {students.length > 0 ? (
-                                    students.map((student) => (
+                                {paginatedStudents.length > 0 ? (
+                                    paginatedStudents.map((student) => (
                                         <tr key={student.id} className="hover:bg-gray-50">
                                             <td className="px-6 py-4 text-sm text-gray-900">{student.studentName}</td>
                                             <td className="px-6 py-4 text-sm text-gray-900">{student.lrn}</td>
@@ -148,6 +163,82 @@ export default function StudentNotEnrolled({ auth, students = [], gradeLevels = 
                             </tbody>
                         </table>
                     </div>
+
+                    {/* Pagination */}
+                    {students.length > 0 && (
+                        <div className="p-4 border-t border-gray-200 flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm text-gray-600">Show</span>
+                                <Select 
+                                    value={itemsPerPage.toString()} 
+                                    onValueChange={(value) => setItemsPerPage(Number(value))}
+                                >
+                                    <SelectTrigger className="w-20">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="10">10</SelectItem>
+                                        <SelectItem value="25">25</SelectItem>
+                                        <SelectItem value="50">50</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <span className="text-sm text-gray-600">entries</span>
+                            </div>
+                            <p className="text-sm text-gray-600">
+                                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, students.length)} of {students.length} entries
+                            </p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                disabled={currentPage === 1}
+                            >
+                                <ChevronLeft className="w-4 h-4" />
+                            </Button>
+                            
+                            <div className="flex items-center gap-1">
+                                {Array.from({ length: totalPages || 1 }, (_, i) => i + 1).map((page) => {
+                                    if (
+                                        page === 1 ||
+                                        page === totalPages ||
+                                        (page >= currentPage - 1 && page <= currentPage + 1)
+                                    ) {
+                                        return (
+                                            <Button
+                                                key={page}
+                                                variant={currentPage === page ? "default" : "outline"}
+                                                size="sm"
+                                                onClick={() => setCurrentPage(page)}
+                                                className={currentPage === page ? "bg-blue-600 hover:bg-blue-700" : ""}
+                                            >
+                                                {page}
+                                            </Button>
+                                        )
+                                    } else if (
+                                        page === currentPage - 2 ||
+                                        page === currentPage + 2
+                                    ) {
+                                        return <span key={page} className="px-2">...</span>
+                                    }
+                                    return null
+                                })}
+                            </div>
+
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={currentPage === totalPages}
+                            >
+                                <ChevronRight className="w-4 h-4" />
+                            </Button>
+                        </div>
+                    </div>
+                    )}
                 </div>
             </div>
         </AdminLayout>

@@ -102,12 +102,12 @@ export default function Login({ status, slides = [] }: Props) {
                                     htmlFor="email"
                                     className="block text-sm font-medium text-gray-700 mb-2"
                                 >
-                                    Email
+                                    Username
                                 </label>
                                 <Input
                                     id="email"
-                                    type="email"
-                                    placeholder="you@school.edu"
+                                    type="text"
+                                    placeholder="Username"
                                     value={data.email}
                                     onChange={(e) => setData('email', e.target.value)}
                                     required

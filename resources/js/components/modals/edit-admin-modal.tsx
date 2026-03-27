@@ -24,7 +24,8 @@ export default function EditAdminModal({ open, onOpenChange, admin }: EditAdminM
     const { data, setData, put, processing, errors, reset } = useForm({
         first_name: '',
         last_name: '',
-        position: ''
+        position: '',
+        password: ''
     })
 
     const [generatedEmail, setGeneratedEmail] = useState('')
@@ -159,6 +160,22 @@ export default function EditAdminModal({ open, onOpenChange, admin }: EditAdminM
                         />
                         {errors.position && (
                             <p className="text-xs text-red-500 mt-1">{errors.position}</p>
+                        )}
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            New Password <span className="text-gray-500">(Optional - leave blank to keep current password)</span>
+                        </label>
+                        <Input
+                            type="password"
+                            value={data.password}
+                            onChange={(e) => setData('password', e.target.value)}
+                            placeholder="Enter new password (min. 8 characters)"
+                            minLength={8}
+                        />
+                        {errors.password && (
+                            <p className="text-xs text-red-500 mt-1">{errors.password}</p>
                         )}
                     </div>
 

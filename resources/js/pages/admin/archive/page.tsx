@@ -88,6 +88,8 @@ export default function ArchivePage({ auth, archives = [], currentType = 'all' }
                 return 'bg-green-100 text-green-800'
             case 'Subject':
                 return 'bg-orange-100 text-orange-800'
+            case 'Room':
+                return 'bg-cyan-100 text-cyan-800'
             default:
                 return 'bg-gray-100 text-gray-800'
         }
@@ -129,6 +131,7 @@ export default function ArchivePage({ auth, archives = [], currentType = 'all' }
                                 <SelectItem value="App\Models\Admin">Admins</SelectItem>
                                 <SelectItem value="App\Models\Student">Students</SelectItem>
                                 <SelectItem value="App\Models\Subject">Subjects</SelectItem>
+                                <SelectItem value="App\Models\Room">Rooms</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>

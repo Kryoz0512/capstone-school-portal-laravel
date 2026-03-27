@@ -3,19 +3,14 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useForm } from '@inertiajs/react'
-import { store } from '@/routes/admin/enrollment/schedules'
-import { useState, useEffect } from 'react'
-
-type GradeLevel = {
-    id: number
-    name: string
-}
+import { useEffect, useState, useMemo } from 'react'
 
 type ClassSection = {
     id: number
     name: string
     grade_level: string
     grade_level_id: number
+    room_id: number | null
 }
 
 type Subject = {
@@ -24,23 +19,12 @@ type Subject = {
     grade_level_id: number
 }
 
-type Teacher = {
+type Room = {
     id: number
     name: string
 }
 
-type TeacherSubject = {
-    subject_id: number
-    subject_name: string
-    grade_level_id: number
-}
-
-type TeacherSubjectData = {
-    grade_levels: number[]
-    subjects: TeacherSubject[]
-}
-
-type Room = {
+type GradeLevel = {
     id: number
     name: string
 }
@@ -48,304 +32,264 @@ type Room = {
 type AddScheduleModalProps = {
     open: boolean
     onOpenChange: (open: boolean) => void
-    gradeLevels: GradeLevel[]
+    teacherId: number
     classSections: ClassSection[]
+    gradeLevels: GradeLevel[]
     subjects: Subject[]
-    teachers: Teacher[]
-    teacherSubjects: Record<number, TeacherSubjectData>
     rooms: Room[]
 }
 
 export default function AddScheduleModal({ 
     open, 
     onOpenChange, 
-    gradeLevels,
-    classSections, 
-    subjects, 
-    teachers,
-    teacherSubjects,
-    rooms 
+    teacherId,
+    classSections = [], 
+    gradeLevels = [],
+    subjects = [], 
+    rooms = [] 
 }: AddScheduleModalProps) {
-    const [selectedGradeLevel, setSelectedGradeLevel] = useState('')
-    const [filteredSections, setFilteredSections] = useState<ClassSection[]>([])
-    const [filteredTeachers, setFilteredTeachers] = useState<Teacher[]>([])
-    const [teacherAssignedSubjects, setTeacherAssignedSubjects] = useState<TeacherSubject[]>([])
-
     const { data, setData, post, processing, errors, reset } = useForm({
-        class_section_id: '',
-        subject_id: '',
-        teacher_id: '',
-        room_id: '',
-        day_of_week: '',
+        teacher_id: teacherId.toString(),
+        grade_level_id: undefined,
+        class_section_id: undefined,
+        subject_id: undefined,
+        room_id: undefined,
+        day_of_week: undefined,
         start_time: '',
-        end_time: ''
+        end_time: '',
     })
 
-    // Filter sections and teachers when grade level changes
-    useEffect(() => {
-        if (selectedGradeLevel) {
-            const gradeId = parseInt(selectedGradeLevel)
-            
-            setFilteredSections(classSections.filter(s => s.grade_level_id === gradeId))
-            
-            // Filter teachers who have assignments for this grade level
-            const teachersForGrade = teachers.filter(t => {
-                const teacherData = teacherSubjects[t.id]
-                return teacherData && teacherData.grade_levels.includes(gradeId)
-            })
-            setFilteredTeachers(teachersForGrade)
-            
-            // Reset dependent fields
-            setData(prev => ({ 
-                ...prev, 
-                class_section_id: '', 
-                teacher_id: '',
-                subject_id: ''
-            }))
-            setTeacherAssignedSubjects([])
-        } else {
-            setFilteredSections([])
-            setFilteredTeachers([])
-            setTeacherAssignedSubjects([])
-        }
-    }, [selectedGradeLevel, classSections, teachers, gradeLevels, teacherSubjects])
+    const [selectedGradeLevel, setSelectedGradeLevel] = useState('')
 
-    // Update assigned subjects when teacher changes
+    // Filter sections by selected grade level
+    const filteredSections = useMemo(() => {
+        if (!selectedGradeLevel) return []
+        return classSections.filter(s => s.grade_level_id.toString() === selectedGradeLevel)
+    }, [classSections, selectedGradeLevel])
+
+    // Filter subjects by selected grade level
+    const filteredSubjects = useMemo(() => {
+        if (!selectedGradeLevel) return []
+        return subjects.filter(s => s.grade_level_id.toString() === selectedGradeLevel)
+    }, [subjects, selectedGradeLevel])
+
+    // Auto-select room when section is selected
     useEffect(() => {
-        if (data.teacher_id) {
-            const teacherId = parseInt(data.teacher_id)
-            const teacherData = teacherSubjects[teacherId]
-            
-            if (teacherData) {
-                // Filter subjects for the selected grade level
-                const gradeId = parseInt(selectedGradeLevel)
-                const subjectsForGrade = teacherData.subjects.filter(s => s.grade_level_id === gradeId)
-                setTeacherAssignedSubjects(subjectsForGrade)
-            } else {
-                setTeacherAssignedSubjects([])
+        if (data.class_section_id) {
+            const selectedSection = classSections.find(s => s.id.toString() === data.class_section_id)
+            if (selectedSection && selectedSection.room_id) {
+                setData('room_id', selectedSection.room_id.toString())
             }
-            
-            // Reset subject when teacher changes
-            setData(prev => ({ ...prev, subject_id: '' }))
-        } else {
-            setTeacherAssignedSubjects([])
         }
-    }, [data.teacher_id, teacherSubjects, selectedGradeLevel])
+    }, [data.class_section_id])
+
+    useEffect(() => {
+        if (open) {
+            reset()
+            setSelectedGradeLevel('')
+            setData('teacher_id', teacherId.toString())
+        }
+    }, [open])
+
+    const handleGradeLevelChange = (value: string) => {
+        setSelectedGradeLevel(value)
+        setData({
+            ...data,
+            grade_level_id: value,
+            class_section_id: undefined,
+            subject_id: undefined,
+            room_id: undefined,
+        })
+    }
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
-        post(store.url(), {
+        post('/admin/enrollment/schedules', {
             onSuccess: () => {
                 onOpenChange(false)
                 reset()
-                setSelectedGradeLevel('')
             }
         })
     }
 
-    const handleClose = () => {
-        onOpenChange(false)
-        reset()
-        setSelectedGradeLevel('')
-    }
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 
     return (
-        <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle>Add New Schedule</DialogTitle>
-                    <DialogDescription>
-                        Create a new class schedule with teacher and room assignment
+                    <DialogTitle className="text-xl font-semibold">Add Schedule</DialogTitle>
+                    <DialogDescription className="text-gray-600">
+                        Create a new class schedule for this teacher
                     </DialogDescription>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Grade Level <span className="text-red-500">*</span>
-                        </label>
-                        <Select
-                            value={selectedGradeLevel}
-                            onValueChange={setSelectedGradeLevel}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select grade level first" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {gradeLevels.map((grade) => (
-                                    <SelectItem key={grade.id} value={grade.id.toString()}>
-                                        {grade.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <p className="text-xs text-gray-500 mt-1">Select grade level to filter teachers and sections</p>
-                    </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Teacher <span className="text-red-500">*</span>
-                        </label>
-                        <Select
-                            value={data.teacher_id}
-                            onValueChange={(value) => setData('teacher_id', value)}
-                            disabled={!selectedGradeLevel}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder={selectedGradeLevel ? "Select teacher" : "Select grade first"} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {filteredTeachers.length > 0 ? (
-                                    filteredTeachers.map((teacher) => (
-                                        <SelectItem key={teacher.id} value={teacher.id.toString()}>
-                                            {teacher.name}
-                                        </SelectItem>
-                                    ))
-                                ) : (
-                                    <SelectItem value="no-teachers" disabled>
-                                        No teachers available
-                                    </SelectItem>
-                                )}
-                            </SelectContent>
-                        </Select>
-                        {errors.teacher_id && <p className="text-xs text-red-500 mt-1">{errors.teacher_id}</p>}
-                    </div>
+                <form onSubmit={handleSubmit} className="space-y-6 mt-2">
+                    {/* Grade Level & Section */}
+                    <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+                        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Class Information</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Grade Level <span className="text-red-500">*</span>
+                                </label>
+                                <Select value={selectedGradeLevel} onValueChange={handleGradeLevelChange}>
+                                    <SelectTrigger className="bg-white">
+                                        <SelectValue placeholder="Select grade level" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {gradeLevels.map((level) => (
+                                            <SelectItem key={level.id} value={level.id.toString()}>
+                                                {level.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {errors.grade_level_id && <p className="text-xs text-red-500 mt-1">{errors.grade_level_id}</p>}
+                            </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Subject <span className="text-red-500">*</span>
-                        </label>
-                        <Select
-                            value={data.subject_id}
-                            onValueChange={(value) => setData('subject_id', value)}
-                            disabled={!data.teacher_id}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder={data.teacher_id ? "Select subject" : "Select teacher first"} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {teacherAssignedSubjects.length > 0 ? (
-                                    teacherAssignedSubjects.map((subject) => (
-                                        <SelectItem key={subject.subject_id} value={subject.subject_id.toString()}>
-                                            {subject.subject_name}
-                                        </SelectItem>
-                                    ))
-                                ) : (
-                                    <SelectItem value="no-subjects" disabled>
-                                        No assigned subjects
-                                    </SelectItem>
-                                )}
-                            </SelectContent>
-                        </Select>
-                        {data.teacher_id && teacherAssignedSubjects.length > 0 && (
-                            <p className="text-xs text-green-600 mt-1">
-                                ✓ Showing subjects assigned to this teacher
-                            </p>
-                        )}
-                        {errors.subject_id && <p className="text-xs text-red-500 mt-1">{errors.subject_id}</p>}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Section <span className="text-red-500">*</span>
-                            </label>
-                            <Select
-                                value={data.class_section_id}
-                                onValueChange={(value) => setData('class_section_id', value)}
-                                disabled={!selectedGradeLevel}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder={selectedGradeLevel ? "Select section" : "Select grade first"} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {filteredSections.map((section) => (
-                                        <SelectItem key={section.id} value={section.id.toString()}>
-                                            {section.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {errors.class_section_id && <p className="text-xs text-red-500 mt-1">{errors.class_section_id}</p>}
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Room
-                            </label>
-                            <Select
-                                value={data.room_id}
-                                onValueChange={(value) => setData('room_id', value)}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select room" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {rooms.map((room) => (
-                                        <SelectItem key={room.id} value={room.id.toString()}>
-                                            {room.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {errors.room_id && <p className="text-xs text-red-500 mt-1">{errors.room_id}</p>}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Section <span className="text-red-500">*</span>
+                                </label>
+                                <Select
+                                    value={data.class_section_id?.toString()}
+                                    onValueChange={(value) => setData('class_section_id', value)}
+                                    disabled={!selectedGradeLevel}
+                                >
+                                    <SelectTrigger className="bg-white">
+                                        <SelectValue placeholder={selectedGradeLevel ? "Select section" : "Select grade level first"} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {filteredSections.map((section) => (
+                                            <SelectItem key={section.id} value={section.id.toString()}>
+                                                {section.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {errors.class_section_id && <p className="text-xs text-red-500 mt-1">{errors.class_section_id}</p>}
+                            </div>
                         </div>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Day of Week <span className="text-red-500">*</span>
-                        </label>
-                        <Select
-                            value={data.day_of_week}
-                            onValueChange={(value) => setData('day_of_week', value)}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select day" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="Monday">Monday</SelectItem>
-                                <SelectItem value="Tuesday">Tuesday</SelectItem>
-                                <SelectItem value="Wednesday">Wednesday</SelectItem>
-                                <SelectItem value="Thursday">Thursday</SelectItem>
-                                <SelectItem value="Friday">Friday</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        {errors.day_of_week && <p className="text-xs text-red-500 mt-1">{errors.day_of_week}</p>}
+                    {/* Subject & Room */}
+                    <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+                        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Subject & Location</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Subject <span className="text-red-500">*</span>
+                                </label>
+                                <Select
+                                    value={data.subject_id?.toString()}
+                                    onValueChange={(value) => setData('subject_id', value)}
+                                    disabled={!selectedGradeLevel}
+                                >
+                                    <SelectTrigger className="bg-white">
+                                        <SelectValue placeholder={selectedGradeLevel ? "Select subject" : "Select grade level first"} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {filteredSubjects.map((subject) => (
+                                            <SelectItem key={subject.id} value={subject.id.toString()}>
+                                                {subject.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {errors.subject_id && <p className="text-xs text-red-500 mt-1">{errors.subject_id}</p>}
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Room <span className="text-red-500">*</span>
+                                </label>
+                                <Select
+                                    value={data.room_id?.toString()}
+                                    onValueChange={(value) => setData('room_id', value)}
+                                    disabled={true}
+                                >
+                                    <SelectTrigger className="bg-gray-100">
+                                        <SelectValue placeholder="Auto-assigned from section" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {rooms.map((room) => (
+                                            <SelectItem key={room.id} value={room.id.toString()}>
+                                                {room.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                    </svg>
+                                    Auto-assigned from selected section
+                                </p>
+                                {errors.room_id && <p className="text-xs text-red-500 mt-1">{errors.room_id}</p>}
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Start Time <span className="text-red-500">*</span>
-                            </label>
-                            <Input
-                                type="time"
-                                required
-                                value={data.start_time}
-                                onChange={(e) => setData('start_time', e.target.value)}
-                            />
-                            {errors.start_time && <p className="text-xs text-red-500 mt-1">{errors.start_time}</p>}
-                        </div>
+                    {/* Schedule Time */}
+                    <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+                        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Schedule Time</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Day <span className="text-red-500">*</span>
+                                </label>
+                                <Select
+                                    value={data.day_of_week?.toString()}
+                                    onValueChange={(value) => setData('day_of_week', value)}
+                                >
+                                    <SelectTrigger className="bg-white">
+                                        <SelectValue placeholder="Select day" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {days.map((day) => (
+                                            <SelectItem key={day} value={day}>
+                                                {day}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {errors.day_of_week && <p className="text-xs text-red-500 mt-1">{errors.day_of_week}</p>}
+                            </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                End Time <span className="text-red-500">*</span>
-                            </label>
-                            <Input
-                                type="time"
-                                required
-                                value={data.end_time}
-                                onChange={(e) => setData('end_time', e.target.value)}
-                            />
-                            {errors.end_time && <p className="text-xs text-red-500 mt-1">{errors.end_time}</p>}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Start Time <span className="text-red-500">*</span>
+                                </label>
+                                <Input
+                                    type="time"
+                                    value={data.start_time}
+                                    onChange={(e) => setData('start_time', e.target.value)}
+                                    className="bg-white"
+                                />
+                                {errors.start_time && <p className="text-xs text-red-500 mt-1">{errors.start_time}</p>}
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    End Time <span className="text-red-500">*</span>
+                                </label>
+                                <Input
+                                    type="time"
+                                    value={data.end_time}
+                                    onChange={(e) => setData('end_time', e.target.value)}
+                                    className="bg-white"
+                                />
+                                {errors.end_time && <p className="text-xs text-red-500 mt-1">{errors.end_time}</p>}
+                            </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-end gap-3 pt-4 border-t">
+                    <div className="flex justify-end gap-3 pt-4 border-t">
                         <Button
                             type="button"
                             variant="outline"
-                            onClick={handleClose}
+                            onClick={() => onOpenChange(false)}
                             disabled={processing}
                         >
                             Cancel
@@ -355,7 +299,7 @@ export default function AddScheduleModal({
                             className="bg-green-600 hover:bg-green-700"
                             disabled={processing}
                         >
-                            {processing ? 'Creating...' : 'Create Schedule'}
+                            {processing ? 'Adding...' : 'Add Schedule'}
                         </Button>
                     </div>
                 </form>

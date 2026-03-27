@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useForm } from '@inertiajs/react'
 import { store, update } from '@/routes/admin/enrollment/adviser-sections'
-import { useEffect } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 
 type Teacher = {
     id: number
@@ -32,20 +32,25 @@ type AssignAdviserModalProps = {
 }
 
 export default function AssignAdviserModal({ open, onOpenChange, section, teachers, sections, schoolYear }: AssignAdviserModalProps) {
-    const { data, setData, post, put, processing, errors, reset, setError, clearErrors } = useForm({
+    const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
         teacher_id: '',
         class_section_id: '',
         school_year: schoolYear
     })
 
+    const [teacherSearch, setTeacherSearch] = useState('')
+    const [isSearchingTeacher, setIsSearchingTeacher] = useState(false)
+
     useEffect(() => {
         if (section) {
             // Editing existing assignment
+            const currentTeacher = teachers.find(t => t.id === section.adviser_id)
             setData({
                 teacher_id: section.adviser_id ? section.adviser_id.toString() : '',
                 class_section_id: section.id.toString(),
                 school_year: schoolYear
             })
+            setTeacherSearch(currentTeacher?.name || '')
         } else {
             // Creating new assignment
             setData({
@@ -53,21 +58,40 @@ export default function AssignAdviserModal({ open, onOpenChange, section, teache
                 class_section_id: '',
                 school_year: schoolYear
             })
+            setTeacherSearch('')
         }
-    }, [section, schoolYear])
+    }, [section, schoolYear, open])
 
-    const handleTeacherChange = (value: string) => {
-        const selectedTeacher = teachers.find(t => t.id.toString() === value)
+    // Filter available teachers (not assigned, or the current adviser being updated)
+    const availableTeachers = useMemo(() => {
+        return teachers.filter(teacher => {
+            // If updating, include the current adviser
+            if (section?.adviser_id === teacher.id) return true
+            // Otherwise, only include unassigned teachers
+            return !teacher.is_assigned
+        })
+    }, [teachers, section])
+
+    // Filter teachers by search term
+    const filteredTeachers = useMemo(() => {
+        if (!isSearchingTeacher) return []
         
-        // Clear any previous errors
-        clearErrors('error')
-        
-        // Check if teacher is already assigned (and not the current adviser being updated)
-        if (selectedTeacher?.is_assigned && selectedTeacher.id !== section?.adviser_id) {
-            setError('error', 'This teacher is already advising another section for the selected school year.')
+        // If no search term, show all available teachers
+        if (!teacherSearch) {
+            return availableTeachers
         }
         
-        setData('teacher_id', value)
+        // Otherwise filter by search term
+        return availableTeachers.filter(teacher =>
+            teacher.name.toLowerCase().includes(teacherSearch.toLowerCase())
+        )
+    }, [availableTeachers, teacherSearch, isSearchingTeacher])
+
+    const handleTeacherSelect = (teacher: Teacher) => {
+        setData('teacher_id', teacher.id.toString())
+        setTeacherSearch(teacher.name)
+        setIsSearchingTeacher(false)
+        clearErrors('teacher_id')
     }
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -172,28 +196,52 @@ export default function AssignAdviserModal({ open, onOpenChange, section, teache
                         />
                     </div>
 
-                    <div>
+                    <div className="relative">
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             Select Adviser <span className="text-red-500">*</span>
                         </label>
-                        <Select
-                            value={data.teacher_id}
-                            onValueChange={handleTeacherChange}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a teacher" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {teachers.map((teacher) => (
-                                    <SelectItem key={teacher.id} value={teacher.id.toString()}>
+                        <Input
+                            value={teacherSearch}
+                            onChange={(e) => {
+                                setTeacherSearch(e.target.value)
+                                setIsSearchingTeacher(true)
+                                if (!e.target.value) {
+                                    setData('teacher_id', '')
+                                }
+                            }}
+                            onFocus={() => setIsSearchingTeacher(true)}
+                            onBlur={() => setTimeout(() => setIsSearchingTeacher(false), 200)}
+                            placeholder="Search for a teacher..."
+                            className="bg-white"
+                        />
+                        
+                        {filteredTeachers.length > 0 && (
+                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-auto">
+                                {filteredTeachers.map((teacher) => (
+                                    <button
+                                        key={teacher.id}
+                                        type="button"
+                                        onClick={() => handleTeacherSelect(teacher)}
+                                        className="w-full text-left px-3 py-2 hover:bg-gray-100 text-sm border-b last:border-b-0"
+                                    >
                                         {teacher.name}
-                                        {teacher.is_assigned && teacher.id !== section?.adviser_id && (
-                                            <span className="text-xs text-orange-600 ml-2">(Already Assigned)</span>
-                                        )}
-                                    </SelectItem>
+                                    </button>
                                 ))}
-                            </SelectContent>
-                        </Select>
+                            </div>
+                        )}
+                        
+                        {isSearchingTeacher && availableTeachers.length === 0 && (
+                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg p-3">
+                                <p className="text-sm text-gray-500 text-center">No available teachers</p>
+                            </div>
+                        )}
+                        
+                        {isSearchingTeacher && teacherSearch && availableTeachers.length > 0 && filteredTeachers.length === 0 && (
+                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg p-3">
+                                <p className="text-sm text-gray-500 text-center">No teachers match your search</p>
+                            </div>
+                        )}
+                        
                         {errors.teacher_id && <p className="text-xs text-red-500 mt-1">{errors.teacher_id}</p>}
                         {errors.error && <p className="text-xs text-red-500 mt-1">{errors.error}</p>}
                     </div>
@@ -213,7 +261,7 @@ export default function AssignAdviserModal({ open, onOpenChange, section, teache
                         <Button
                             type="submit"
                             className="bg-blue-600 hover:bg-blue-700"
-                            disabled={processing || (!section && !data.class_section_id) || !!errors.error}
+                            disabled={processing || (!section && !data.class_section_id) || !data.teacher_id}
                         >
                             {processing ? 'Saving...' : section ? 'Update Adviser' : 'Assign Adviser'}
                         </Button>

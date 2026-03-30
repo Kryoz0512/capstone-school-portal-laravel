@@ -148,12 +148,6 @@ export default function LoadScheduling({ auth, teachers = [] }: Props) {
 
                 {/* Teachers Table */}
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                    <div className="p-4 border-b border-gray-200">
-                        <p className="text-sm text-gray-600">
-                            Showing {paginatedTeachers.length} of {filteredTeachers.length} teachers
-                        </p>
-                    </div>
-
                     {filteredTeachers.length === 0 ? (
                         <div className="p-8 text-center">
                             <p className="text-lg font-medium text-gray-900 mb-2">No Teachers Found</p>
@@ -167,12 +161,12 @@ export default function LoadScheduling({ auth, teachers = [] }: Props) {
                                 <table className="w-full">
                                     <thead className="bg-green-700">
                                         <tr>
-                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white">Employee Number</th>
-                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white">Name</th>
-                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white">Specialization</th>
-                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white">Position</th>
-                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white">Schedules</th>
-                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white">Action</th>
+                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Employee Number</th>
+                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Name</th>
+                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Specialization</th>
+                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Position</th>
+                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Schedules</th>
+                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-200">

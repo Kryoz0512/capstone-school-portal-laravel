@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\GradeLevel;
 use App\Models\Teacher;
 use App\Models\Subject;
 use App\Models\TeacherSubject;
@@ -11,48 +12,43 @@ use Inertia\Inertia;
 
 class TeacherSubjectController extends Controller
 {
-    public function index()
-    {
-        // Get all teachers with their assigned subjects count
-        $teachers = Teacher::all()->map(function ($teacher) {
-            $assignedSubjectsCount = DB::table('tbl_teacher_subjects')
-                ->where('teacher_id', $teacher->id)
-                ->count();
-            
-            return [
-                'id' => $teacher->id,
-                'name' => $teacher->name,
-                'employee_number' => $teacher->employee_number,
-                'subject' => $teacher->subject,
-                'position' => $teacher->position,
-                'assigned_subjects_count' => $assignedSubjectsCount,
-            ];
-        });
 
-        $gradeLevels = \App\Models\GradeLevel::all()->map(function ($gradeLevel) {
-            return [
-                'id' => $gradeLevel->id,
-                'name' => $gradeLevel->name,
-            ];
-        });
-
-        $subjects = Subject::with('gradeLevel')->get()->map(function ($subject) {
-            return [
-                'id' => $subject->id,
-                'code' => $subject->code,
-                'name' => $subject->name,
-                'description' => $subject->description,
-                'grade_level_id' => $subject->grade_level_id,
-                'grade_level' => $subject->gradeLevel ? $subject->gradeLevel->name : null,
-            ];
-        });
-
-        return Inertia::render('admin/enrollment/faculty-subjects/page', [
-            'teachers' => $teachers,
-            'gradeLevels' => $gradeLevels,
-            'subjects' => $subjects,
+public function index()
+{
+    // 1. Use withCount to solve the N+1 problem. 
+    // This gets the count in a single SQL query using a subquery.
+    $teachers = Teacher::withCount('subjects as assigned_subjects_count')
+        ->get()
+        ->map(fn($teacher) => [
+            'id' => $teacher->id,
+            'name' => $teacher->name,
+            'employee_number' => $teacher->employee_number,
+            'subject' => $teacher->subject, // This looks like a string field in your table
+            'position' => $teacher->position,
+            'assigned_subjects_count' => $teacher->assigned_subjects_count,
         ]);
-    }
+
+    // 2. Select only the columns you need for GradeLevels
+    $gradeLevels = GradeLevel::select('id', 'name')->get();
+
+    // 3. Eager load gradeLevel and map subjects efficiently
+    $subjects = Subject::with('gradeLevel:id,name')
+        ->get()
+        ->map(fn($subject) => [
+            'id' => $subject->id,
+            'code' => $subject->code,
+            'name' => $subject->name,
+            'description' => $subject->description,
+            'grade_level_id' => $subject->grade_level_id,
+            'grade_level' => $subject->gradeLevel->name ?? null,
+        ]);
+
+    return Inertia::render('admin/enrollment/faculty-subjects/page', [
+        'teachers' => $teachers,
+        'gradeLevels' => $gradeLevels,
+        'subjects' => $subjects,
+    ]);
+}
 
     public function getTeacherSubjects($teacherId)
     {

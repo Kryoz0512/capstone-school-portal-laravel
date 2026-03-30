@@ -286,21 +286,16 @@ export default function FacultySubjects({ auth, teachers = [], gradeLevels = [],
 
                         {/* Teachers Table */}
                         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
-                            <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-                                <h2 className="text-base font-semibold text-gray-900">Faculty Members</h2>
-                                <p className="text-sm text-gray-500 mt-1">Click on a teacher to view and manage their subject assignments</p>
-                            </div>
-
                             <div className="overflow-x-auto">
                                 <table className="w-full">
-                                    <thead className="bg-gray-50 border-b border-gray-200">
+                                    <thead className="bg-green-700">
                                         <tr>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Employee No.</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Teacher Name</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Specialization</th>
-                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Position</th>
-                                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned Subjects</th>
-                                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Employee No.</th>
+                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Teacher Name</th>
+                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Specialization</th>
+                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Position</th>
+                                            <th className="px-6 py-4 text-center text-sm font-semibold text-white uppercase tracking-wider">Assigned Subjects</th>
+                                            <th className="px-6 py-4 text-center text-sm font-semibold text-white uppercase tracking-wider">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
@@ -498,13 +493,13 @@ export default function FacultySubjects({ auth, teachers = [], gradeLevels = [],
                                 <>
                                     <div className="overflow-x-auto">
                                         <table className="w-full">
-                                            <thead className="bg-gray-50 border-b border-gray-200">
+                                            <thead className="bg-green-700">
                                                 <tr>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject Code</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subject Name</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Grade Level</th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                                                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Subject Code</th>
+                                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Subject Name</th>
+                                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Grade Level</th>
+                                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Description</th>
+                                                    <th className="px-6 py-4 text-center text-sm font-semibold text-white uppercase tracking-wider">Actions</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="bg-white divide-y divide-gray-200">

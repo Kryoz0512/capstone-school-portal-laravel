@@ -2,12 +2,16 @@ import { Head, router } from '@inertiajs/react'
 import AdminLayout from '@/layouts/admin-layout'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
+import { useMemo } from 'react'
 
 type Schedule = {
     id: number
     subject: string
     teacher: string
-    dateTime: string
+    day_of_week: string
+    start_time: string
+    end_time: string
+    time_slot: string
     room: string
 }
 
@@ -36,6 +40,27 @@ export default function StudentScheduleShow({ auth, student, schedules }: Props)
     const handleBack = () => {
         router.visit('/admin/enrollment/student-schedule')
     }
+
+    const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+
+    // Group schedules by time slot and day
+    const scheduleGrid = useMemo(() => {
+        // Get unique time slots
+        const timeSlots = Array.from(new Set(schedules.map(s => s.time_slot))).sort()
+        
+        // Create grid structure
+        const grid: Record<string, Record<string, Schedule | null>> = {}
+        
+        timeSlots.forEach(timeSlot => {
+            grid[timeSlot] = {}
+            daysOfWeek.forEach(day => {
+                const schedule = schedules.find(s => s.time_slot === timeSlot && s.day_of_week === day)
+                grid[timeSlot][day] = schedule || null
+            })
+        })
+        
+        return { timeSlots, grid }
+    }, [schedules])
 
     return (
         <AdminLayout user={auth?.user}>
@@ -90,22 +115,39 @@ export default function StudentScheduleShow({ auth, student, schedules }: Props)
                             <h2 className="text-lg font-semibold text-gray-900">Weekly Schedule</h2>
                         </div>
                         <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead className="bg-gray-100">
+                            <table className="w-full border-collapse">
+                                <thead className="bg-green-700">
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Date & Time</th>
-                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Subject</th>
-                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Teacher</th>
-                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Room</th>
+                                        <th className="px-6 py-4 text-left text-sm font-semibold text-white border-r border-green-600 uppercase tracking-wider">Time</th>
+                                        {daysOfWeek.map(day => (
+                                            <th key={day} className="px-6 py-4 text-center text-sm font-semibold text-white border-r border-green-600 last:border-r-0 uppercase tracking-wider">
+                                                {day}
+                                            </th>
+                                        ))}
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-200">
-                                    {schedules.map((schedule) => (
-                                        <tr key={schedule.id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 text-sm text-gray-900">{schedule.dateTime}</td>
-                                            <td className="px-6 py-4 text-sm text-gray-900">{schedule.subject}</td>
-                                            <td className="px-6 py-4 text-sm text-gray-900">{schedule.teacher}</td>
-                                            <td className="px-6 py-4 text-sm text-gray-900">{schedule.room}</td>
+                                <tbody>
+                                    {scheduleGrid.timeSlots.map((timeSlot, index) => (
+                                        <tr key={timeSlot} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                            <td className="px-6 py-4 text-sm font-medium text-gray-900 border-r border-gray-300 whitespace-nowrap">
+                                                {timeSlot}
+                                            </td>
+                                            {daysOfWeek.map(day => {
+                                                const schedule = scheduleGrid.grid[timeSlot][day]
+                                                return (
+                                                    <td key={day} className="px-6 py-4 text-center text-sm border-r border-gray-300 last:border-r-0">
+                                                        {schedule ? (
+                                                            <div className="space-y-1">
+                                                                <div className="font-semibold text-gray-900">{schedule.subject}</div>
+                                                                <div className="text-xs text-gray-600">{schedule.teacher}</div>
+                                                                <div className="text-xs text-gray-500">Room {schedule.room}</div>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-gray-400">-</span>
+                                                        )}
+                                                    </td>
+                                                )
+                                            })}
                                         </tr>
                                     ))}
                                 </tbody>

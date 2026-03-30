@@ -1,9 +1,11 @@
 import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { useState, useEffect } from 'react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useForm } from '@inertiajs/react'
 import { assignSection } from '@/routes/admin/enrollment/students'
+import { Check, AlertCircle, Users } from 'lucide-react'
 
 type Student = {
     id: number
@@ -26,6 +28,11 @@ type Section = {
     id: number
     name: string
     grade_level_id: number
+    room_number: string
+    capacity: number
+    current_students: number
+    available_slots: number
+    is_full: boolean
 }
 
 type EditStudentAssignmentModalProps = {
@@ -44,7 +51,10 @@ export default function EditStudentAssignmentModal({
     sections = []
 }: EditStudentAssignmentModalProps) {
     const [selectedGradeLevel, setSelectedGradeLevel] = useState('')
-    const [selectedSection, setSelectedSection] = useState('')
+    const [sectionInput, setSectionInput] = useState('')
+    const [showSuggestions, setShowSuggestions] = useState(false)
+    const [selectedSectionId, setSelectedSectionId] = useState<number | null>(null)
+    const inputRef = useRef<HTMLDivElement>(null)
 
     const { data, setData, put, processing, reset } = useForm({
         grade_level_id: '',
@@ -53,6 +63,23 @@ export default function EditStudentAssignmentModal({
 
     // Check if student is a new student (Grade 7 is locked)
     const isNewStudent = student?.studentStatus === 'new'
+
+    // Close suggestions when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (inputRef.current && !inputRef.current.contains(event.target as Node)) {
+                setShowSuggestions(false)
+            }
+        }
+
+        if (showSuggestions) {
+            document.addEventListener('mousedown', handleClickOutside)
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside)
+        }
+    }, [showSuggestions])
 
     // Reset form when modal opens with new student
     useEffect(() => {
@@ -66,18 +93,35 @@ export default function EditStudentAssignmentModal({
                 setSelectedGradeLevel('')
                 setData('grade_level_id', '')
             }
-            setSelectedSection('')
+            setSectionInput('')
+            setSelectedSectionId(null)
             setData('section_id', '')
         }
     }, [student, open])
 
     // Filter sections based on selected grade level
-    const filteredSections = selectedGradeLevel 
-        ? sections.filter(s => s.grade_level_id.toString() === selectedGradeLevel)
-        : []
+    const filteredSections = useMemo(() => {
+        if (!selectedGradeLevel) return []
+        return sections
+            .filter(s => s.grade_level_id.toString() === selectedGradeLevel)
+            .sort((a, b) => {
+                // Sort: available sections first, then by available slots (descending)
+                if (a.is_full && !b.is_full) return 1
+                if (!a.is_full && b.is_full) return -1
+                return b.available_slots - a.available_slots
+            })
+    }, [selectedGradeLevel, sections])
+
+    // Filter suggestions based on input
+    const suggestions = useMemo(() => {
+        if (!sectionInput) return filteredSections
+        return filteredSections.filter(s => 
+            s.name.toLowerCase().includes(sectionInput.toLowerCase())
+        )
+    }, [sectionInput, filteredSections])
 
     const handleSave = () => {
-        if (!student) return
+        if (!student || !selectedSectionId) return
 
         put(assignSection.url({ student: student.id }), {
             onSuccess: () => {
@@ -88,7 +132,9 @@ export default function EditStudentAssignmentModal({
 
     const handleClose = () => {
         setSelectedGradeLevel('')
-        setSelectedSection('')
+        setSectionInput('')
+        setSelectedSectionId(null)
+        setShowSuggestions(false)
         reset()
         onOpenChange(false)
     }
@@ -97,14 +143,21 @@ export default function EditStudentAssignmentModal({
         setSelectedGradeLevel(value)
         setData('grade_level_id', value)
         // Reset section when grade level changes
-        setSelectedSection('')
+        setSectionInput('')
+        setSelectedSectionId(null)
         setData('section_id', '')
     }
 
-    const handleSectionChange = (value: string) => {
-        setSelectedSection(value)
-        setData('section_id', value)
+    const handleSectionSelect = (section: Section) => {
+        if (section.is_full) return
+        
+        setSectionInput(section.name)
+        setSelectedSectionId(section.id)
+        setData('section_id', section.id.toString())
+        setShowSuggestions(false)
     }
+
+    const selectedSection = filteredSections.find(s => s.id === selectedSectionId)
 
     if (!student) return null
 
@@ -163,37 +216,104 @@ export default function EditStudentAssignmentModal({
                         )}
                     </div>
 
-                    {/* Section Selection */}
-                    <div>
+                    {/* Section Selection with Autocomplete */}
+                    <div className="relative" ref={inputRef}>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             Section <span className="text-red-500">*</span>
                         </label>
-                        <Select 
-                            value={selectedSection} 
-                            onValueChange={handleSectionChange}
+                        <Input
+                            type="text"
+                            placeholder={selectedGradeLevel ? "Type to search sections..." : "Select grade level first"}
+                            value={sectionInput}
+                            onChange={(e) => {
+                                setSectionInput(e.target.value)
+                                setShowSuggestions(true)
+                                if (!e.target.value) {
+                                    setSelectedSectionId(null)
+                                    setData('section_id', '')
+                                }
+                            }}
+                            onFocus={() => setShowSuggestions(true)}
                             disabled={!selectedGradeLevel}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select Section" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {filteredSections.length > 0 ? (
-                                    filteredSections.map((section) => (
-                                        <SelectItem key={section.id} value={section.id.toString()}>
-                                            {section.name}
-                                        </SelectItem>
-                                    ))
-                                ) : (
-                                    <SelectItem value="no-sections" disabled>
-                                        {selectedGradeLevel ? 'No sections available' : 'Select grade level first'}
-                                    </SelectItem>
-                                )}
-                            </SelectContent>
-                        </Select>
+                            className="w-full"
+                        />
+                        
+                        {/* Suggestions Dropdown */}
+                        {showSuggestions && selectedGradeLevel && suggestions.length > 0 && (
+                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                {suggestions.map((section) => (
+                                    <button
+                                        key={section.id}
+                                        type="button"
+                                        onClick={() => handleSectionSelect(section)}
+                                        disabled={section.is_full}
+                                        className={`w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition-colors ${
+                                            section.is_full ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'cursor-pointer'
+                                        } ${selectedSectionId === section.id ? 'bg-blue-50' : ''}`}
+                                    >
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-medium text-gray-900">{section.name}</span>
+                                                    {selectedSectionId === section.id && (
+                                                        <Check className="w-4 h-4 text-green-600" />
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
+                                                    <span className="flex items-center gap-1">
+                                                        <Users className="w-3 h-3" />
+                                                        {section.current_students}/{section.capacity}
+                                                    </span>
+                                                    <span>Room: {section.room_number}</span>
+                                                </div>
+                                            </div>
+                                            <div className="ml-3">
+                                                {section.is_full ? (
+                                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                        <AlertCircle className="w-3 h-3 mr-1" />
+                                                        Full
+                                                    </span>
+                                                ) : section.available_slots <= 5 ? (
+                                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                        {section.available_slots} slots
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                        {section.available_slots} slots
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Selected Section Info */}
+                        {selectedSection && (
+                            <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                <div className="flex items-start justify-between">
+                                    <div className="flex-1">
+                                        <p className="text-sm font-medium text-blue-900">Selected: {selectedSection.name}</p>
+                                        <div className="flex items-center gap-3 mt-1 text-xs text-blue-700">
+                                            <span className="flex items-center gap-1">
+                                                <Users className="w-3 h-3" />
+                                                {selectedSection.current_students + 1}/{selectedSection.capacity} (after assignment)
+                                            </span>
+                                            <span>Room: {selectedSection.room_number}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {selectedGradeLevel && suggestions.length === 0 && sectionInput && (
+                            <p className="text-sm text-gray-500 mt-2">No sections found matching "{sectionInput}"</p>
+                        )}
                     </div>
 
                     {/* Warning Message */}
-                    {(!selectedGradeLevel || !selectedSection) && (
+                    {(!selectedGradeLevel || !selectedSectionId) && (
                         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex items-start gap-2">
                             <span className="text-yellow-600 text-lg">⚠️</span>
                             <p className="text-sm text-yellow-800">
@@ -216,7 +336,7 @@ export default function EditStudentAssignmentModal({
                             type="button"
                             className="bg-green-600 hover:bg-green-700"
                             onClick={handleSave}
-                            disabled={!selectedGradeLevel || !selectedSection || processing}
+                            disabled={!selectedGradeLevel || !selectedSectionId || processing}
                         >
                             {processing ? 'Saving...' : 'Save Changes'}
                         </Button>

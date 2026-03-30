@@ -84,12 +84,6 @@ export default function RoomSchedule({ auth, rooms = [] }: Props) {
 
                 {/* Table Section */}
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                    <div className="p-4 border-b border-gray-200">
-                        <p className="text-sm text-gray-600">
-                            Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredRooms.length)} of {filteredRooms.length} entries
-                        </p>
-                    </div>
-
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead className="bg-green-700">
@@ -171,9 +165,6 @@ export default function RoomSchedule({ auth, rooms = [] }: Props) {
                                     </Select>
                                     <span className="text-sm text-gray-600">entries</span>
                                 </div>
-                                <p className="text-sm text-gray-600">
-                                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredRooms.length)} of {filteredRooms.length} entries
-                                </p>
                             </div>
 
                             <div className="flex items-center gap-2">

@@ -152,16 +152,6 @@ export default function AdviserManagement({ auth, sections = [], teachers = [], 
 
                 {/* Table */}
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                    <div className="p-4 border-b border-gray-200">
-                        <h2 className="text-sm font-semibold text-gray-900">Section Advisers</h2>
-                    </div>
-
-                    <div className="p-4 border-b border-gray-200">
-                        <p className="text-sm text-gray-600">
-                            Showing {startIndex + 1}-{Math.min(endIndex, filteredSections.length)} of {filteredSections.length} sections
-                        </p>
-                    </div>
-
                     {sections.length === 0 ? (
                         <div className="p-8 text-center">
                             <p className="text-lg font-medium text-gray-900 mb-2">No Data Found</p>
@@ -179,12 +169,12 @@ export default function AdviserManagement({ auth, sections = [], teachers = [], 
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="w-full">
-                                <thead className="bg-gray-100">
+                                <thead className="bg-green-700">
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Section</th>
-                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Grade Level</th>
-                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Current Adviser</th>
-                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Actions</th>
+                                        <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Section</th>
+                                        <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Grade Level</th>
+                                        <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Current Adviser</th>
+                                        <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
@@ -207,7 +197,7 @@ export default function AdviserManagement({ auth, sections = [], teachers = [], 
                                                 <td className="px-6 py-4">
                                                     <Button 
                                                         size="sm" 
-                                                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                                                        className="bg-green-600 hover:bg-green-700 text-white"
                                                         onClick={() => handleAssign(section)}
                                                     >
                                                         {section.adviser_id ? 'Update' : 'Assign'}
@@ -276,7 +266,7 @@ export default function AdviserManagement({ auth, sections = [], teachers = [], 
                                                 variant={currentPage === page ? "default" : "outline"}
                                                 size="sm"
                                                 onClick={() => setCurrentPage(page)}
-                                                className={currentPage === page ? "bg-blue-600 hover:bg-blue-700" : ""}
+                                                className={currentPage === page ? "bg-green-600 hover:bg-green-700" : ""}
                                             >
                                                 {page}
                                             </Button>

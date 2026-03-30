@@ -201,7 +201,7 @@ export default function Login({ status, slides = [] }: Props) {
                         <h1 className="text-5xl font-bold text-white mb-4 leading-tight">
                             Welcome to
                             <br />
-                            <span className="text-green-100">Santor Portal</span>
+                            <span className="text-green-100">Santor National High School Portal</span>
                         </h1>
 
                         <div className="mt-12 text-green-100">

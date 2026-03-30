@@ -175,9 +175,9 @@ export default function SubjectListings({ auth, subjects = [], gradeLevels = [] 
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-gray-100">
+                            <thead className="bg-green-700">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Subject Code</th>
+                                    <th className="px-6 py-3 text-left text-sm font-medium text-white">Subject Code</th>
                                     <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Subject Name</th>
                                     <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Description</th>
                                     <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Grade Level</th>

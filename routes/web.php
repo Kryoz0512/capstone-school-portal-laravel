@@ -107,9 +107,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('admin/enrollment/student-not-enrolled', [StudentController::class, 'notEnrolled'])->name('admin.enrollment.student-not-enrolled');
     Route::put('admin/enrollment/students/{student}/assign-section', [StudentController::class, 'assignSection'])->name('admin.enrollment.students.assign-section');
     
-    Route::get('admin/enrollment/enrollment-list', function () {
-        return \Inertia\Inertia::render('admin/enrollment/enrollment-list/page');
-    })->name('admin.enrollment.enrollment-list');
+    Route::get('admin/enrollment/enrollment-list', [StudentController::class, 'enrollmentList'])->name('admin.enrollment.enrollment-list');
     
     Route::get('admin/enrollment/student-schedule', [StudentController::class, 'scheduleIndex'])->name('admin.enrollment.student-schedule');
     Route::get('admin/enrollment/student-schedule/{student}', [StudentController::class, 'scheduleShow'])->name('admin.enrollment.student-schedule.show');
@@ -123,6 +121,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     })->name('admin.admission.registration');
     
     Route::post('admin/admission/registration', [App\Http\Controllers\StudentController::class, 'store'])->name('admin.admission.registration.store');
+    Route::get('admin/admission/registration/export', [App\Http\Controllers\StudentController::class, 'export'])->name('admin.admission.registration.export');
+    Route::post('admin/admission/registration/import', [App\Http\Controllers\StudentController::class, 'import'])->name('admin.admission.registration.import');
+    Route::get('admin/admission/registration/template', [App\Http\Controllers\StudentController::class, 'downloadTemplate'])->name('admin.admission.registration.template');
     
     Route::get('admin/admission/accreditation', [AccreditationController::class, 'index'])->name('admin.admission.accreditation');
     Route::post('admin/admission/accreditations', [AccreditationController::class, 'store'])->name('admin.admission.accreditations.store');

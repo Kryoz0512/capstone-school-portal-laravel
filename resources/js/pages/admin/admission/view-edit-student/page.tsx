@@ -131,9 +131,9 @@ export default function ViewEditStudent({ auth, students = [], gradeLevels = [] 
 
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-gray-100">
+                            <thead className="bg-green-700">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Student Name</th>
+                                    <th className="px-6 py-3 text-left text-sm font-medium text-white">Student Name</th>
                                     <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">LRN</th>
                                     <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Grade Level</th>
                                     <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Section</th>

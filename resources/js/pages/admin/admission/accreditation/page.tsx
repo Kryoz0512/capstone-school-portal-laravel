@@ -119,9 +119,9 @@ export default function AccreditationPage({ auth, accreditations = [] }: Props) 
 
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-gray-100">
+                            <thead className="bg-green-700">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Type</th>
+                                    <th className="px-6 py-3 text-left text-sm font-medium text-white">Type</th>
                                     <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Accrediting Body</th>
                                     <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Certificate No.</th>
                                     <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Valid From</th>

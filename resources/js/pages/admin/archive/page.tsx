@@ -141,9 +141,9 @@ export default function ArchivePage({ auth, archives = [], currentType = 'all' }
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-gray-100">
+                            <thead className="bg-green-700">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Type</th>
+                                    <th className="px-6 py-3 text-left text-sm font-medium text-white">Type</th>
                                     <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Deleted Item</th>
                                     <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Archived By</th>
                                     <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Archived At</th>

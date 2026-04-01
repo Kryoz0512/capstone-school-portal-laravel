@@ -99,18 +99,8 @@ class FortifyServiceProvider extends ServiceProvider
     private function configureViews(): void
     {
         Fortify::loginView(function (Request $request) {
-            $slides = \App\Models\LoginSlide::where('is_active', true)
-                ->orderBy('order')
-                ->get()
-                ->map(function ($slide) {
-                    return \Illuminate\Support\Facades\Storage::url($slide->image_path);
-                })
-                ->toArray();
-
-            return Inertia::render('auth/login', [
-                'status' => $request->session()->get('status'),
-                'slides' => $slides,
-            ]);
+            // Redirect to portal if no role is specified
+            return redirect()->route('home');
         });
 
         Fortify::resetPasswordView(fn (Request $request) => Inertia::render('auth/reset-password', [

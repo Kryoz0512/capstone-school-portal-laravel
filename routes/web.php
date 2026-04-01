@@ -17,8 +17,63 @@ use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
 Route::get('/', function () {
-    return redirect()->route('login');
+    $slides = \App\Models\LoginSlide::where('is_active', true)
+        ->orderBy('order')
+        ->get()
+        ->map(function ($slide) {
+            return \Illuminate\Support\Facades\Storage::url($slide->image_path);
+        })
+        ->toArray();
+    
+    return \Inertia\Inertia::render('portal', [
+        'slides' => $slides
+    ]);
 })->name('home');
+
+Route::get('/login/student', function () {
+    $slides = \App\Models\LoginSlide::where('is_active', true)
+        ->orderBy('order')
+        ->get()
+        ->map(function ($slide) {
+            return \Illuminate\Support\Facades\Storage::url($slide->image_path);
+        })
+        ->toArray();
+    
+    return \Inertia\Inertia::render('auth/login', [
+        'slides' => $slides,
+        'role' => 'student'
+    ]);
+})->name('login.student');
+
+Route::get('/login/teacher', function () {
+    $slides = \App\Models\LoginSlide::where('is_active', true)
+        ->orderBy('order')
+        ->get()
+        ->map(function ($slide) {
+            return \Illuminate\Support\Facades\Storage::url($slide->image_path);
+        })
+        ->toArray();
+    
+    return \Inertia\Inertia::render('auth/login', [
+        'slides' => $slides,
+        'role' => 'teacher'
+    ]);
+})->name('login.teacher');
+
+Route::get('/login/staff', function () {
+    $slides = \App\Models\LoginSlide::where('is_active', true)
+        ->orderBy('order')
+        ->get()
+        ->map(function ($slide) {
+            return \Illuminate\Support\Facades\Storage::url($slide->image_path);
+        })
+        ->toArray();
+    
+    return \Inertia\Inertia::render('auth/login', [
+        'slides' => $slides,
+        'role' => 'staff'
+    ]);
+})->name('login.staff');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'dashboard')->name('dashboard');

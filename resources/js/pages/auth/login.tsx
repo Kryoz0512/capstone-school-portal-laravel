@@ -1,26 +1,26 @@
-import { Head, useForm } from '@inertiajs/react'
+import { Head, useForm, Link } from '@inertiajs/react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Alert } from '@/components/ui/alert'
-import { Eye, EyeOff, GraduationCap, Users, BookOpen } from 'lucide-react'
+import { Eye, EyeOff, GraduationCap, Users, BookOpen, ArrowLeft } from 'lucide-react'
 import { type FormEvent, useState, useEffect } from 'react'
 
 type Props = {
     status?: string
     slides?: string[]
+    role?: 'student' | 'teacher' | 'staff'
 }
 
 type Role = 'student' | 'teacher' | 'staff'
 
-export default function Login({ status, slides = [] }: Props) {
-    const [selectedRole, setSelectedRole] = useState<Role>('student')
+export default function Login({ status, slides = [], role = 'student' }: Props) {
     const [showPassword, setShowPassword] = useState(false)
     const [currentSlide, setCurrentSlide] = useState(0)
     
     const { data, setData, post, processing, errors } = useForm({
         email: '',
         password: '',
-        role: 'student' as Role,
+        role: role,
         remember: false,
     })
 
@@ -40,11 +40,14 @@ export default function Login({ status, slides = [] }: Props) {
         post('/login') 
     }
 
-    const roles = [
-        { id: 'student' as Role, label: 'Student', icon: GraduationCap },
-        { id: 'teacher' as Role, label: 'Teacher', icon: BookOpen },
-        { id: 'staff' as Role, label: 'Staff', icon: Users },
-    ]
+    const roleConfig = {
+        student: { label: 'Student', icon: GraduationCap, color: 'blue' },
+        teacher: { label: 'Teacher', icon: BookOpen, color: 'green' },
+        staff: { label: 'Staff', icon: Users, color: 'purple' },
+    }
+
+    const currentRole = roleConfig[role]
+    const RoleIcon = currentRole.icon
 
     return (
         <>
@@ -53,47 +56,29 @@ export default function Login({ status, slides = [] }: Props) {
                 {/* Left Side - Login Form */}
                 <div className="w-full lg:w-1/2 bg-white flex items-center justify-center p-8">
                     <div className="w-full max-w-md">
+                        {/* Back Button */}
+                        <Link 
+                            href="/"
+                            className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+                        >
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            Back to Portal
+                        </Link>
+
                         <div className="mb-8 text-center">
                             <img 
                                 src="/santorlogo.png" 
                                 alt="Santor Logo" 
                                 className="w-24 h-24 mx-auto mb-4 drop-shadow-lg"
                             />
-                            <h1 className="text-3xl font-bold text-gray-900 mb-2">Login</h1>
+                            <h1 className="text-3xl font-bold text-gray-900 mb-2">{currentRole.label} Login</h1>
                             <p className="text-gray-600 text-sm">Enter your account details</p>
-                        </div>
-
-                        {/* Role Selection */}
-                        <div className="mb-6">
-                            <label className="block text-sm font-medium text-gray-700 mb-3">
-                                Select Role
-                            </label>
-                            <div className="grid grid-cols-3 gap-3">
-                                {roles.map((role) => {
-                                    const Icon = role.icon
-                                    return (
-                                        <button
-                                            key={role.id}
-                                            type="button"
-                                            onClick={() => {
-                                                setSelectedRole(role.id)
-                                                setData('role', role.id)
-                                            }}
-                                            className={`flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all ${
-                                                selectedRole === role.id
-                                                    ? 'border-green-600 bg-green-50 text-green-700'
-                                                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                                            }`}
-                                        >
-                                            <Icon className="w-6 h-6 mb-2" />
-                                            <span className="text-xs font-medium">{role.label}</span>
-                                        </button>
-                                    )
-                                })}
+                            
+                            {/* Role Badge */}
+                            <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-full">
+                                <RoleIcon className="w-4 h-4 text-green-600" />
+                                <span className="text-sm font-medium text-green-700">Logging in as {currentRole.label}</span>
                             </div>
-                            {errors.role && (
-                                <p className="text-red-600 text-xs mt-2">{errors.role}</p>
-                            )}
                         </div>
 
                         <form onSubmit={handleLogin} className="space-y-5">

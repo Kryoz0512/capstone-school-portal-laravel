@@ -1,12 +1,11 @@
-import { Link, router } from '@inertiajs/react'
+import { Link } from '@inertiajs/react'
 import {
     LayoutDashboard,
     Calendar,
     BookOpen,
     FileText,
     FileSpreadsheet,
-    Settings,
-    LogOut
+    Settings
 } from 'lucide-react'
 
 type SidebarProps = {
@@ -14,10 +13,6 @@ type SidebarProps = {
 }
 
 export default function StudentSidebar({ currentPath }: SidebarProps) {
-    const handleLogout = () => {
-        router.post('/logout')
-    }
-
     return (
         <div className="w-64 bg-green-700 h-screen flex flex-col text-white fixed left-0 top-0">
             {/* Logo/Brand */}
@@ -82,17 +77,6 @@ export default function StudentSidebar({ currentPath }: SidebarProps) {
                     <span>Profile Settings</span>
                 </Link>
             </nav>
-
-            {/* Logout */}
-            <div className="border-t border-green-600 shrink-0">
-                <button
-                    onClick={handleLogout}
-                    className="w-full flex items-center gap-3 px-6 py-4 hover:bg-red-400 transition-colors"
-                >
-                    <LogOut className="w-5 h-5" />
-                    <span>Logout</span>
-                </button>
-            </div>
         </div>
     )
 }

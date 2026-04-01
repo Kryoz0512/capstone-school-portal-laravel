@@ -1,4 +1,4 @@
-import { Link, router } from '@inertiajs/react'
+import { Link } from '@inertiajs/react'
 import {
     LayoutDashboard,
     UserPlus,
@@ -6,8 +6,6 @@ import {
     BookOpen,
     ClipboardList,
     FileText,
-    User,
-    LogOut,
     ChevronRight,
     Settings,
     Archive
@@ -59,10 +57,6 @@ export default function AdminSidebar({ currentPath }: SidebarProps) {
             ...prev,
             [menu]: !prev[menu]
         }))
-    }
-
-    const handleLogout = () => {
-        router.post('/logout')
     }
 
     return (
@@ -278,27 +272,7 @@ export default function AdminSidebar({ currentPath }: SidebarProps) {
                         </div>
                     )}
                 </div>
-
-                {/* Profile */}
-                <Link
-                    href="/admin/profile"
-                    className="flex items-center gap-3 px-6 py-3 hover:bg-green-600 transition-colors"
-                >
-                    <User className="w-5 h-5" />
-                    <span>Profile</span>
-                </Link>
             </nav>
-
-            {/* Logout */}
-            <div className="border-t border-green-600 flex-shrink-0">
-                <button
-                    onClick={handleLogout}
-                    className="w-full flex items-center gap-3 px-6 py-4 hover:bg-red-400 transition-colors"
-                >
-                    <LogOut className="w-5 h-5" />
-                    <span>Logout</span>
-                </button>
-            </div>
         </div>
     )
 }

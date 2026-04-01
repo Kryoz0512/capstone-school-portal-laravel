@@ -236,16 +236,28 @@ class DatabaseSeeder extends Seeder
             $gradeLevels = DB::table('tbl_grade_levels')->get();
             $rooms = DB::table('tbl_room')->get();
             
-            // Philippine national heroes for section names
+            // Philippine national heroes for section names - one per section
             $heroNames = [
-                'Rizal',      // Jose Rizal
-                'Bonifacio',  // Andres Bonifacio
-                'Mabini',     // Apolinario Mabini
-                'Luna',       // Antonio Luna
-                'Del Pilar',  // Marcelo H. del Pilar
-                'Jacinto',    // Emilio Jacinto
-                'Aguinaldo',  // Emilio Aguinaldo
-                'Silang',     // Diego Silang
+                // Grade 7 sections
+                'Rizal',
+                'Bonifacio',
+                'Mabini',
+                'Luna',
+                // Grade 8 sections
+                'Del Pilar',
+                'Jacinto',
+                'Aguinaldo',
+                'Silang',
+                // Grade 9 sections
+                'Burgos',
+                'Gomez',
+                'Zamora',
+                'Dagohoy',
+                // Grade 10 sections
+                'Lakandula',
+                'Sulayman',
+                'Lapulapu',
+                'Gabriela',
             ];
 
             $sectionIndex = 0;
@@ -256,7 +268,7 @@ class DatabaseSeeder extends Seeder
                 for ($i = 0; $i < 4; $i++) {
                     DB::table('tbl_class_sections')->insert([
                         'grade_level_id' => $gradeLevel->id,
-                        'section_name' => $heroNames[$sectionIndex % count($heroNames)],
+                        'section_name' => $heroNames[$sectionIndex],
                         'room_id' => $rooms[$roomIndex % $rooms->count()]->id,
                         'created_at' => now(),
                         'updated_at' => now(),

@@ -106,17 +106,17 @@ export default function EditGradeModal({ open, onOpenChange, student, filters }:
                         </label>
                         <Input
                             type="number"
-                            min="0"
+                            min="75"
                             max="100"
                             step="0.01"
                             value={data.grade}
                             onChange={(e) => setData('grade', e.target.value)}
-                            placeholder="Enter grade (0-100)"
+                            placeholder="Enter grade"
                             autoFocus
                         />
                         <InputError message={errors.grade}/>
                         <p className="text-xs text-gray-500 mt-1">
-                            Passing grade: 75 and above
+                            Valid grade range: 75-100
                         </p>
                     </div>
 

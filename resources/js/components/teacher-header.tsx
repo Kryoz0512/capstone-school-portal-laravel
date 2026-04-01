@@ -51,7 +51,7 @@ export default function TeacherHeader({ user }: HeaderProps) {
                             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                             className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors"
                         >
-                            <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                            <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">
                                 <User className="w-6 h-6 text-white" />
                             </div>
                             <div className="text-left">
@@ -65,18 +65,11 @@ export default function TeacherHeader({ user }: HeaderProps) {
                         {isDropdownOpen && (
                             <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
                                 <Link
-                                    href="/teacher/profile"
+                                    href="/teacher/profile-settings"
                                     className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 transition-colors"
                                 >
                                     <User className="w-4 h-4 text-gray-600" />
                                     <span className="text-sm text-gray-700">Profile</span>
-                                </Link>
-                                <Link
-                                    href="/teacher/profile-settings"
-                                    className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 transition-colors"
-                                >
-                                    <Settings className="w-4 h-4 text-gray-600" />
-                                    <span className="text-sm text-gray-700">Profile Settings</span>
                                 </Link>
                                 <div className="border-t border-gray-200 my-2"></div>
                                 <button

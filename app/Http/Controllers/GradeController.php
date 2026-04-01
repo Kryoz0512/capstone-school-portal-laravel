@@ -194,7 +194,7 @@ class GradeController extends Controller
             'subject_id' => 'required|exists:tbl_subjects,id',
             'quarter' => 'required|in:1,2,3,4',
             'school_year' => 'required|string',
-            'grade' => 'required|numeric|min:0|max:100',
+            'grade' => 'required|numeric|min:75|max:100',
         ]);
 
         $quarterColumn = 'quarter_' . $validated['quarter'];
@@ -248,7 +248,7 @@ class GradeController extends Controller
     {
         $validated = $request->validate([
             'quarter' => 'required|in:1,2,3,4',
-            'grade' => 'required|numeric|min:0|max:100',
+            'grade' => 'required|numeric|min:75|max:100',
         ]);
 
         $quarterColumn = 'quarter_' . $validated['quarter'];

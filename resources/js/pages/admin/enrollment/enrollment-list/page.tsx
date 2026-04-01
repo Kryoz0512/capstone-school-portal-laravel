@@ -1,10 +1,11 @@
-import { Head, router } from '@inertiajs/react'
+import { Head, router, useForm } from '@inertiajs/react'
 import AdminLayout from '@/layouts/admin-layout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Pencil } from 'lucide-react'
 
 type Student = {
     id: number
@@ -55,7 +56,17 @@ export default function EnrollmentList({ auth, students = [], gradeLevels = [], 
     const [showSuggestions, setShowSuggestions] = useState(false)
     const [currentPage, setCurrentPage] = useState(1)
     const [itemsPerPage, setItemsPerPage] = useState(10)
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+    const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
+    const [editSectionInput, setEditSectionInput] = useState('')
+    const [showEditSuggestions, setShowEditSuggestions] = useState(false)
     const sectionInputRef = useRef<HTMLDivElement>(null)
+    const editSectionInputRef = useRef<HTMLDivElement>(null)
+
+    const { data, setData, put, processing, errors, reset } = useForm({
+        grade_level_id: '',
+        section_id: '',
+    })
 
     // Initialize section input with selected section name
     useEffect(() => {
@@ -158,6 +169,79 @@ export default function EnrollmentList({ auth, students = [], gradeLevels = [], 
     }, [students])
 
     const hasActiveFilters = gradeLevelFilter !== 'all' || selectedSectionId !== null || searchTerm.trim() !== ''
+
+    const handleEditClick = (student: Student) => {
+        setSelectedStudent(student)
+        setData({
+            grade_level_id: student.grade_level_id.toString(),
+            section_id: student.section_id.toString(),
+        })
+        setEditSectionInput(student.section)
+        setIsEditModalOpen(true)
+    }
+
+    const handleEditSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!selectedStudent) return
+
+        put(`/admin/enrollment/students/${selectedStudent.id}/assign-section`, {
+            onSuccess: () => {
+                setIsEditModalOpen(false)
+                reset()
+                setSelectedStudent(null)
+                setEditSectionInput('')
+            }
+        })
+    }
+
+    const handleEditCancel = () => {
+        setIsEditModalOpen(false)
+        reset()
+        setSelectedStudent(null)
+        setEditSectionInput('')
+    }
+
+    // Filter sections for edit modal based on selected grade level and input
+    const editModalSections = useMemo(() => {
+        if (!data.grade_level_id) return []
+        const selectedGrade = gradeLevels.find(g => g.id.toString() === data.grade_level_id)
+        let filtered = sections.filter(s => s.grade_level === selectedGrade?.name)
+        
+        // Filter by input text
+        if (editSectionInput.trim()) {
+            filtered = filtered.filter(s => 
+                s.section_name.toLowerCase().includes(editSectionInput.toLowerCase())
+            )
+        }
+        
+        return filtered
+    }, [data.grade_level_id, editSectionInput, gradeLevels, sections])
+
+    const handleEditSectionSelect = (section: Section) => {
+        setEditSectionInput(section.section_name)
+        setData('section_id', section.id.toString())
+        setShowEditSuggestions(false)
+    }
+
+    const handleEditSectionInputChange = (value: string) => {
+        setEditSectionInput(value)
+        if (!value.trim()) {
+            setData('section_id', '')
+        }
+        setShowEditSuggestions(true)
+    }
+
+    // Handle click outside to close edit suggestions
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (editSectionInputRef.current && !editSectionInputRef.current.contains(event.target as Node)) {
+                setShowEditSuggestions(false)
+            }
+        }
+
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
 
     return (
         <AdminLayout user={auth?.user}>
@@ -270,6 +354,7 @@ export default function EnrollmentList({ auth, students = [], gradeLevels = [], 
                                             <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Section</th>
                                             <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Grade Level</th>
                                             <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Adviser</th>
+                                            <th className="px-6 py-4 text-center text-sm font-semibold text-white uppercase tracking-wider">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-200">
@@ -293,6 +378,17 @@ export default function EnrollmentList({ auth, students = [], gradeLevels = [], 
                                                     ) : (
                                                         student.adviser
                                                     )}
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => handleEditClick(student)}
+                                                        className="inline-flex items-center gap-2"
+                                                    >
+                                                        <Pencil className="w-4 h-4" />
+                                                        Edit
+                                                    </Button>
                                                 </td>
                                             </tr>
                                         ))}
@@ -379,6 +475,98 @@ export default function EnrollmentList({ auth, students = [], gradeLevels = [], 
                     )}
                 </div>
             </div>
+
+            {/* Edit Student Modal */}
+            <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+                <DialogContent showCloseButton={false}>
+                    <DialogHeader>
+                        <DialogTitle>Edit Student Enrollment</DialogTitle>
+                        <DialogDescription>
+                            Update the grade level and section for {selectedStudent?.student_name}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <form onSubmit={handleEditSubmit} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Grade Level <span className="text-red-500">*</span>
+                            </label>
+                            <Select 
+                                value={data.grade_level_id} 
+                                onValueChange={(value) => {
+                                    setData('grade_level_id', value)
+                                    setData('section_id', '')
+                                    setEditSectionInput('')
+                                }}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select grade level" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {gradeLevels.map((level) => (
+                                        <SelectItem key={level.id} value={level.id.toString()}>
+                                            {level.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            {errors.grade_level_id && (
+                                <p className="text-xs text-red-500 mt-1">{errors.grade_level_id}</p>
+                            )}
+                        </div>
+
+                        <div ref={editSectionInputRef} className="relative">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Section <span className="text-red-500">*</span>
+                            </label>
+                            <Input
+                                type="text"
+                                placeholder={data.grade_level_id ? "Type to search sections..." : "Select grade level first"}
+                                value={editSectionInput}
+                                onChange={(e) => handleEditSectionInputChange(e.target.value)}
+                                onFocus={() => setShowEditSuggestions(true)}
+                                disabled={!data.grade_level_id}
+                            />
+                            {showEditSuggestions && editModalSections.length > 0 && data.grade_level_id && (
+                                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                    {editModalSections.map((section) => (
+                                        <button
+                                            key={section.id}
+                                            type="button"
+                                            onClick={() => handleEditSectionSelect(section)}
+                                            className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center justify-between"
+                                        >
+                                            <span className="text-sm text-gray-900">{section.section_name}</span>
+                                            <span className="text-xs text-gray-500">{section.grade_level}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                            {errors.section_id && (
+                                <p className="text-xs text-red-500 mt-1">{errors.section_id}</p>
+                            )}
+                        </div>
+
+                        <div className="flex gap-3 pt-4">
+                            <Button 
+                                type="button" 
+                                variant="outline" 
+                                onClick={handleEditCancel}
+                                disabled={processing}
+                            >
+                                Cancel
+                            </Button>
+                            <Button 
+                                type="submit" 
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                                disabled={processing}
+                            >
+                                {processing ? 'Updating...' : 'Update'}
+                            </Button>
+                        </div>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </AdminLayout>
     )
 }

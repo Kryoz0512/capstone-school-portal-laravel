@@ -62,7 +62,7 @@ export default function AdminSidebar({ currentPath }: SidebarProps) {
     return (
         <div className="w-64 bg-green-700 h-screen flex flex-col text-white fixed left-0 top-0">
             {/* Logo/Brand */}
-            <div className="p-6 border-b border-green-600 flex-shrink-0">
+            <div className="p-6 border-b border-green-600 shrink-0">
                 <h1 className="text-xl font-bold">Santor National</h1>
                 <p className="text-sm text-green-100">HighSchool</p>
             </div>
@@ -77,6 +77,38 @@ export default function AdminSidebar({ currentPath }: SidebarProps) {
                     <LayoutDashboard className="w-5 h-5" />
                     <span>Dashboard</span>
                 </Link>
+
+                {/* Admission */}
+                <div>
+                    <button
+                        onClick={() => toggleMenu('admission')}
+                        className="w-full flex items-center justify-between px-6 py-3 hover:bg-green-600 transition-colors"
+                    >
+                        <div className="flex items-center gap-3">
+                            <ClipboardList className="w-5 h-5" />
+                            <span>Admission</span>
+                        </div>
+                        <ChevronRight
+                            className={`w-4 h-4 transition-transform ${expandedMenus.admission ? 'rotate-90' : ''}`}
+                        />
+                    </button>
+                    {expandedMenus.admission && (
+                        <div className="bg-green-800">
+                            <Link href="/admin/admission/registration" className="block px-12 py-2 text-sm hover:bg-green-600">
+                                Registration
+                            </Link>
+                            <Link href="/admin/admission/accreditation" className="block px-12 py-2 text-sm hover:bg-green-600">
+                                Accreditation
+                            </Link>
+                            <Link href="/admin/admission/upload-delete-picture" className="block px-12 py-2 text-sm hover:bg-green-600">
+                                Upload or Delete Picture
+                            </Link>
+                            <Link href="/admin/admission/view-edit-student" className="block px-12 py-2 text-sm hover:bg-green-600">
+                                View Edit Student Information
+                            </Link>
+                        </div>
+                    )}
+                </div>
 
                 {/* Enrollment */}
                 <div>
@@ -120,38 +152,6 @@ export default function AdminSidebar({ currentPath }: SidebarProps) {
                             </Link>
                             <Link href="/admin/enrollment/student-schedule" className="block px-12 py-2 text-sm hover:bg-green-600">
                                 Student Schedule
-                            </Link>
-                        </div>
-                    )}
-                </div>
-
-                {/* Admission */}
-                <div>
-                    <button
-                        onClick={() => toggleMenu('admission')}
-                        className="w-full flex items-center justify-between px-6 py-3 hover:bg-green-600 transition-colors"
-                    >
-                        <div className="flex items-center gap-3">
-                            <ClipboardList className="w-5 h-5" />
-                            <span>Admission</span>
-                        </div>
-                        <ChevronRight
-                            className={`w-4 h-4 transition-transform ${expandedMenus.admission ? 'rotate-90' : ''}`}
-                        />
-                    </button>
-                    {expandedMenus.admission && (
-                        <div className="bg-green-800">
-                            <Link href="/admin/admission/registration" className="block px-12 py-2 text-sm hover:bg-green-600">
-                                Registration
-                            </Link>
-                            <Link href="/admin/admission/accreditation" className="block px-12 py-2 text-sm hover:bg-green-600">
-                                Accreditation
-                            </Link>
-                            <Link href="/admin/admission/upload-delete-picture" className="block px-12 py-2 text-sm hover:bg-green-600">
-                                Upload or Delete Picture
-                            </Link>
-                            <Link href="/admin/admission/view-edit-student" className="block px-12 py-2 text-sm hover:bg-green-600">
-                                View Edit Student Information
                             </Link>
                         </div>
                     )}

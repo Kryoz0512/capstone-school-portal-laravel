@@ -66,19 +66,8 @@ export default function Login({ status, slides = [], role = 'student' }: Props) 
                         </Link>
 
                         <div className="mb-8 text-center">
-                            <img 
-                                src="/santorlogo.png" 
-                                alt="Santor Logo" 
-                                className="w-24 h-24 mx-auto mb-4 drop-shadow-lg"
-                            />
                             <h1 className="text-3xl font-bold text-gray-900 mb-2">{currentRole.label} Login</h1>
                             <p className="text-gray-600 text-sm">Enter your account details</p>
-                            
-                            {/* Role Badge */}
-                            <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-200 rounded-full">
-                                <RoleIcon className="w-4 h-4 text-green-600" />
-                                <span className="text-sm font-medium text-green-700">Logging in as {currentRole.label}</span>
-                            </div>
                         </div>
 
                         <form onSubmit={handleLogin} className="space-y-5">
@@ -183,16 +172,11 @@ export default function Login({ status, slides = [], role = 'student' }: Props) 
                     <div className="absolute bottom-20 left-20 w-80 h-80 bg-green-400/10 rounded-full blur-3xl"></div>
                     
                     <div className="relative z-10 text-center max-w-lg">
-                        <h1 className="text-5xl font-bold text-white mb-4 leading-tight">
-                            Welcome to
-                            <br />
-                            <span className="text-green-100">Santor National High School Portal</span>
-                        </h1>
-
-                        <div className="mt-12 text-green-100">
-                            <p className="text-lg">Santor National High School</p>
-                            <p className="text-green-200/80">Education Management System</p>
-                        </div>
+                        <img 
+                            src="/SNHS-logo-2.png" 
+                            alt="SNHS DigiStar Logo" 
+                            className="w-auto h-64 mx-auto mb-8 drop-shadow-2xl object-contain"
+                        />
 
                         {/* Slide Indicators */}
                         {slides.length > 1 && (

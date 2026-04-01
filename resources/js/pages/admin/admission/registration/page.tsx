@@ -267,35 +267,6 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Gender <span className="text-red-500">*</span>
-                                </label>
-                                <Select value={data.gender} onValueChange={(value) => setData('gender', value)}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select gender" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="male">Male</SelectItem>
-                                        <SelectItem value="female">Female</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                {errors.gender && <p className="text-xs text-red-500 mt-1">{errors.gender}</p>}
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Date of Birth <span className="text-red-500">*</span>
-                                </label>
-                                <Input 
-                                    type="date"
-                                    value={data.birth_date}
-                                    onChange={(e) => setData('birth_date', e.target.value)}
-                                />
-                                {errors.birth_date && <p className="text-xs text-red-500 mt-1">{errors.birth_date}</p>}
-                            </div>
-                        </div>
-
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -331,6 +302,35 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                     value={data.middle_name}
                                     onChange={(e) => setData('middle_name', e.target.value)}
                                 />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Gender <span className="text-red-500">*</span>
+                                </label>
+                                <Select value={data.gender} onValueChange={(value) => setData('gender', value)}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select gender" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="male">Male</SelectItem>
+                                        <SelectItem value="female">Female</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                {errors.gender && <p className="text-xs text-red-500 mt-1">{errors.gender}</p>}
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Date of Birth <span className="text-red-500">*</span>
+                                </label>
+                                <Input 
+                                    type="date"
+                                    value={data.birth_date}
+                                    onChange={(e) => setData('birth_date', e.target.value)}
+                                />
+                                {errors.birth_date && <p className="text-xs text-red-500 mt-1">{errors.birth_date}</p>}
                             </div>
                         </div>
 

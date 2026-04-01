@@ -169,10 +169,10 @@ export default function ClassSections({ auth, sections = [], gradeLevels = [], r
                             <thead className="bg-green-700">
                                 <tr>
                                     <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
-                                        Section Name
+                                        Grade Level
                                     </th>
                                     <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
-                                        Grade Level
+                                        Section Name
                                     </th>
                                     <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
                                         Assigned Room
@@ -187,10 +187,10 @@ export default function ClassSections({ auth, sections = [], gradeLevels = [], r
                                     paginatedSections.map((section) => (
                                         <tr key={section.id} className="hover:bg-gray-50">
                                             <td className="px-6 py-4 text-sm text-gray-900">
-                                                {section.section_name}
+                                                {section.grade_level}
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-900">
-                                                {section.grade_level}
+                                                {section.section_name}
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-900">
                                                 {section.room ? (

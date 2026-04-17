@@ -140,6 +140,7 @@ class TeacherController extends Controller
                 'email' => $email,
                 'password' => Hash::make($validated['password']),
                 'role' => 'teacher',
+                'password_changed' => false, // Force password change on first login
             ]);
 
             $teacher = Teacher::create([

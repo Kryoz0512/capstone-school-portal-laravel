@@ -13,6 +13,7 @@ use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\AccreditationController;
 use App\Http\Controllers\ProfilePictureController;
 use App\Http\Controllers\GradeController;
+use App\Http\Controllers\PasswordChangeController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
@@ -74,6 +75,12 @@ Route::get('/login/staff', function () {
         'role' => 'staff'
     ]);
 })->name('login.staff');
+
+// Password change route (must be before CheckPasswordChanged middleware)
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('change-password', [PasswordChangeController::class, 'show'])->name('change-password');
+    Route::post('change-password', [PasswordChangeController::class, 'update']);
+});
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'dashboard')->name('dashboard');

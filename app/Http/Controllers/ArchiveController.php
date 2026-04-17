@@ -119,6 +119,7 @@ class ArchiveController extends Controller
             'email' => $data['email'],
             'password' => $data['password'],
             'role' => 'teacher',
+            'password_changed' => false, // Force password change on first login after restore
         ]);
         
         // Restore teacher
@@ -142,6 +143,7 @@ class ArchiveController extends Controller
             'email' => $data['email'],
             'password' => $data['password'],
             'role' => 'admin',
+            'password_changed' => true, // Admins don't need to change password
         ]);
         
         // Restore admin
@@ -162,6 +164,7 @@ class ArchiveController extends Controller
             'email' => $data['email'],
             'password' => $data['password'],
             'role' => 'student',
+            'password_changed' => false, // Force password change on first login after restore
         ]);
         
         // Restore student

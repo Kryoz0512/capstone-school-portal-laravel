@@ -93,6 +93,7 @@ class SuperAdminController extends Controller
                 'email' => $email,
                 'password' => Hash::make($validated['password']),
                 'role' => 'admin',
+                'password_changed' => true, // Admins don't need to change password
             ]);
 
             Admin::create([

@@ -633,6 +633,7 @@ public function notEnrolled(Request $request)
                 'email' => strtolower($validated['lrn']) . '@student.snhs.edu.ph',
                 'password' => Hash::make($validated['lrn']), // Default password is LRN
                 'role' => 'student',
+                'password_changed' => false, // Force password change on first login
             ]);
 
             // Determine grade level
@@ -1102,6 +1103,7 @@ public function notEnrolled(Request $request)
                         'email' => $email,
                         'password' => Hash::make($row['LRN']),
                         'role' => 'student',
+                        'password_changed' => false, // Force password change on first login
                     ]);
 
                     // Create student

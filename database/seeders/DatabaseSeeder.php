@@ -26,6 +26,7 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('micah123'),
                 'role' => 'admin',
                 'email_verified_at' => now(),
+                'password_changed' => true, // Super admin doesn't need to change password
             ]);
 
             // Create admin record with 'Super Admin' role
@@ -67,6 +68,7 @@ class DatabaseSeeder extends Seeder
                 'password' => bcrypt('mark12345'),
                 'role' => 'admin',
                 'email_verified_at' => now(),
+                'password_changed' => true, // Admin doesn't need to change password
             ]);
 
             // Create admin record
@@ -210,6 +212,7 @@ class DatabaseSeeder extends Seeder
                     'password' => bcrypt($teacherData['password']),
                     'role' => 'teacher',
                     'email_verified_at' => now(),
+                    'password_changed' => false, // Teachers need to change password on first login
                 ]);
 
                 // Create teacher

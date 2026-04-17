@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useForm } from '@inertiajs/react'
-import { destroy } from '@/routes/admin'
+import superadmin from '@/routes/superadmin'
 import { AlertTriangle } from 'lucide-react'
 
 type Admin = {
@@ -24,7 +24,7 @@ export default function DeleteAdminModal({ open, onOpenChange, admin }: DeleteAd
     const handleDelete = () => {
         if (!admin) return
 
-        deleteAdmin(destroy.url({ admin: admin.id }), {
+        deleteAdmin(superadmin.admins.destroy.url({ admin: admin.id }), {
             onSuccess: () => {
                 onOpenChange(false)
             }

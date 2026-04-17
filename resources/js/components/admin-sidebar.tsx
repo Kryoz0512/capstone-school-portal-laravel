@@ -14,9 +14,18 @@ import { useState, useEffect } from 'react'
 
 type SidebarProps = {
     currentPath?: string
+    user?: {
+        name: string
+        email: string
+        role: string
+    }
+    admin?: {
+        role: string
+        position: string
+    }
 }
 
-export default function AdminSidebar({ currentPath }: SidebarProps) {
+export default function AdminSidebar({ currentPath, user, admin }: SidebarProps) {
     // Determine which menu should be open based on current URL
     const getCurrentPath = () => {
         if (typeof window !== 'undefined') {
@@ -225,9 +234,12 @@ export default function AdminSidebar({ currentPath }: SidebarProps) {
                     </button>
                     {expandedMenus.usermanagement && (
                         <div className="bg-green-800">
-                            <Link href="/admin/user-management/admin" className="block px-12 py-2 text-sm hover:bg-green-600">
-                                Admin
-                            </Link>
+                            {/* Only show Admin menu for Super Admin role */}
+                            {admin?.role === 'Super Admin' && (
+                                <Link href="/admin/user-management/admin" className="block px-12 py-2 text-sm hover:bg-green-600">
+                                    Admin
+                                </Link>
+                            )}
                             <Link href="/admin/user-management/teacher" className="block px-12 py-2 text-sm hover:bg-green-600">
                                 Teacher
                             </Link>

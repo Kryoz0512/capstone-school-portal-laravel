@@ -212,12 +212,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return \Inertia\Inertia::render('admin/records/transcript-of-records/page');
     })->name('admin.records.transcript-of-records');
     
-    // Admin User Management routes
-    Route::get('admin/user-management/admin', [AdminController::class, 'index'])->name('admin.user-management.admin');
-    Route::post('admin/user-management/admin', [AdminController::class, 'store'])->name('admin.store');
-    Route::put('admin/user-management/admin/{admin}', [AdminController::class, 'update'])->name('admin.update');
-    Route::delete('admin/user-management/admin/{admin}', [AdminController::class, 'destroy'])->name('admin.destroy');
+    // Super Admin routes (Principal only - Admin Management)
+    Route::get('admin/user-management/admin', [App\Http\Controllers\SuperAdminController::class, 'index'])->name('superadmin.admins.index');
+    Route::post('admin/user-management/admin', [App\Http\Controllers\SuperAdminController::class, 'store'])->name('superadmin.admins.store');
+    Route::put('admin/user-management/admin/{admin}', [App\Http\Controllers\SuperAdminController::class, 'update'])->name('superadmin.admins.update');
+    Route::delete('admin/user-management/admin/{admin}', [App\Http\Controllers\SuperAdminController::class, 'destroy'])->name('superadmin.admins.destroy');
     
+    // Teacher Management routes
     Route::get('admin/user-management/teacher', [TeacherController::class, 'index'])->name('admin.user-management.teacher');
     Route::post('admin/user-management/teachers', [TeacherController::class, 'store'])->name('admin.user-management.teachers.store');
     Route::put('admin/user-management/teachers/{teacher}', [TeacherController::class, 'update'])->name('admin.user-management.teachers.update');

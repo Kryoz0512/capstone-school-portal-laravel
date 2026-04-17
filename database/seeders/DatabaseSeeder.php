@@ -3,8 +3,10 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use App\Models\Admin;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
@@ -13,6 +15,30 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Create Super Admin (Principal) account
+        $email = 'SNHS-BAYUDANG-MICAH';
+        
+        if (!User::where('email', $email)->exists()) {
+            // Create super admin user account
+            $superAdminUser = User::create([
+                'name' => 'Micah Bayudang',
+                'email' => $email,
+                'password' => Hash::make('micah123'),
+                'role' => 'admin',
+                'email_verified_at' => now(),
+            ]);
+
+            // Create admin record with 'Super Admin' role
+            Admin::create([
+                'user_id' => $superAdminUser->id,
+                'first_name' => 'Micah',
+                'last_name' => 'Bayudang',
+                'role' => 'Super Admin',
+                'position' => 'School Principal',
+                'updated_by' => $superAdminUser->id,
+            ]);
+        }
+        
         if (DB::table('tbl_grade_levels')->count() === 0) {
             DB::table('tbl_grade_levels')->insert([
                 [
@@ -38,7 +64,7 @@ class DatabaseSeeder extends Seeder
             $user = User::create([
                 'name' => 'Mark Robert Bayudang',
                 'email' => 'SNHS-BAYUDANG-MARK',
-                'password' => bcrypt('mark1234'),
+                'password' => bcrypt('mark12345'),
                 'role' => 'admin',
                 'email_verified_at' => now(),
             ]);

@@ -9,12 +9,16 @@ type Props = {
             email: string
             role: string
         }
+        admin?: {
+            role: string
+            position: string
+        }
     }
 }
 
 export default function AdminDashboard({ auth }: Props) {
     return (
-        <AdminLayout user={auth?.user}>
+        <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title="Admin Dashboard" />
             
             <div className="space-y-6">

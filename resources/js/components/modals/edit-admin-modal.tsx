@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useEffect, useState } from 'react'
 import { useForm } from '@inertiajs/react'
-import { update } from '@/routes/admin'
+import superadmin from '@/routes/superadmin'
 
 type Admin = {
     id: number
@@ -50,16 +50,10 @@ export default function EditAdminModal({ open, onOpenChange, admin }: EditAdminM
     }, [admin])
 
     useEffect(() => {
-        if (data.first_name || data.last_name) {
-            const firstName = data.first_name.toLowerCase().trim().replace(/\s+/g, '')
-            const lastName = data.last_name.toLowerCase().trim().replace(/\s+/g, '')
-            const email = firstName && lastName 
-                ? `${lastName}.${firstName}@snhs.edu.ph`
-                : firstName 
-                    ? `${firstName}@snhs.edu.ph`
-                    : lastName
-                        ? `${lastName}@snhs.edu.ph`
-                        : ''
+        if (data.first_name && data.last_name) {
+            const firstName = data.first_name.toUpperCase().trim().replace(/\s+/g, '')
+            const lastName = data.last_name.toUpperCase().trim().replace(/\s+/g, '')
+            const email = `SNHS-${lastName}-${firstName}`
             setGeneratedEmail(email)
         } else {
             setGeneratedEmail('')
@@ -70,7 +64,7 @@ export default function EditAdminModal({ open, onOpenChange, admin }: EditAdminM
         e.preventDefault()
         if (!admin) return
 
-        put(update.url({ admin: admin.id }), {
+        put(superadmin.admins.update.url({ admin: admin.id }), {
             onSuccess: () => {
                 reset()
                 setGeneratedEmail('')
@@ -140,12 +134,9 @@ export default function EditAdminModal({ open, onOpenChange, admin }: EditAdminM
                             value={generatedEmail}
                             readOnly
                             className="bg-gray-50"
-                            placeholder="lastname.firstname@snhs.edu.ph"
+                            placeholder="SNHS-LASTNAME-FIRSTNAME"
                         />
-                        <p className="text-xs text-gray-500 mt-1">Auto-generated from first and last name</p>
-                        {errors.email && (
-                            <p className="text-xs text-red-500 mt-1">{errors.email}</p>
-                        )}
+                        <p className="text-xs text-gray-500 mt-1">Auto-generated as SNHS-LASTNAME-FIRSTNAME</p>
                     </div>
 
                     <div>

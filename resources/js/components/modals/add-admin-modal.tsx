@@ -3,7 +3,7 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useState, useEffect } from 'react'
 import { useForm } from '@inertiajs/react'
-import { store } from '@/routes/admin'
+import superadmin from '@/routes/superadmin'
 
 type AddAdminModalProps = {
     open: boolean
@@ -42,7 +42,7 @@ export default function AddAdminModal({ open, onOpenChange }: AddAdminModalProps
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
-        post(store.url(), {
+        post(superadmin.admins.store.url(), {
             onSuccess: () => {
                 reset()
                 setGeneratedEmail('')

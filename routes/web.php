@@ -170,8 +170,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Admin Admission routes
     Route::get('admin/admission/registration', function () {
         $gradeLevels = \App\Models\GradeLevel::all();
+        $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
+        
         return \Inertia\Inertia::render('admin/admission/registration/page', [
-            'gradeLevels' => $gradeLevels
+            'gradeLevels' => $gradeLevels,
+            'auth' => [
+                'user' => \Illuminate\Support\Facades\Auth::user(),
+                'admin' => $admin,
+            ],
         ]);
     })->name('admin.admission.registration');
     
@@ -209,7 +215,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('admin/records/final-reports', [GradeController::class, 'adminFinalReports'])->name('admin.records.final-reports');
     
     Route::get('admin/records/transcript-of-records', function () {
-        return \Inertia\Inertia::render('admin/records/transcript-of-records/page');
+        $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
+        
+        return \Inertia\Inertia::render('admin/records/transcript-of-records/page', [
+            'auth' => [
+                'user' => \Illuminate\Support\Facades\Auth::user(),
+                'admin' => $admin,
+            ],
+        ]);
     })->name('admin.records.transcript-of-records');
     
     // Super Admin routes (Principal only - Admin Management)
@@ -232,7 +245,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Admin Documents route
     Route::get('admin/documents', function () {
-        return \Inertia\Inertia::render('admin/documents/page');
+        $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
+        
+        return \Inertia\Inertia::render('admin/documents/page', [
+            'auth' => [
+                'user' => \Illuminate\Support\Facades\Auth::user(),
+                'admin' => $admin,
+            ],
+        ]);
     })->name('admin.documents');
     
     // Admin Maintenance routes

@@ -53,6 +53,10 @@ type Props = {
             email: string
             role: string
         }
+        admin?: {
+            role: string
+            position: string
+        }
     }
     gradeLevels: GradeLevel[]
     classSections: ClassSection[]
@@ -273,7 +277,7 @@ export default function AddSchedule({
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
     return (
-        <AdminLayout user={auth?.user}>
+        <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title="Add Schedule" />
 
             <div className="space-y-6">

@@ -24,6 +24,10 @@ type Props = {
             email: string
             role: string
         }
+        admin?: {
+            role: string
+            position: string
+        }
     }
     archives: ArchiveItem[]
     currentType: string
@@ -96,7 +100,7 @@ export default function ArchivePage({ auth, archives = [], currentType = 'all' }
     }
 
     return (
-        <AdminLayout user={auth?.user}>
+        <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title="Archive" />
 
             <div className="space-y-6">

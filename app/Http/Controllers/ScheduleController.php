@@ -28,8 +28,14 @@ class ScheduleController extends Controller
             ];
         });
 
+        $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
+
         return Inertia::render('admin/enrollment/load-scheduling/page', [
             'teachers' => $teachers,
+            'auth' => [
+                'user' => \Illuminate\Support\Facades\Auth::user(),
+                'admin' => $admin,
+            ],
         ]);
     }
 
@@ -91,6 +97,8 @@ class ScheduleController extends Controller
             ];
         });
 
+        $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
+
         return Inertia::render('admin/enrollment/load-scheduling/show', [
             'teacher' => [
                 'id' => $teacher->id,
@@ -104,6 +112,10 @@ class ScheduleController extends Controller
             'gradeLevels' => $gradeLevels,
             'subjects' => $subjects,
             'rooms' => $rooms,
+            'auth' => [
+                'user' => \Illuminate\Support\Facades\Auth::user(),
+                'admin' => $admin,
+            ],
         ]);
     }
 
@@ -144,6 +156,8 @@ class ScheduleController extends Controller
             ];
         });
 
+        $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
+
         return Inertia::render('admin/enrollment/load-scheduling/create', [
             'teacher' => [
                 'id' => $teacher->id,
@@ -153,6 +167,10 @@ class ScheduleController extends Controller
             'gradeLevels' => $gradeLevels,
             'subjects' => $subjects,
             'rooms' => $rooms,
+            'auth' => [
+                'user' => \Illuminate\Support\Facades\Auth::user(),
+                'admin' => $admin,
+            ],
         ]);
     }
 
@@ -191,6 +209,8 @@ class ScheduleController extends Controller
             ];
         });
 
+        $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
+
         return Inertia::render('admin/enrollment/load-scheduling/edit', [
             'schedule' => [
                 'id' => $schedule->id,
@@ -214,6 +234,10 @@ class ScheduleController extends Controller
             'gradeLevels' => $gradeLevels,
             'subjects' => $subjects,
             'rooms' => $rooms,
+            'auth' => [
+                'user' => \Illuminate\Support\Facades\Auth::user(),
+                'admin' => $admin,
+            ],
         ]);
     }
 
@@ -430,8 +454,14 @@ class ScheduleController extends Controller
             ];
         });
 
+        $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
+
         return Inertia::render('admin/enrollment/room-schedule/page', [
             'rooms' => $rooms,
+            'auth' => [
+                'user' => \Illuminate\Support\Facades\Auth::user(),
+                'admin' => $admin,
+            ],
         ]);
     }
 
@@ -458,6 +488,8 @@ class ScheduleController extends Controller
                 ];
             });
 
+        $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
+
         return Inertia::render('admin/enrollment/room-schedule/show', [
             'room' => [
                 'id' => $room->id,
@@ -465,6 +497,10 @@ class ScheduleController extends Controller
                 'capacity' => $room->capacity,
             ],
             'schedules' => $schedules,
+            'auth' => [
+                'user' => \Illuminate\Support\Facades\Auth::user(),
+                'admin' => $admin,
+            ],
         ]);
     }
 }

@@ -23,6 +23,10 @@ type Props = {
             email: string
             role: string
         }
+        admin?: {
+            role: string
+            position: string
+        }
     }
     teachers: Teacher[]
 }
@@ -74,7 +78,7 @@ export default function LoadScheduling({ auth, teachers = [] }: Props) {
     }
 
     return (
-        <AdminLayout user={auth?.user}>
+        <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title="Load Scheduling" />
 
             <div className="space-y-6">

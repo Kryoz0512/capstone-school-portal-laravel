@@ -24,6 +24,10 @@ type Props = {
             email: string
             role: string
         }
+        admin?: {
+            role: string
+            position: string
+        }
     }
     rooms?: Room[]
 }
@@ -74,7 +78,7 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
     }
 
     return (
-        <AdminLayout user={auth?.user}>
+        <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title="Room Listings" />
 
             <div className="space-y-6">

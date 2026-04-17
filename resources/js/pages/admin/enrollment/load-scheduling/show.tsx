@@ -60,6 +60,10 @@ type Props = {
             email: string
             role: string
         }
+        admin?: {
+            role: string
+            position: string
+        }
     }
     teacher: Teacher
     schedules: Schedule[]
@@ -119,7 +123,7 @@ export default function TeacherSchedules({
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 
     return (
-        <AdminLayout user={auth?.user}>
+        <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title={`${teacher.name} - Schedules`} />
 
             <div className="space-y-6">

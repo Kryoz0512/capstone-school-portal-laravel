@@ -30,6 +30,10 @@ type Props = {
             email: string
             role: string
         }
+        admin?: {
+            role: string
+            position: string
+        }
     }
     gradeLevels: GradeLevel[]
 }
@@ -211,7 +215,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
     }
 
     return (
-        <AdminLayout user={auth?.user}>
+        <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title="Student Registration" />
 
             <div className="space-y-6">

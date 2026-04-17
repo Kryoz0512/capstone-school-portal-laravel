@@ -31,6 +31,10 @@ type Props = {
             email: string
             role: string
         }
+        admin?: {
+            role: string
+            position: string
+        }
     }
     student: Student
     schedules: Schedule[]
@@ -63,7 +67,7 @@ export default function StudentScheduleShow({ auth, student, schedules }: Props)
     }, [schedules])
 
     return (
-        <AdminLayout user={auth?.user}>
+        <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title={`Schedule - ${student.studentName}`} />
 
             <div className="space-y-6">

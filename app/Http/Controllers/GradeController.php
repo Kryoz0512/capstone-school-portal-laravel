@@ -378,7 +378,8 @@ class GradeController extends Controller
                 'section_id' => $sectionId,
             ],
             'auth' => [
-                'user' => $user
+                'user' => $user,
+                'admin' => \App\Models\Admin::where('user_id', $user->id)->first(),
             ]
         ]);
     }

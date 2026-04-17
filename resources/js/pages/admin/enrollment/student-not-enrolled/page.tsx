@@ -38,6 +38,10 @@ type Props = {
             email: string
             role: string
         }
+        admin?: {
+            role: string
+            position: string
+        }
     }
     students?: Student[]
     gradeLevels?: GradeLevel[]
@@ -114,7 +118,7 @@ export default function StudentNotEnrolled({ auth, students = [], gradeLevels = 
     }
 
     return (
-        <AdminLayout user={auth?.user}>
+        <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title="Students Not Enrolled" />
 
             <div className="space-y-6">

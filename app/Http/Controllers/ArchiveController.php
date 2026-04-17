@@ -64,11 +64,14 @@ class ArchiveController extends Controller
             ];
         });
         
+        $admin = Admin::where('user_id', Auth::id())->first();
+
         return Inertia::render('admin/archive/page', [
             'archives' => $archives,
             'currentType' => $type,
             'auth' => [
-                'user' => Auth::user()
+                'user' => Auth::user(),
+                'admin' => $admin,
             ]
         ]);
     }

@@ -27,6 +27,10 @@ type Props = {
             email: string
             role: string
         }
+        admin?: {
+            role: string
+            position: string
+        }
     }
     students: {
         data: Student[]
@@ -66,7 +70,7 @@ export default function StudentSchedule({ auth, students, filters }: Props) {
     }
 
     return (
-        <AdminLayout user={auth?.user}>
+        <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title="Student Schedule" />
 
             <div className="space-y-6">

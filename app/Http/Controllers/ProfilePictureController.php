@@ -12,7 +12,14 @@ class ProfilePictureController extends Controller
 {
     public function index()
     {
-        return Inertia::render('admin/admission/upload-delete-picture/page');
+        $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
+
+        return Inertia::render('admin/admission/upload-delete-picture/page', [
+            'auth' => [
+                'user' => \Illuminate\Support\Facades\Auth::user(),
+                'admin' => $admin,
+            ],
+        ]);
     }
 
     public function verify(Request $request)

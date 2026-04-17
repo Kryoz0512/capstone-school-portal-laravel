@@ -48,6 +48,10 @@ type Props = {
             email: string
             role: string
         }
+        admin?: {
+            role: string
+            position: string
+        }
     }
     teachers: Teacher[]
     gradeLevels: GradeLevel[]
@@ -205,7 +209,7 @@ export default function FacultySubjects({ auth, teachers = [], gradeLevels = [],
     }
 
     return (
-        <AdminLayout user={auth?.user}>
+        <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title="Faculty & Subjects" />
 
             <div className="space-y-6">

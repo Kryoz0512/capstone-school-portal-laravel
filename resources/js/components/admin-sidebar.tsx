@@ -8,7 +8,8 @@ import {
     FileText,
     ChevronRight,
     Settings,
-    Archive
+    Archive,
+    User
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
@@ -68,12 +69,23 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
         }))
     }
 
+    const isActive = (path: string) => {
+        return getCurrentPath() === path
+    }
+
     return (
         <div className="w-64 bg-green-700 h-screen flex flex-col text-white fixed left-0 top-0">
-            {/* Logo/Brand */}
-            <div className="p-6 border-b border-green-600 shrink-0">
-                <h1 className="text-xl font-bold">Santor National</h1>
-                <p className="text-sm text-green-100">HighSchool</p>
+            {/* Profile Section */}
+            <div className="p-6 border-b border-green-600">
+                <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-green-800 rounded-full flex items-center justify-center">
+                        <User className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold text-white">{user?.name || 'Admin'}</p>
+                        <p className="text-xs text-green-100">{admin?.role || 'Administrator'}</p>
+                    </div>
+                </div>
             </div>
 
             {/* Navigation - Scrollable */}
@@ -81,7 +93,11 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                 {/* Dashboard */}
                 <Link
                     href="/admin/dashboard"
-                    className="flex items-center gap-3 px-6 py-3 hover:bg-green-600 transition-colors"
+                    className={`flex items-center gap-3 px-6 py-3 transition-colors ${
+                        isActive('/admin/dashboard') 
+                            ? 'bg-green-800 text-white' 
+                            : 'text-green-50 hover:bg-green-600'
+                    }`}
                 >
                     <LayoutDashboard className="w-5 h-5" />
                     <span>Dashboard</span>
@@ -91,7 +107,7 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                 <div>
                     <button
                         onClick={() => toggleMenu('admission')}
-                        className="w-full flex items-center justify-between px-6 py-3 hover:bg-green-600 transition-colors"
+                        className="w-full flex items-center justify-between px-6 py-3 text-green-50 hover:bg-green-600 transition-colors"
                     >
                         <div className="flex items-center gap-3">
                             <ClipboardList className="w-5 h-5" />
@@ -103,16 +119,16 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                     </button>
                     {expandedMenus.admission && (
                         <div className="bg-green-800">
-                            <Link href="/admin/admission/registration" className="block px-12 py-2 text-sm hover:bg-green-600">
+                            <Link href="/admin/admission/registration" className="block px-12 py-2 text-sm text-green-50 hover:bg-green-900">
                                 Registration
                             </Link>
-                            <Link href="/admin/admission/accreditation" className="block px-12 py-2 text-sm hover:bg-green-600">
+                            <Link href="/admin/admission/accreditation" className="block px-12 py-2 text-sm text-green-50 hover:bg-green-900">
                                 Accreditation
                             </Link>
-                            <Link href="/admin/admission/upload-delete-picture" className="block px-12 py-2 text-sm hover:bg-green-600">
+                            <Link href="/admin/admission/upload-delete-picture" className="block px-12 py-2 text-sm text-green-50 hover:bg-green-900">
                                 Upload or Delete Picture
                             </Link>
-                            <Link href="/admin/admission/view-edit-student" className="block px-12 py-2 text-sm hover:bg-green-600">
+                            <Link href="/admin/admission/view-edit-student" className="block px-12 py-2 text-sm text-green-50 hover:bg-green-900">
                                 View Edit Student Information
                             </Link>
                         </div>
@@ -123,7 +139,7 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                 <div>
                     <button
                         onClick={() => toggleMenu('enrollment')}
-                        className="w-full flex items-center justify-between px-6 py-3 hover:bg-green-600 transition-colors"
+                        className="w-full flex items-center justify-between px-6 py-3 text-green-50 hover:bg-green-600 transition-colors"
                     >
                         <div className="flex items-center gap-3">
                             <UserPlus className="w-5 h-5" />
@@ -135,31 +151,31 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                     </button>
                     {expandedMenus.enrollment && (
                         <div className="bg-green-800">
-                            <Link href="/admin/enrollment/room-schedule" className="block px-12 py-2 text-sm hover:bg-green-600">
+                            <Link href="/admin/enrollment/room-schedule" className="block px-12 py-2 text-sm text-green-50 hover:bg-green-900">
                                 Room Schedule
                             </Link>
-                            <Link href="/admin/enrollment/room-listings" className="block px-12 py-2 text-sm hover:bg-green-600">
+                            <Link href="/admin/enrollment/room-listings" className="block px-12 py-2 text-sm text-green-50 hover:bg-green-900">
                                 Room Listings
                             </Link>
-                            <Link href="/admin/enrollment/class-sections" className="block px-12 py-2 text-sm hover:bg-green-600">
+                            <Link href="/admin/enrollment/class-sections" className="block px-12 py-2 text-sm text-green-50 hover:bg-green-900">
                                 Class Sections
                             </Link>
-                            <Link href="/admin/enrollment/faculty-subjects" className="block px-12 py-2 text-sm hover:bg-green-600">
+                            <Link href="/admin/enrollment/faculty-subjects" className="block px-12 py-2 text-sm text-green-50 hover:bg-green-900">
                                 Faculty & Subjects
                             </Link>
-                            <Link href="/admin/enrollment/load-scheduling" className="block px-12 py-2 text-sm hover:bg-green-600">
+                            <Link href="/admin/enrollment/load-scheduling" className="block px-12 py-2 text-sm text-green-50 hover:bg-green-900">
                                 Load Scheduling
                             </Link>
-                            <Link href="/admin/enrollment/adviser-management" className="block px-12 py-2 text-sm hover:bg-green-600">
+                            <Link href="/admin/enrollment/adviser-management" className="block px-12 py-2 text-sm text-green-50 hover:bg-green-900">
                                 Adviser Management
                             </Link>
-                            <Link href="/admin/enrollment/student-not-enrolled" className="block px-12 py-2 text-sm hover:bg-green-600">
+                            <Link href="/admin/enrollment/student-not-enrolled" className="block px-12 py-2 text-sm text-green-50 hover:bg-green-900">
                                 Students Not Enrolled
                             </Link>
-                            <Link href="/admin/enrollment/enrollment-list" className="block px-12 py-2 text-sm hover:bg-green-600">
+                            <Link href="/admin/enrollment/enrollment-list" className="block px-12 py-2 text-sm text-green-50 hover:bg-green-900">
                                 Enrollment List
                             </Link>
-                            <Link href="/admin/enrollment/student-schedule" className="block px-12 py-2 text-sm hover:bg-green-600">
+                            <Link href="/admin/enrollment/student-schedule" className="block px-12 py-2 text-sm text-green-50 hover:bg-green-900">
                                 Student Schedule
                             </Link>
                         </div>
@@ -170,7 +186,7 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                 <div>
                     <button
                         onClick={() => toggleMenu('registrar')}
-                        className="w-full flex items-center justify-between px-6 py-3 hover:bg-green-600 transition-colors"
+                        className="w-full flex items-center justify-between px-6 py-3 text-green-50 hover:bg-green-600 transition-colors"
                     >
                         <div className="flex items-center gap-3">
                             <BookOpen className="w-5 h-5" />
@@ -182,10 +198,10 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                     </button>
                     {expandedMenus.registrar && (
                         <div className="bg-green-800">
-                            <Link href="/admin/registrar/student-checklist" className="block px-12 py-2 text-sm hover:bg-green-600">
+                            <Link href="/admin/registrar/student-checklist" className="block px-12 py-2 text-sm text-green-50 hover:bg-green-900">
                                 Student Checklist
                             </Link>
-                            <Link href="/admin/registrar/subject-listings" className="block px-12 py-2 text-sm hover:bg-green-600">
+                            <Link href="/admin/registrar/subject-listings" className="block px-12 py-2 text-sm text-green-50 hover:bg-green-900">
                                 Subject Listings
                             </Link>
                         </div>
@@ -196,7 +212,7 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                 <div>
                     <button
                         onClick={() => toggleMenu('records')}
-                        className="w-full flex items-center justify-between px-6 py-3 hover:bg-green-600 transition-colors"
+                        className="w-full flex items-center justify-between px-6 py-3 text-green-50 hover:bg-green-600 transition-colors"
                     >
                         <div className="flex items-center gap-3">
                             <FileText className="w-5 h-5" />
@@ -208,10 +224,10 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                     </button>
                     {expandedMenus.records && (
                         <div className="bg-green-800">
-                            <Link href="/admin/records/final-reports" className="block px-12 py-2 text-sm hover:bg-green-600">
+                            <Link href="/admin/records/final-reports" className="block px-12 py-2 text-sm text-green-50 hover:bg-green-900">
                                 Final Reports
                             </Link>
-                            <Link href="/admin/records/transcript-of-records" className="block px-12 py-2 text-sm hover:bg-green-600">
+                            <Link href="/admin/records/transcript-of-records" className="block px-12 py-2 text-sm text-green-50 hover:bg-green-900">
                                 Transcript Of Records
                             </Link>
                         </div>
@@ -222,7 +238,7 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                 <div>
                     <button
                         onClick={() => toggleMenu('usermanagement')}
-                        className="w-full flex items-center justify-between px-6 py-3 hover:bg-green-600 transition-colors"
+                        className="w-full flex items-center justify-between px-6 py-3 text-green-50 hover:bg-green-600 transition-colors"
                     >
                         <div className="flex items-center gap-3">
                             <GraduationCap className="w-5 h-5" />
@@ -236,11 +252,11 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                         <div className="bg-green-800">
                             {/* Only show Admin menu for Super Admin role */}
                             {admin?.role === 'Super Admin' && (
-                                <Link href="/admin/user-management/admin" className="block px-12 py-2 text-sm hover:bg-green-600">
+                                <Link href="/admin/user-management/admin" className="block px-12 py-2 text-sm text-green-50 hover:bg-green-900">
                                     Admin
                                 </Link>
                             )}
-                            <Link href="/admin/user-management/teacher" className="block px-12 py-2 text-sm hover:bg-green-600">
+                            <Link href="/admin/user-management/teacher" className="block px-12 py-2 text-sm text-green-50 hover:bg-green-900">
                                 Teacher
                             </Link>
                         </div>
@@ -250,7 +266,11 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                 {/* Documents */}
                 <Link
                     href="/admin/documents"
-                    className="flex items-center gap-3 px-6 py-3 hover:bg-green-600 transition-colors"
+                    className={`flex items-center gap-3 px-6 py-3 transition-colors ${
+                        isActive('/admin/documents') 
+                            ? 'bg-green-800 text-white' 
+                            : 'text-green-50 hover:bg-green-600'
+                    }`}
                 >
                     <FileText className="w-5 h-5" />
                     <span>Documents</span>
@@ -259,7 +279,11 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                 {/* Archive */}
                 <Link
                     href="/admin/archive"
-                    className="flex items-center gap-3 px-6 py-3 hover:bg-green-600 transition-colors"
+                    className={`flex items-center gap-3 px-6 py-3 transition-colors ${
+                        isActive('/admin/archive') 
+                            ? 'bg-green-800 text-white' 
+                            : 'text-green-50 hover:bg-green-600'
+                    }`}
                 >
                     <Archive className="w-5 h-5" />
                     <span>Archive</span>
@@ -269,7 +293,7 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                 <div>
                     <button
                         onClick={() => toggleMenu('maintenance')}
-                        className="w-full flex items-center justify-between px-6 py-3 hover:bg-green-600 transition-colors"
+                        className="w-full flex items-center justify-between px-6 py-3 text-green-50 hover:bg-green-600 transition-colors"
                     >
                         <div className="flex items-center gap-3">
                             <Settings className="w-5 h-5" />
@@ -281,7 +305,7 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                     </button>
                     {expandedMenus.maintenance && (
                         <div className="bg-green-800">
-                            <Link href="/admin/maintenance/login-slides" className="block px-12 py-2 text-sm hover:bg-green-600">
+                            <Link href="/admin/maintenance/login-slides" className="block px-12 py-2 text-sm text-green-50 hover:bg-green-900">
                                 Login Slides
                             </Link>
                         </div>

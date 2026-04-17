@@ -37,6 +37,10 @@ type Props = {
             email: string
             role: string
         }
+        admin?: {
+            role: string
+            position: string
+        }
     }
     sections: Section[]
     gradeLevels: GradeLevel[]
@@ -91,7 +95,7 @@ export default function ClassSections({ auth, sections = [], gradeLevels = [], r
     }
 
     return (
-        <AdminLayout user={auth?.user}>
+        <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title="Class Sections" />
 
             <div className="space-y-6">

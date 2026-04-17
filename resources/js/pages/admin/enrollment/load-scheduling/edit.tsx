@@ -58,6 +58,10 @@ type Props = {
             email: string
             role: string
         }
+        admin?: {
+            role: string
+            position: string
+        }
     }
     schedule: Schedule
     teacher: Teacher
@@ -208,7 +212,7 @@ export default function EditSchedule({
     }
 
     return (
-        <AdminLayout user={auth?.user}>
+        <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title="Edit Schedule" />
 
             <div className="max-w-4xl mx-auto space-y-6">

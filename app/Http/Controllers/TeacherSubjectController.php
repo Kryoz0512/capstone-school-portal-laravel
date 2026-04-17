@@ -43,10 +43,16 @@ public function index()
             'grade_level' => $subject->gradeLevel->name ?? null,
         ]);
 
+    $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
+
     return Inertia::render('admin/enrollment/faculty-subjects/page', [
         'teachers' => $teachers,
         'gradeLevels' => $gradeLevels,
         'subjects' => $subjects,
+        'auth' => [
+            'user' => \Illuminate\Support\Facades\Auth::user(),
+            'admin' => $admin,
+        ],
     ]);
 }
 

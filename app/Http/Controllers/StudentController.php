@@ -399,6 +399,10 @@ public function notEnrolled(Request $request)
         'gradeLevels' => $gradeLevels,
         'sections' => $sections,
         'filters' => $request->only(['search', 'grade_level', 'gender', 'age']),
+        'auth' => [
+            'user' => \Illuminate\Support\Facades\Auth::user(),
+            'admin' => \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first(),
+        ],
     ]);
 }
 
@@ -447,6 +451,10 @@ public function notEnrolled(Request $request)
         return Inertia::render('admin/admission/view-edit-student/page', [
             'students' => $students,
             'gradeLevels' => $gradeLevels,
+            'auth' => [
+                'user' => \Illuminate\Support\Facades\Auth::user(),
+                'admin' => \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first(),
+            ],
         ]);
     }
 
@@ -479,6 +487,10 @@ public function notEnrolled(Request $request)
             'students' => $students,
             'filters' => [
                 'search' => $search,
+            ],
+            'auth' => [
+                'user' => \Illuminate\Support\Facades\Auth::user(),
+                'admin' => \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first(),
             ],
         ]);
     }
@@ -522,6 +534,10 @@ public function notEnrolled(Request $request)
         return Inertia::render('admin/enrollment/student-schedule/show', [
             'student' => $studentData,
             'schedules' => $schedules,
+            'auth' => [
+                'user' => \Illuminate\Support\Facades\Auth::user(),
+                'admin' => \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first(),
+            ],
         ]);
     }
 
@@ -728,7 +744,11 @@ public function notEnrolled(Request $request)
         ];
         
         return Inertia::render('admin/admission/view-edit-student/edit', [
-            'student' => $studentData
+            'student' => $studentData,
+            'auth' => [
+                'user' => \Illuminate\Support\Facades\Auth::user(),
+                'admin' => \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first(),
+            ],
         ]);
     }
 
@@ -1371,6 +1391,10 @@ public function notEnrolled(Request $request)
             'grade9Students' => $grade9Students,
             'grade10Students' => $grade10Students,
             'pastStudents' => $pastStudents,
+            'auth' => [
+                'user' => \Illuminate\Support\Facades\Auth::user(),
+                'admin' => \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first(),
+            ],
         ]);
     }
 
@@ -1445,6 +1469,10 @@ public function notEnrolled(Request $request)
                 'grade_level' => $request->grade_level,
                 'section' => $request->section,
                 'search' => $request->search,
+            ],
+            'auth' => [
+                'user' => \Illuminate\Support\Facades\Auth::user(),
+                'admin' => \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first(),
             ],
         ]);
     }

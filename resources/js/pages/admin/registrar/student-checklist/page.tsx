@@ -27,6 +27,10 @@ type Props = {
             email: string
             role: string
         }
+        admin?: {
+            role: string
+            position: string
+        }
     }
     grade7Students: Student[]
     grade8Students: Student[]
@@ -322,7 +326,7 @@ export default function StudentChecklist({
     }
 
     return (
-        <AdminLayout user={auth?.user}>
+        <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title="Student Checklist" />
 
             <div className="space-y-6">

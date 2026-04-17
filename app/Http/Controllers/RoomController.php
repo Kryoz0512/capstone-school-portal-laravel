@@ -13,8 +13,14 @@ class RoomController extends Controller
     {
         $rooms = Room::orderBy('room_number')->get();
         
+        $admin = \App\Models\Admin::where('user_id', Auth::id())->first();
+        
         return Inertia::render('admin/enrollment/room-listings/page', [
-            'rooms' => $rooms
+            'rooms' => $rooms,
+            'auth' => [
+                'user' => Auth::user(),
+                'admin' => $admin,
+            ],
         ]);
     }
 

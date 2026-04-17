@@ -26,6 +26,10 @@ type Props = {
             email: string
             role: string
         }
+        admin?: {
+            role: string
+            position: string
+        }
     }
     students?: Student[]
     gradeLevels?: GradeLevel[]
@@ -51,7 +55,7 @@ export default function ViewEditStudent({ auth, students = [], gradeLevels = [] 
     }
 
     return (
-        <AdminLayout user={auth?.user}>
+        <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title="View & Edit Student Information" />
 
             <div className="space-y-6">

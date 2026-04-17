@@ -33,6 +33,10 @@ type Props = {
             email: string
             role: string
         }
+        admin?: {
+            role: string
+            position: string
+        }
     }
 }
 
@@ -68,7 +72,7 @@ export default function LoginSlides({ slides, maxSlides, auth }: Props) {
     const activeCount = slides.filter(s => s.is_active).length
 
     return (
-        <AdminLayout user={auth?.user}>
+        <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title="Login Slides Management" />
 
             <div className="space-y-6">

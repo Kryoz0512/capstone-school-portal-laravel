@@ -23,6 +23,10 @@ type Props = {
             email: string
             role: string
         }
+        admin?: {
+            role: string
+            position: string
+        }
     }
 }
 
@@ -42,7 +46,7 @@ export default function TranscriptOfRecords({ auth }: Props) {
     const requestedCount = transcripts.filter(t => t.status === 'Requested').length
 
     return (
-        <AdminLayout user={auth?.user}>
+        <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title="Transcript of Records (TOR)" />
 
             <div className="space-y-6">

@@ -20,9 +20,15 @@ class LoginSlideController extends Controller
             ];
         });
 
+        $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
+
         return Inertia::render('admin/maintenance/login-slides/page', [
             'slides' => $slides,
             'maxSlides' => 5,
+            'auth' => [
+                'user' => \Illuminate\Support\Facades\Auth::user(),
+                'admin' => $admin,
+            ],
         ]);
     }
 

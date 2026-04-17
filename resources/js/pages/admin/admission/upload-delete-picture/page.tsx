@@ -15,6 +15,10 @@ type Props = {
             email: string
             role: string
         }
+        admin?: {
+            role: string
+            position: string
+        }
     }
 }
 
@@ -132,7 +136,7 @@ export default function UploadDeletePicturePage({ auth }: Props) {
     }
 
     return (
-        <AdminLayout user={auth?.user}>
+        <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title="Upload or Delete Picture" />
 
             <div className="space-y-6">

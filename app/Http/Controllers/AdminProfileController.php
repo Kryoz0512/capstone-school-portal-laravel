@@ -35,6 +35,10 @@ class AdminProfileController extends Controller
 
         return Inertia::render('admin/profile/page', [
             'profile' => $profileData,
+            'auth' => [
+                'user' => $user,
+                'admin' => $admin,
+            ],
         ]);
     }
 

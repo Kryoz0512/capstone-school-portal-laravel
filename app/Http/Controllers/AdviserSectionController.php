@@ -51,18 +51,30 @@ class AdviserSectionController extends Controller
                 ];
             });
 
+            $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
+
             return Inertia::render('admin/enrollment/adviser-management/page', [
                 'sections' => $sections,
                 'teachers' => $teachers,
                 'schoolYear' => $schoolYear,
+                'auth' => [
+                    'user' => \Illuminate\Support\Facades\Auth::user(),
+                    'admin' => $admin,
+                ],
             ]);
         } catch (\Exception $e) {
             Log::error('Adviser Management Error: ' . $e->getMessage());
+
+            $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
 
             return Inertia::render('admin/enrollment/adviser-management/page', [
                 'sections' => [],
                 'teachers' => [],
                 'schoolYear' => date('Y') . '-' . (date('Y') + 1),
+                'auth' => [
+                    'user' => \Illuminate\Support\Facades\Auth::user(),
+                    'admin' => $admin,
+                ],
             ]);
         }
     }

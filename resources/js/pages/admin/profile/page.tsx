@@ -19,7 +19,7 @@ type Props = {
 }
 
 export default function ProfileSettings({ profile }: Props) {
-    const { auth } = usePage<{ auth: { user: { id: number; name: string; email: string; role: string } } }>().props
+    const { auth } = usePage<{ auth: { user: { id: number; name: string; email: string; role: string }; admin?: { role: string; position: string } } }>().props
     const [showCurrentPassword, setShowCurrentPassword] = useState(false)
     const [showNewPassword, setShowNewPassword] = useState(false)
     const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -43,7 +43,7 @@ export default function ProfileSettings({ profile }: Props) {
     }
 
     return (
-        <AdminLayout user={auth?.user}>
+        <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title="Profile Settings" />
 
             <div className="space-y-6">

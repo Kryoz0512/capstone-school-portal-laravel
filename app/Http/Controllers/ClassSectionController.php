@@ -37,10 +37,16 @@ class ClassSectionController extends Controller
             ];
         });
 
+        $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
+
         return Inertia::render('admin/enrollment/class-sections/page', [
             'sections' => $sections,
             'gradeLevels' => $gradeLevels,
             'rooms' => $rooms,
+            'auth' => [
+                'user' => \Illuminate\Support\Facades\Auth::user(),
+                'admin' => $admin,
+            ],
         ]);
     }
 

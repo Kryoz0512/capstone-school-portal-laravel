@@ -65,6 +65,10 @@ type Props = {
             email: string
             role: string
         }
+        admin?: {
+            role: string
+            position: string
+        }
     }
     student: Student
 }
@@ -133,7 +137,7 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
     }
 
     return (
-        <AdminLayout user={auth?.user}>
+        <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title="Edit General Student Personal Information Sheet (GSPIS)" />
 
             <div className="space-y-6 max-w-5xl mx-auto">

@@ -50,6 +50,10 @@ type Props = {
             email: string
             role: string
         }
+        admin?: {
+            role: string
+            position: string
+        }
     }
 }
 
@@ -101,7 +105,7 @@ export default function FinalReports({ schoolYears, gradeLevels, sections, stude
     const failedCount = filteredStudents.filter(s => s.remarks === 'Failed').length
 
     return (
-        <AdminLayout user={auth?.user}>
+        <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title="Final Reports" />
 
             <div className="space-y-6">

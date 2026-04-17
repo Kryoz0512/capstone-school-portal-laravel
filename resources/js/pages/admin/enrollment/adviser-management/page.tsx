@@ -31,6 +31,10 @@ type Props = {
             email: string
             role: string
         }
+        admin?: {
+            role: string
+            position: string
+        }
     }
     sections: Section[]
     teachers: Teacher[]
@@ -87,7 +91,7 @@ export default function AdviserManagement({ auth, sections = [], teachers = [], 
     }
 
     return (
-        <AdminLayout user={auth?.user}>
+        <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title="Adviser Assignment" />
 
             <div className="space-y-6">

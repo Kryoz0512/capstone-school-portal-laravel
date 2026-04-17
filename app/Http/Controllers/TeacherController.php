@@ -90,10 +90,16 @@ class TeacherController extends Controller
                 ];
             });
 
+        $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
+
         return Inertia::render('admin/user-management/teacher/page', [
             'teachers' => $teachers,
             'gradeLevels' => $gradeLevels,
-            'subjects' => $subjects
+            'subjects' => $subjects,
+            'auth' => [
+                'user' => \Illuminate\Support\Facades\Auth::user(),
+                'admin' => $admin,
+            ],
         ]);
     }
 

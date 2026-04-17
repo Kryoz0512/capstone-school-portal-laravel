@@ -29,6 +29,10 @@ type Props = {
             email: string
             role: string
         }
+        admin?: {
+            role: string
+            position: string
+        }
     }
     accreditations?: Accreditation[]
 }
@@ -72,7 +76,7 @@ export default function AccreditationPage({ auth, accreditations = [] }: Props) 
     }
 
     return (
-        <AdminLayout user={auth?.user}>
+        <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title="Accreditation" />
 
             <div className="space-y-6">

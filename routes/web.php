@@ -179,6 +179,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('admin/admission/registration/export', [App\Http\Controllers\StudentController::class, 'export'])->name('admin.admission.registration.export');
     Route::post('admin/admission/registration/import', [App\Http\Controllers\StudentController::class, 'import'])->name('admin.admission.registration.import');
     Route::get('admin/admission/registration/template', [App\Http\Controllers\StudentController::class, 'downloadTemplate'])->name('admin.admission.registration.template');
+    Route::get('admin/admission/registration/search-returning', [App\Http\Controllers\StudentController::class, 'searchReturningStudents'])->name('admin.admission.registration.search-returning');
     
     Route::get('admin/admission/accreditation', [AccreditationController::class, 'index'])->name('admin.admission.accreditation');
     Route::post('admin/admission/accreditations', [AccreditationController::class, 'store'])->name('admin.admission.accreditations.store');

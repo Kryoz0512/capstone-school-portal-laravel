@@ -23,12 +23,20 @@ class Student extends Model
         'current_grade_level_id',
         'current_section_id',
         'birth_date',
+        'has_psa_birth_certificate',
+        'has_sf9',
+        'has_report_card',
+        'has_good_moral',
     ];
 
     protected function casts(): array
     {
         return [
             'birth_date' => 'date',
+            'has_psa_birth_certificate' => 'boolean',
+            'has_sf9' => 'boolean',
+            'has_report_card' => 'boolean',
+            'has_good_moral' => 'boolean',
         ];
     }
 

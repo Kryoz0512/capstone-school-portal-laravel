@@ -536,6 +536,10 @@ public function notEnrolled(Request $request)
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
             'grade_level_id' => 'nullable|exists:tbl_grade_levels,id',
+            'has_psa_birth_certificate' => 'nullable|boolean',
+            'has_sf9' => 'nullable|boolean',
+            'has_report_card' => 'nullable|boolean',
+            'has_good_moral' => 'nullable|boolean',
         ]);
 
         DB::beginTransaction();
@@ -570,6 +574,10 @@ public function notEnrolled(Request $request)
                 'gender' => $validated['gender'],
                 'birth_date' => $validated['birth_date'],
                 'current_grade_level_id' => $gradeLevelId,
+                'has_psa_birth_certificate' => $validated['has_psa_birth_certificate'] ?? false,
+                'has_sf9' => $validated['has_sf9'] ?? false,
+                'has_report_card' => $validated['has_report_card'] ?? false,
+                'has_good_moral' => $validated['has_good_moral'] ?? false,
             ]);
 
             // Create student profile using polymorphic relationship
@@ -895,6 +903,10 @@ public function notEnrolled(Request $request)
                 'Student Status',
                 'Grade Level',
                 'School Year',
+                'PSA Birth Certificate',
+                'SF9',
+                'Report Card',
+                'Good Moral',
             ]);
 
             // Add data rows
@@ -908,7 +920,11 @@ public function notEnrolled(Request $request)
                     $student->gender,
                     $student->student_status,
                     $student->gradeLevel->name ?? '',
-                    $student->school_year ?? 'SY 2025-2026',
+                    $student->school_year ?? '',
+                    $student->has_psa_birth_certificate ? 'Yes' : 'No',
+                    $student->has_sf9 ? 'Yes' : 'No',
+                    $student->has_report_card ? 'Yes' : 'No',
+                    $student->has_good_moral ? 'Yes' : 'No',
                 ]);
             }
 
@@ -1009,7 +1025,11 @@ public function notEnrolled(Request $request)
                         'gender' => strtolower($row['Gender']),
                         'student_status' => strtolower($row['Student Status']),
                         'current_grade_level_id' => $gradeLevel->id,
-                        'school_year' => $row['School Year'] ?? 'SY 2025-2026',
+                        'school_year' => $row['School Year'] ?? '',
+                        'has_psa_birth_certificate' => isset($row['PSA Birth Certificate']) && strtolower($row['PSA Birth Certificate']) === 'yes',
+                        'has_sf9' => isset($row['SF9']) && strtolower($row['SF9']) === 'yes',
+                        'has_report_card' => isset($row['Report Card']) && strtolower($row['Report Card']) === 'yes',
+                        'has_good_moral' => isset($row['Good Moral']) && strtolower($row['Good Moral']) === 'yes',
                     ]);
 
                     // Create student profile using polymorphic relationship
@@ -1086,6 +1106,10 @@ public function notEnrolled(Request $request)
                 'Student Status',
                 'Grade Level',
                 'School Year',
+                'PSA Birth Certificate',
+                'SF9',
+                'Report Card',
+                'Good Moral',
             ],
             [
                 '123456789012',
@@ -1096,7 +1120,26 @@ public function notEnrolled(Request $request)
                 'male',
                 'new',
                 'Grade 7',
-                'SY 2025-2026',
+                '2026-2027',
+                'Yes',
+                'Yes',
+                'No',
+                'No',
+            ],
+            [
+                '123456789013',
+                'Maria',
+                'Santos',
+                'Garcia',
+                '2009-03-22',
+                'female',
+                'transferee',
+                'Grade 8',
+                '2026-2027',
+                'Yes',
+                'Yes',
+                'No',
+                'Yes',
             ],
         ];
 
@@ -1107,6 +1150,37 @@ public function notEnrolled(Request $request)
         }
 
         return $writer->toBrowser();
+    }
+
+    public function searchReturningStudents(Request $request)
+    {
+        $search = $request->input('search', '');
+        
+        // Get students with 'returning' status who can be re-enrolled
+        $students = Student::with(['gradeLevel'])
+            ->where('student_status', 'returning')
+            ->where(function($query) use ($search) {
+                $query->where('lrn', 'like', "%{$search}%")
+                    ->orWhere('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhereRaw("CONCAT(first_name, ' ', last_name) like ?", ["%{$search}%"]);
+            })
+            ->limit(10)
+            ->get()
+            ->map(function($student) {
+                return [
+                    'id' => $student->id,
+                    'lrn' => $student->lrn,
+                    'name' => trim($student->first_name . ' ' . ($student->middle_name ? $student->middle_name . ' ' : '') . $student->last_name),
+                    'current_grade_level' => $student->gradeLevel ? $student->gradeLevel->name : 'N/A',
+                    'current_grade_level_id' => $student->current_grade_level_id,
+                    'school_year' => $student->school_year,
+                    'birth_date' => $student->birth_date ? $student->birth_date->format('Y-m-d') : null,
+                    'gender' => $student->gender,
+                ];
+            });
+
+        return response()->json($students);
     }
 
     public function enrollmentList(Request $request)

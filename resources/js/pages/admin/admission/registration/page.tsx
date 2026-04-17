@@ -42,9 +42,66 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
     const [showImportedModal, setShowImportedModal] = useState(false)
     const [importedStudents, setImportedStudents] = useState<ImportedStudent[]>([])
     const [importErrors, setImportErrors] = useState<string[]>([])
+    const [startYear, setStartYear] = useState('')
+    const [endYear, setEndYear] = useState('')
+    const [searchQuery, setSearchQuery] = useState('')
+    const [searchResults, setSearchResults] = useState<any[]>([])
+    const [isSearching, setIsSearching] = useState(false)
+    const [selectedStudent, setSelectedStudent] = useState<any>(null)
     
     const page = usePage<any>()
     const flash = page.props.flash || {}
+
+    // Search for returning students
+    const handleSearch = async (query: string) => {
+        setSearchQuery(query)
+        if (query.length < 2) {
+            setSearchResults([])
+            return
+        }
+
+        setIsSearching(true)
+        try {
+            const response = await fetch(`/admin/admission/registration/search-returning?search=${encodeURIComponent(query)}`)
+            const data = await response.json()
+            setSearchResults(data)
+        } catch (error) {
+            console.error('Search error:', error)
+        } finally {
+            setIsSearching(false)
+        }
+    }
+
+    // Select a returning student
+    const handleSelectStudent = (student: any) => {
+        setSelectedStudent(student)
+        setSearchQuery(student.name)
+        setSearchResults([])
+        
+        // Get next grade level
+        const currentGradeNumber = parseInt(student.current_grade_level.replace('Grade ', ''))
+        const nextGradeNumber = currentGradeNumber + 1
+        const nextGradeLevel = gradeLevels.find(g => g.name === `Grade ${nextGradeNumber}`)
+        
+        // Pre-fill form with student data
+        setData({
+            ...data,
+            lrn: student.lrn,
+            grade_level_id: nextGradeLevel ? nextGradeLevel.id.toString() : '',
+            birth_date: student.birth_date || '',
+            gender: student.gender || '',
+            student_status: 'returning',
+        })
+    }
+
+    // Update school_year when start or end year changes
+    useEffect(() => {
+        if (startYear && endYear) {
+            setData('school_year', `${startYear}-${endYear}`)
+        } else {
+            setData('school_year', '')
+        }
+    }, [startYear, endYear])
 
     useEffect(() => {
         console.log('Flash data:', flash)
@@ -69,6 +126,10 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
         first_name: '',
         middle_name: '',
         grade_level_id: '',
+        has_psa_birth_certificate: false,
+        has_sf9: false,
+        has_report_card: false,
+        has_good_moral: false,
     })
 
     // Update student_status based on active tab
@@ -95,6 +156,8 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                 reset()
                 setStudentStatus('')
                 setGradeLevel('')
+                setStartYear('')
+                setEndYear('')
                 // Reset to new tab after successful submission
                 setActiveTab('new')
             }
@@ -105,6 +168,8 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
         reset()
         setStudentStatus('')
         setGradeLevel('')
+        setStartYear('')
+        setEndYear('')
         setActiveTab('new')
     }
 
@@ -268,13 +333,96 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
                                         </div>
-                                        <div>
+                                        <div className="flex-1">
                                             <p className="text-sm font-semibold text-blue-900 mb-1">Returning Student Registration</p>
                                             <p className="text-sm text-blue-800">
-                                                Old students are <strong>returning students</strong> who were previously enrolled in this school. Please select their current grade level.
+                                                Old students are <strong>returning students</strong> who were previously enrolled in this school. Search for the student below to continue their enrollment.
                                             </p>
                                         </div>
                                     </div>
+                                </div>
+
+                                {/* Search Bar for Returning Students */}
+                                <div className="mb-6">
+                                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                                        Search Returning Student <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="relative">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                            </svg>
+                                        </div>
+                                        <Input
+                                            type="text"
+                                            placeholder="Search by name or LRN..."
+                                            value={searchQuery}
+                                            onChange={(e) => handleSearch(e.target.value)}
+                                            className="pl-10 h-11"
+                                        />
+                                        {isSearching && (
+                                            <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                                <svg className="animate-spin h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Search Results Dropdown */}
+                                    {searchResults.length > 0 && (
+                                        <div className="mt-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                                            {searchResults.map((student) => {
+                                                const currentGradeNumber = parseInt(student.current_grade_level.replace('Grade ', ''))
+                                                const nextGrade = `Grade ${currentGradeNumber + 1}`
+                                                
+                                                return (
+                                                    <button
+                                                        key={student.id}
+                                                        type="button"
+                                                        onClick={() => handleSelectStudent(student)}
+                                                        className="w-full text-left px-4 py-3 hover:bg-blue-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                                                    >
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex-1">
+                                                                <p className="text-sm font-semibold text-gray-900">{student.name}</p>
+                                                                <p className="text-xs text-gray-600">LRN: {student.lrn}</p>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="text-xs font-medium text-blue-600">
+                                                                    {student.current_grade_level} → {nextGrade}
+                                                                </p>
+                                                                <p className="text-xs text-gray-500">{student.school_year}</p>
+                                                            </div>
+                                                        </div>
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    )}
+
+                                    {searchQuery.length >= 2 && searchResults.length === 0 && !isSearching && (
+                                        <div className="mt-2 bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                                            <p className="text-sm text-gray-600">No returning students found</p>
+                                        </div>
+                                    )}
+
+                                    {selectedStudent && (
+                                        <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                            <div className="flex items-start gap-2">
+                                                <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-semibold text-blue-900">Selected: {selectedStudent.name}</p>
+                                                    <p className="text-xs text-blue-700">
+                                                        Graduated from {selectedStudent.current_grade_level}, will be enrolled in Grade {parseInt(selectedStudent.current_grade_level.replace('Grade ', '')) + 1}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </TabsContent>
 
@@ -328,6 +476,10 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                     placeholder="Enter 12-digit LRN"
                                     value={data.lrn}
                                     onChange={(e) => setData('lrn', e.target.value)}
+                                    onInput={(e) => {
+                                        const target = e.target as HTMLInputElement;
+                                        target.value = target.value.replace(/[^0-9]/g, '');
+                                    }}
                                     maxLength={12}
                                     className="h-11"
                                 />
@@ -337,13 +489,34 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                 <label className="block text-sm font-semibold text-gray-900 mb-2">
                                     School Year <span className="text-red-500">*</span>
                                 </label>
-                                <Input 
-                                    type="text" 
-                                    placeholder="e.g. 2025-2026"
-                                    value={data.school_year}
-                                    onChange={(e) => setData('school_year', e.target.value)}
-                                    className="h-11"
-                                />
+                                <div className="flex items-center gap-3">
+                                    <Input 
+                                        type="text" 
+                                        placeholder="Start year"
+                                        value={startYear}
+                                        onChange={(e) => setStartYear(e.target.value)}
+                                        onInput={(e) => {
+                                            const target = e.target as HTMLInputElement;
+                                            target.value = target.value.replace(/[^0-9]/g, '');
+                                        }}
+                                        maxLength={4}
+                                        className="h-11 text-center"
+                                    />
+                                    <span className="text-gray-500 font-semibold">-</span>
+                                    <Input 
+                                        type="text" 
+                                        placeholder="End year"
+                                        value={endYear}
+                                        onChange={(e) => setEndYear(e.target.value)}
+                                        onInput={(e) => {
+                                            const target = e.target as HTMLInputElement;
+                                            target.value = target.value.replace(/[^0-9]/g, '');
+                                        }}
+                                        maxLength={4}
+                                        className="h-11 text-center"
+                                    />
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1">Enter 4-digit years (e.g., 2026 - 2027)</p>
                                 {errors.school_year && <p className="text-xs text-red-500 mt-2">{errors.school_year}</p>}
                             </div>
                         </div>
@@ -419,6 +592,134 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                     className="h-11"
                                 />
                                 {errors.birth_date && <p className="text-xs text-red-500 mt-2">{errors.birth_date}</p>}
+                            </div>
+                        </div>
+
+                        <div className="border-t border-gray-200 pt-6">
+                            <div className="flex items-center gap-2 mb-4">
+                                <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="text-base font-semibold text-gray-900">
+                                        Required Documents <span className="text-red-500">*</span>
+                                    </h3>
+                                    <p className="text-xs text-gray-600">Check the documents that have been submitted</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                {/* PSA Birth Certificate */}
+                                <div className="bg-white border-2 border-gray-200 rounded-xl p-4 hover:border-green-300 transition-colors">
+                                    <div className="flex items-start gap-3">
+                                        <input
+                                            type="checkbox"
+                                            id="psa_birth_certificate"
+                                            checked={data.has_psa_birth_certificate}
+                                            onChange={(e) => setData('has_psa_birth_certificate', e.target.checked)}
+                                            className="mt-1 h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer"
+                                        />
+                                        <label htmlFor="psa_birth_certificate" className="flex-1 cursor-pointer">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-sm font-semibold text-gray-900">PSA Birth Certificate</span>
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                    Required
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-gray-600">Original or certified true copy from PSA</p>
+                                        </label>
+                                    </div>
+                                    {errors.has_psa_birth_certificate && (
+                                        <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_psa_birth_certificate}</p>
+                                    )}
+                                </div>
+
+                                {/* Academic Records Section */}
+                                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                        </svg>
+                                        <span className="text-sm font-semibold text-blue-900">Academic Records</span>
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            At least one required
+                                        </span>
+                                    </div>
+                                    
+                                    <div className="space-y-3">
+                                        {/* SF9 */}
+                                        <div className="bg-white rounded-lg p-3 border border-blue-200">
+                                            <div className="flex items-start gap-3">
+                                                <input
+                                                    type="checkbox"
+                                                    id="sf9"
+                                                    checked={data.has_sf9}
+                                                    onChange={(e) => setData('has_sf9', e.target.checked)}
+                                                    className="mt-1 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                />
+                                                <label htmlFor="sf9" className="flex-1 cursor-pointer">
+                                                    <span className="text-sm font-medium text-gray-900">SF9 (Form 138)</span>
+                                                    <p className="text-xs text-gray-600 mt-0.5">Learner's Permanent Academic Record</p>
+                                                </label>
+                                            </div>
+                                            {errors.has_sf9 && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_sf9}</p>}
+                                        </div>
+
+                                        {/* OR Divider */}
+                                        <div className="flex items-center justify-center">
+                                            <div className="flex-1 border-t border-blue-300"></div>
+                                            <span className="px-3 text-xs font-bold text-blue-700 bg-blue-100 rounded-full py-1">OR</span>
+                                            <div className="flex-1 border-t border-blue-300"></div>
+                                        </div>
+
+                                        {/* Report Card */}
+                                        <div className="bg-white rounded-lg p-3 border border-blue-200">
+                                            <div className="flex items-start gap-3">
+                                                <input
+                                                    type="checkbox"
+                                                    id="report_card"
+                                                    checked={data.has_report_card}
+                                                    onChange={(e) => setData('has_report_card', e.target.checked)}
+                                                    className="mt-1 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                />
+                                                <label htmlFor="report_card" className="flex-1 cursor-pointer">
+                                                    <span className="text-sm font-medium text-gray-900">Report Card</span>
+                                                    <p className="text-xs text-gray-600 mt-0.5">Latest report card from previous school</p>
+                                                </label>
+                                            </div>
+                                            {errors.has_report_card && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_report_card}</p>}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Good Moral - Only for Transferees */}
+                                {activeTab === 'transferee' && (
+                                    <div className="bg-white border-2 border-purple-200 rounded-xl p-4 hover:border-purple-300 transition-colors">
+                                        <div className="flex items-start gap-3">
+                                            <input
+                                                type="checkbox"
+                                                id="good_moral"
+                                                checked={data.has_good_moral}
+                                                onChange={(e) => setData('has_good_moral', e.target.checked)}
+                                                className="mt-1 h-5 w-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                                            />
+                                            <label htmlFor="good_moral" className="flex-1 cursor-pointer">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-sm font-semibold text-gray-900">Good Moral Certificate</span>
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                                        Transferee Only
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-gray-600">Certificate of Good Moral Character from previous school</p>
+                                            </label>
+                                        </div>
+                                        {errors.has_good_moral && (
+                                            <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_good_moral}</p>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
 

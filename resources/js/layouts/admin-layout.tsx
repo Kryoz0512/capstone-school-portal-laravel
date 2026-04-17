@@ -22,7 +22,7 @@ export default function AdminLayout({ children, user, admin }: AdminLayoutProps)
             <AdminSidebar user={user} admin={admin} />
 
             {/* Main Content - With left margin for fixed sidebar */}
-            <div className="flex-1 flex flex-col ml-64">
+            <div className="flex-1 flex flex-col ml-72">
                 {/* Header */}
                 <AdminHeader user={user} admin={admin} />
 

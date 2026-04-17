@@ -18,7 +18,7 @@ export default function StudentLayout({ children, user }: StudentLayoutProps) {
             <StudentSidebar />
 
             {/* Main Content - With left margin for fixed sidebar */}
-            <div className="flex-1 flex flex-col ml-64">
+            <div className="flex-1 flex flex-col ml-72">
                 {/* Header */}
                 <StudentHeader user={user} />
 

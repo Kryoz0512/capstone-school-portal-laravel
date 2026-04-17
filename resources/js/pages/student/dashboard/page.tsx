@@ -1,7 +1,17 @@
 import { Head } from '@inertiajs/react'
 import StudentLayout from '@/layouts/student-layout'
-import { Card, CardContent } from '@/components/ui/card'
-import { User, Phone, Smartphone } from 'lucide-react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { User, Phone, Smartphone, Megaphone } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import axios from 'axios'
+
+type Announcement = {
+    id: number
+    title: string
+    content: string
+    created_by: string
+    created_at: string
+}
 
 type StudentInfo = {
     name: string
@@ -23,6 +33,20 @@ type Props = {
 }
 
 export default function StudentDashboard({ studentInfo, auth }: Props) {
+    const [announcements, setAnnouncements] = useState<Announcement[]>([])
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        axios.get('/api/announcements/approved')
+            .then((response) => {
+                setAnnouncements(response.data)
+                setLoading(false)
+            })
+            .catch(() => {
+                setLoading(false)
+            })
+    }, [])
+
     return (
         <StudentLayout user={auth?.user}>
             <Head title="Dashboard" />
@@ -44,8 +68,8 @@ export default function StudentDashboard({ studentInfo, auth }: Props) {
                                     <p className="text-sm text-gray-500 mb-2">Student Name</p>
                                     <p className="text-lg font-semibold text-gray-900">{studentInfo.name}</p>
                                 </div>
-                                <div className="p-2 bg-green-100 rounded-lg">
-                                    <User className="w-5 h-5 text-green-700" />
+                                <div className="p-2 bg-purple-100 rounded-lg">
+                                    <User className="w-5 h-5 text-purple-700" />
                                 </div>
                             </div>
                         </CardContent>
@@ -59,7 +83,7 @@ export default function StudentDashboard({ studentInfo, auth }: Props) {
                                     <p className="text-sm text-gray-500 mb-2">Student LRN</p>
                                     <p className="text-lg font-semibold text-gray-900">{studentInfo.lrn}</p>
                                 </div>
-                                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                                <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
                             </div>
                         </CardContent>
                     </Card>
@@ -72,8 +96,8 @@ export default function StudentDashboard({ studentInfo, auth }: Props) {
                                     <p className="text-sm text-gray-500 mb-2">Mobile Number</p>
                                     <p className="text-lg font-semibold text-gray-900">{studentInfo.mobileNumber}</p>
                                 </div>
-                                <div className="p-2 bg-green-100 rounded-lg">
-                                    <Smartphone className="w-5 h-5 text-green-700" />
+                                <div className="p-2 bg-purple-100 rounded-lg">
+                                    <Smartphone className="w-5 h-5 text-purple-700" />
                                 </div>
                             </div>
                         </CardContent>
@@ -87,12 +111,55 @@ export default function StudentDashboard({ studentInfo, auth }: Props) {
                                     <p className="text-sm text-gray-500 mb-2">Guardian Contact Number</p>
                                     <p className="text-lg font-semibold text-gray-900">{studentInfo.parentMobileNumber}</p>
                                 </div>
-                                <div className="p-2 bg-green-100 rounded-lg">
-                                    <Phone className="w-5 h-5 text-green-700" />
+                                <div className="p-2 bg-purple-100 rounded-lg">
+                                    <Phone className="w-5 h-5 text-purple-700" />
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
+                </div>
+
+                {/* Announcements Section */}
+                <div>
+                    <div className="flex items-center gap-3 mb-4">
+                        <Megaphone className="w-6 h-6 text-purple-600" />
+                        <h2 className="text-2xl font-bold text-gray-900">Announcements</h2>
+                    </div>
+
+                    {loading ? (
+                        <Card>
+                            <CardContent className="pt-6">
+                                <p className="text-center text-gray-500">Loading announcements...</p>
+                            </CardContent>
+                        </Card>
+                    ) : announcements.length === 0 ? (
+                        <Card>
+                            <CardContent className="pt-6">
+                                <div className="text-center py-8">
+                                    <Megaphone className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                                    <p className="text-gray-500">No announcements at this time</p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        <div className="grid gap-4">
+                            {announcements.map((announcement) => (
+                                <div key={announcement.id}>
+                                    <p className="text-sm text-gray-500 mb-2">
+                                        Posted by {announcement.created_by} on {announcement.created_at}
+                                    </p>
+                                    <Card className="border-purple-200 hover:shadow-md transition-shadow">
+                                        <CardHeader>
+                                            <CardTitle className="text-xl text-purple-700">{announcement.title}</CardTitle>
+                                        </CardHeader>
+                                        <CardContent>
+                                            <p className="text-gray-700 whitespace-pre-wrap">{announcement.content}</p>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
         </StudentLayout>

@@ -14,6 +14,7 @@ use App\Http\Controllers\AccreditationController;
 use App\Http\Controllers\ProfilePictureController;
 use App\Http\Controllers\GradeController;
 use App\Http\Controllers\PasswordChangeController;
+use App\Http\Controllers\AnnouncementController;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
@@ -272,6 +273,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Admin Permissions routes (Super Admin only)
     Route::get('admin/maintenance/admin-permissions', [App\Http\Controllers\AdminPermissionController::class, 'index'])->name('admin.maintenance.admin-permissions');
     Route::post('admin/maintenance/admin-permissions/{admin}/toggle', [App\Http\Controllers\AdminPermissionController::class, 'togglePermission'])->name('admin.maintenance.admin-permissions.toggle');
+    
+    // Announcements routes
+    Route::get('admin/maintenance/announcements', [AnnouncementController::class, 'index'])->name('admin.maintenance.announcements');
+    Route::post('admin/maintenance/announcements', [AnnouncementController::class, 'store'])->name('admin.maintenance.announcements.store');
+    Route::put('admin/maintenance/announcements/{announcement}', [AnnouncementController::class, 'update'])->name('admin.maintenance.announcements.update');
+    Route::delete('admin/maintenance/announcements/{announcement}', [AnnouncementController::class, 'destroy'])->name('admin.maintenance.announcements.destroy');
+    Route::post('admin/maintenance/announcements/{announcement}/approve', [AnnouncementController::class, 'approve'])->name('admin.maintenance.announcements.approve');
+    Route::post('admin/maintenance/announcements/{announcement}/reject', [AnnouncementController::class, 'reject'])->name('admin.maintenance.announcements.reject');
+    Route::post('admin/maintenance/announcements/{announcement}/toggle', [AnnouncementController::class, 'toggleActive'])->name('admin.maintenance.announcements.toggle');
+    
+    // API route for getting approved announcements
+    Route::get('api/announcements/approved', [AnnouncementController::class, 'getApproved'])->name('api.announcements.approved');
     
     // Admin Profile route
     Route::get('admin/profile', [AdminProfileController::class, 'show'])->name('admin.profile');

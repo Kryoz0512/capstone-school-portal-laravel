@@ -60,7 +60,7 @@ export default function AdminHeader({ user, admin }: HeaderProps) {
                             </div>
                             <div className="text-left">
                                 <p className="text-sm font-medium text-gray-900">{user?.name || 'Admin'}</p>
-                                <p className="text-xs text-gray-500">{admin?.role || 'Administrator'}</p>
+                                <p className="text-xs text-gray-500">{admin?.role || 'Admin'}</p>
                             </div>
                         <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
                     </button>

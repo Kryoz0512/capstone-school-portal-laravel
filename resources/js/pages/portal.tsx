@@ -75,13 +75,13 @@ export default function Portal({ slides = [] }: Props) {
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                             {/* Student Card */}
                             <Link href="/login/student" className="group">
-                                <div className="relative bg-white/95 backdrop-blur-sm rounded-3xl p-10 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:scale-105 border-2 border-white/50 hover:border-blue-400 overflow-hidden">
+                                <div className="relative bg-white/95 backdrop-blur-sm rounded-3xl p-10 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:scale-105 border-2 border-white/50 hover:border-purple-400 overflow-hidden">
                                     {/* Gradient Background on Hover */}
-                                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 to-blue-600/0 group-hover:from-blue-500/5 group-hover:to-blue-600/5 transition-all duration-500"></div>
+                                    <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 to-purple-600/0 group-hover:from-purple-500/5 group-hover:to-purple-600/5 transition-all duration-500"></div>
                                     
                                     <div className="relative flex flex-col items-center text-center">
                                         {/* Icon */}
-                                        <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-xl">
+                                        <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-xl">
                                             <GraduationCap className="w-12 h-12 text-white" />
                                         </div>
                                         
@@ -97,7 +97,7 @@ export default function Portal({ slides = [] }: Props) {
                                         
                                         {/* Button */}
                                         <div className="w-full">
-                                            <div className="bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold group-hover:bg-blue-700 transition-colors shadow-lg flex items-center justify-center gap-2">
+                                            <div className="bg-purple-600 text-white px-6 py-3 rounded-xl font-semibold group-hover:bg-purple-700 transition-colors shadow-lg flex items-center justify-center gap-2">
                                                 Login as Student
                                                 <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
@@ -110,13 +110,13 @@ export default function Portal({ slides = [] }: Props) {
 
                             {/* Teacher Card */}
                             <Link href="/login/teacher" className="group">
-                                <div className="relative bg-white/95 backdrop-blur-sm rounded-3xl p-10 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:scale-105 border-2 border-white/50 hover:border-green-400 overflow-hidden">
+                                <div className="relative bg-white/95 backdrop-blur-sm rounded-3xl p-10 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:scale-105 border-2 border-white/50 hover:border-blue-400 overflow-hidden">
                                     {/* Gradient Background on Hover */}
-                                    <div className="absolute inset-0 bg-gradient-to-br from-green-500/0 to-green-600/0 group-hover:from-green-500/5 group-hover:to-green-600/5 transition-all duration-500"></div>
+                                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 to-blue-600/0 group-hover:from-blue-500/5 group-hover:to-blue-600/5 transition-all duration-500"></div>
                                     
                                     <div className="relative flex flex-col items-center text-center">
                                         {/* Icon */}
-                                        <div className="w-24 h-24 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-xl">
+                                        <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-xl">
                                             <BookOpen className="w-12 h-12 text-white" />
                                         </div>
                                         
@@ -132,7 +132,7 @@ export default function Portal({ slides = [] }: Props) {
                                         
                                         {/* Button */}
                                         <div className="w-full">
-                                            <div className="bg-green-600 text-white px-6 py-3 rounded-xl font-semibold group-hover:bg-green-700 transition-colors shadow-lg flex items-center justify-center gap-2">
+                                            <div className="bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold group-hover:bg-blue-700 transition-colors shadow-lg flex items-center justify-center gap-2">
                                                 Login as Teacher
                                                 <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
@@ -145,13 +145,13 @@ export default function Portal({ slides = [] }: Props) {
 
                             {/* Staff Card */}
                             <Link href="/login/staff" className="group">
-                                <div className="relative bg-white/95 backdrop-blur-sm rounded-3xl p-10 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:scale-105 border-2 border-white/50 hover:border-purple-400 overflow-hidden">
+                                <div className="relative bg-white/95 backdrop-blur-sm rounded-3xl p-10 shadow-2xl hover:shadow-3xl transition-all duration-500 hover:scale-105 border-2 border-white/50 hover:border-green-400 overflow-hidden">
                                     {/* Gradient Background on Hover */}
-                                    <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 to-purple-600/0 group-hover:from-purple-500/5 group-hover:to-purple-600/5 transition-all duration-500"></div>
+                                    <div className="absolute inset-0 bg-gradient-to-br from-green-500/0 to-green-600/0 group-hover:from-green-500/5 group-hover:to-green-600/5 transition-all duration-500"></div>
                                     
                                     <div className="relative flex flex-col items-center text-center">
                                         {/* Icon */}
-                                        <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-xl">
+                                        <div className="w-24 h-24 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-xl">
                                             <Users className="w-12 h-12 text-white" />
                                         </div>
                                         
@@ -167,7 +167,7 @@ export default function Portal({ slides = [] }: Props) {
                                         
                                         {/* Button */}
                                         <div className="w-full">
-                                            <div className="bg-purple-600 text-white px-6 py-3 rounded-xl font-semibold group-hover:bg-purple-700 transition-colors shadow-lg flex items-center justify-center gap-2">
+                                            <div className="bg-green-600 text-white px-6 py-3 rounded-xl font-semibold group-hover:bg-green-700 transition-colors shadow-lg flex items-center justify-center gap-2">
                                                 Login as Staff
                                                 <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />

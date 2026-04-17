@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useState, useRef, useEffect } from 'react'
 import { store } from '@/routes/admin/admission/registration'
 import { Download, Upload, FileSpreadsheet, CheckCircle2 } from 'lucide-react'
@@ -34,6 +35,7 @@ type Props = {
 }
 
 export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
+    const [activeTab, setActiveTab] = useState('new')
     const [studentStatus, setStudentStatus] = useState('')
     const [gradeLevel, setGradeLevel] = useState('')
     const fileInputRef = useRef<HTMLInputElement>(null)
@@ -69,8 +71,22 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
         grade_level_id: '',
     })
 
+    // Update student_status based on active tab
+    useEffect(() => {
+        if (activeTab === 'new') {
+            setData('student_status', 'new')
+            setStudentStatus('new')
+        } else if (activeTab === 'old') {
+            setData('student_status', 'returning')
+            setStudentStatus('returning')
+        } else if (activeTab === 'transferee') {
+            setData('student_status', 'transferee')
+            setStudentStatus('transferee')
+        }
+    }, [activeTab])
+
     // Determine if grade level dropdown should be shown
-    const showGradeLevelDropdown = data.student_status === 'transferee' || data.student_status === 'returning'
+    const showGradeLevelDropdown = activeTab === 'transferee' || activeTab === 'old'
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
@@ -79,6 +95,8 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                 reset()
                 setStudentStatus('')
                 setGradeLevel('')
+                // Reset to new tab after successful submission
+                setActiveTab('new')
             }
         })
     }
@@ -87,6 +105,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
         reset()
         setStudentStatus('')
         setGradeLevel('')
+        setActiveTab('new')
     }
 
     const handleExport = () => {
@@ -188,60 +207,120 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                     className="hidden"
                 />
 
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-6">Register Student</h2>
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-gray-200 px-6 py-5">
+                        <h2 className="text-xl font-bold text-gray-900">Register Student</h2>
+                        <p className="text-sm text-gray-600 mt-1">Fill in the student information below</p>
+                    </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Student Status <span className="text-red-500">*</span>
-                                </label>
-                                <Select value={data.student_status} onValueChange={(value) => {
-                                    setData('student_status', value)
-                                    setStudentStatus(value)
-                                }}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select student status" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="new">New Student</SelectItem>
-                                        <SelectItem value="transferee">Transferee</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                {data.student_status === 'new' && (
-                                    <p className="text-xs text-green-600 mt-1">
-                                        New students will be automatically registered for Grade 7
-                                    </p>
-                                )}
-                                {errors.student_status && <p className="text-xs text-red-500 mt-1">{errors.student_status}</p>}
-                            </div>
+                    <div className="p-6">
+                        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                            <TabsList className="grid w-full grid-cols-3 mb-6">
+                                <TabsTrigger value="new">
+                                    <div className="flex items-center gap-2">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                        </svg>
+                                        <span>New Student</span>
+                                    </div>
+                                </TabsTrigger>
+                                <TabsTrigger value="old">
+                                    <div className="flex items-center gap-2">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                        <span>Old Student</span>
+                                    </div>
+                                </TabsTrigger>
+                                <TabsTrigger value="transferee">
+                                    <div className="flex items-center gap-2">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                        </svg>
+                                        <span>Transferee</span>
+                                    </div>
+                                </TabsTrigger>
+                            </TabsList>
 
-                            {showGradeLevelDropdown && (
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Grade Level <span className="text-red-500">*</span>
-                                    </label>
-                                    <Select value={data.grade_level_id} onValueChange={(value) => setData('grade_level_id', value)}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select grade level" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {gradeLevels.map((grade) => (
-                                                <SelectItem key={grade.id} value={grade.id.toString()}>
-                                                    {grade.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                    {errors.grade_level_id && <p className="text-xs text-red-500 mt-1">{errors.grade_level_id}</p>}
+                            <TabsContent value="new">
+                                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-lg p-4 mb-6 shadow-sm">
+                                    <div className="flex items-start gap-3">
+                                        <div className="flex-shrink-0 w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                                            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-semibold text-green-900 mb-1">New Student Registration</p>
+                                            <p className="text-sm text-green-800">
+                                                New students will be automatically registered for <strong>Grade 7</strong>. They are first-time enrollees in the school system.
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
-                            )}
-                        </div>
+                            </TabsContent>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <TabsContent value="old">
+                                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 rounded-lg p-4 mb-6 shadow-sm">
+                                    <div className="flex items-start gap-3">
+                                        <div className="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                                            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-semibold text-blue-900 mb-1">Returning Student Registration</p>
+                                            <p className="text-sm text-blue-800">
+                                                Old students are <strong>returning students</strong> who were previously enrolled in this school. Please select their current grade level.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </TabsContent>
+
+                            <TabsContent value="transferee">
+                                <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-l-4 border-purple-500 rounded-lg p-4 mb-6 shadow-sm">
+                                    <div className="flex items-start gap-3">
+                                        <div className="flex-shrink-0 w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                                            <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-semibold text-purple-900 mb-1">Transferee Student Registration</p>
+                                            <p className="text-sm text-purple-800">
+                                                Transferee students are <strong>coming from another school</strong>. Please select their appropriate grade level based on their previous records.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </TabsContent>
+
+                            <form onSubmit={handleSubmit} className="space-y-6">
+                                {showGradeLevelDropdown && (
+                                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                                        <label className="block text-sm font-semibold text-gray-900 mb-3">
+                                            Grade Level <span className="text-red-500">*</span>
+                                        </label>
+                                        <Select value={data.grade_level_id} onValueChange={(value) => setData('grade_level_id', value)}>
+                                            <SelectTrigger className="h-11">
+                                                <SelectValue placeholder="Select grade level" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {gradeLevels.map((grade) => (
+                                                    <SelectItem key={grade.id} value={grade.id.toString()}>
+                                                        {grade.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        {errors.grade_level_id && <p className="text-xs text-red-500 mt-2">{errors.grade_level_id}</p>}
+                                    </div>
+                                )}
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-semibold text-gray-900 mb-2">
                                     Student LRN <span className="text-red-500">*</span>
                                 </label>
                                 <Input 
@@ -250,68 +329,76 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                     value={data.lrn}
                                     onChange={(e) => setData('lrn', e.target.value)}
                                     maxLength={12}
+                                    className="h-11"
                                 />
-                                {errors.lrn && <p className="text-xs text-red-500 mt-1">{errors.lrn}</p>}
+                                {errors.lrn && <p className="text-xs text-red-500 mt-2">{errors.lrn}</p>}
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-semibold text-gray-900 mb-2">
                                     School Year <span className="text-red-500">*</span>
                                 </label>
                                 <Input 
                                     type="text" 
-                                    placeholder="e.g. SY 2025-2026"
+                                    placeholder="e.g. 2025-2026"
                                     value={data.school_year}
                                     onChange={(e) => setData('school_year', e.target.value)}
+                                    className="h-11"
                                 />
-                                {errors.school_year && <p className="text-xs text-red-500 mt-1">{errors.school_year}</p>}
+                                {errors.school_year && <p className="text-xs text-red-500 mt-2">{errors.school_year}</p>}
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Last Name <span className="text-red-500">*</span>
-                                </label>
-                                <Input 
-                                    type="text" 
-                                    placeholder="Enter last name"
-                                    value={data.last_name}
-                                    onChange={(e) => setData('last_name', e.target.value)}
-                                />
-                                {errors.last_name && <p className="text-xs text-red-500 mt-1">{errors.last_name}</p>}
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    First Name <span className="text-red-500">*</span>
-                                </label>
-                                <Input 
-                                    type="text" 
-                                    placeholder="Enter first name"
-                                    value={data.first_name}
-                                    onChange={(e) => setData('first_name', e.target.value)}
-                                />
-                                {errors.first_name && <p className="text-xs text-red-500 mt-1">{errors.first_name}</p>}
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Middle Name
-                                </label>
-                                <Input 
-                                    type="text" 
-                                    placeholder="Enter middle name (optional)"
-                                    value={data.middle_name}
-                                    onChange={(e) => setData('middle_name', e.target.value)}
-                                />
+                        <div className="border-t border-gray-200 pt-6">
+                            <h3 className="text-base font-semibold text-gray-900 mb-4">Personal Information</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                                        Last Name <span className="text-red-500">*</span>
+                                    </label>
+                                    <Input 
+                                        type="text" 
+                                        placeholder="Enter last name"
+                                        value={data.last_name}
+                                        onChange={(e) => setData('last_name', e.target.value)}
+                                        className="h-11"
+                                    />
+                                    {errors.last_name && <p className="text-xs text-red-500 mt-2">{errors.last_name}</p>}
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                                        First Name <span className="text-red-500">*</span>
+                                    </label>
+                                    <Input 
+                                        type="text" 
+                                        placeholder="Enter first name"
+                                        value={data.first_name}
+                                        onChange={(e) => setData('first_name', e.target.value)}
+                                        className="h-11"
+                                    />
+                                    {errors.first_name && <p className="text-xs text-red-500 mt-2">{errors.first_name}</p>}
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                                        Middle Name
+                                    </label>
+                                    <Input 
+                                        type="text" 
+                                        placeholder="Enter middle name (optional)"
+                                        value={data.middle_name}
+                                        onChange={(e) => setData('middle_name', e.target.value)}
+                                        className="h-11"
+                                    />
+                                </div>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-semibold text-gray-900 mb-2">
                                     Gender <span className="text-red-500">*</span>
                                 </label>
                                 <Select value={data.gender} onValueChange={(value) => setData('gender', value)}>
-                                    <SelectTrigger>
+                                    <SelectTrigger className="h-11">
                                         <SelectValue placeholder="Select gender" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -319,32 +406,52 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                         <SelectItem value="female">Female</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                {errors.gender && <p className="text-xs text-red-500 mt-1">{errors.gender}</p>}
+                                {errors.gender && <p className="text-xs text-red-500 mt-2">{errors.gender}</p>}
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-semibold text-gray-900 mb-2">
                                     Date of Birth <span className="text-red-500">*</span>
                                 </label>
                                 <Input 
                                     type="date"
                                     value={data.birth_date}
                                     onChange={(e) => setData('birth_date', e.target.value)}
+                                    className="h-11"
                                 />
-                                {errors.birth_date && <p className="text-xs text-red-500 mt-1">{errors.birth_date}</p>}
+                                {errors.birth_date && <p className="text-xs text-red-500 mt-2">{errors.birth_date}</p>}
                             </div>
                         </div>
 
-                        <div className="flex gap-3 pt-4">
-                            <Button type="button" variant="outline" onClick={handleCancel}>Cancel</Button>
+                        <div className="flex gap-3 pt-6 border-t border-gray-200">
+                            <Button 
+                                type="button" 
+                                variant="outline" 
+                                onClick={handleCancel}
+                                className="h-11 px-6"
+                            >
+                                Cancel
+                            </Button>
                             <Button 
                                 type="submit" 
-                                className="bg-green-600 hover:bg-green-700 text-white"
+                                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white h-11 px-8 shadow-md"
                                 disabled={processing}
                             >
-                                {processing ? 'Registering...' : 'Register Student'}
+                                {processing ? (
+                                    <div className="flex items-center gap-2">
+                                        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <span>Registering...</span>
+                                    </div>
+                                ) : (
+                                    'Register Student'
+                                )}
                             </Button>
                         </div>
                     </form>
+                </Tabs>
+                    </div>
                 </div>
             </div>
 

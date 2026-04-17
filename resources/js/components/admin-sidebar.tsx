@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react'
+import { Link, usePage } from '@inertiajs/react'
 import {
     LayoutDashboard,
     UserPlus,
@@ -28,12 +28,11 @@ type SidebarProps = {
 }
 
 export default function AdminSidebar({ currentPath, user, admin }: SidebarProps) {
+    const { url } = usePage()
+    
     // Determine which menu should be open based on current URL
     const getCurrentPath = () => {
-        if (typeof window !== 'undefined') {
-            return window.location.pathname
-        }
-        return ''
+        return url
     }
 
     const getInitialExpandedState = () => {
@@ -61,7 +60,7 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
             usermanagement: path.includes('/admin/user-management'),
             maintenance: path.includes('/admin/maintenance'),
         })
-    }, [])
+    }, [url])
 
     const toggleMenu = (menu: string) => {
         setExpandedMenus(prev => ({
@@ -399,6 +398,14 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                                     Login Slides
                                 </span>
                             </Link>
+                            {admin?.role === 'Super Admin' && (
+                                <Link href="/admin/maintenance/admin-permissions" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
+                                    <span className="flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
+                                        Admin Permissions
+                                    </span>
+                                </Link>
+                            )}
                         </div>
                     )}
                 </div>

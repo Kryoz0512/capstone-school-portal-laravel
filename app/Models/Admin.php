@@ -18,6 +18,7 @@ class Admin extends Model
         'role',
         'position',
         'updated_by',
+        'can_add_teacher',
     ];
 
     // Relationships

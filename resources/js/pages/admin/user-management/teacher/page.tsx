@@ -47,9 +47,10 @@ type Props = {
     teachers: Teacher[]
     gradeLevels: GradeLevel[]
     subjects: Subject[]
+    canAddTeacher?: boolean
 }
 
-export default function TeacherManagement({ auth, teachers = [], gradeLevels = [], subjects = [] }: Props) {
+export default function TeacherManagement({ auth, teachers = [], gradeLevels = [], subjects = [], canAddTeacher = true }: Props) {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
@@ -129,12 +130,22 @@ export default function TeacherManagement({ auth, teachers = [], gradeLevels = [
                         </p>
                     </div>
                     <Button 
-                        className="bg-green-600 hover:bg-green-700 text-white shadow-sm"
+                        className="bg-green-600 hover:bg-green-700 text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         onClick={() => setIsModalOpen(true)}
+                        disabled={!canAddTeacher}
+                        title={!canAddTeacher ? 'You do not have permission to add teachers' : ''}
                     >
                         + New Teacher
                     </Button>
                 </div>
+
+                {!canAddTeacher && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <p className="text-sm text-yellow-800">
+                            <strong>Note:</strong> You do not have permission to add new teachers. Please contact the Super Admin if you need this access.
+                        </p>
+                    </div>
+                )}
 
                 <AddTeacherModal 
                     open={isModalOpen} 

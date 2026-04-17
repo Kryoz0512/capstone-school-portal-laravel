@@ -262,6 +262,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('admin/maintenance/login-slides/order', [App\Http\Controllers\LoginSlideController::class, 'updateOrder'])->name('admin.maintenance.login-slides.order');
     Route::post('admin/maintenance/login-slides/{slide}/toggle', [App\Http\Controllers\LoginSlideController::class, 'toggleActive'])->name('admin.maintenance.login-slides.toggle');
     
+    // Admin Permissions routes (Super Admin only)
+    Route::get('admin/maintenance/admin-permissions', [App\Http\Controllers\AdminPermissionController::class, 'index'])->name('admin.maintenance.admin-permissions');
+    Route::post('admin/maintenance/admin-permissions/{admin}/toggle', [App\Http\Controllers\AdminPermissionController::class, 'togglePermission'])->name('admin.maintenance.admin-permissions.toggle');
+    
     // Admin Profile route
     Route::get('admin/profile', [AdminProfileController::class, 'show'])->name('admin.profile');
     Route::put('admin/profile/password', [AdminProfileController::class, 'updatePassword'])->name('admin.profile.password.update');

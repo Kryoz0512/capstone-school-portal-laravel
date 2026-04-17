@@ -96,6 +96,7 @@ class TeacherController extends Controller
             'teachers' => $teachers,
             'gradeLevels' => $gradeLevels,
             'subjects' => $subjects,
+            'canAddTeacher' => $admin ? $admin->can_add_teacher : true,
             'auth' => [
                 'user' => \Illuminate\Support\Facades\Auth::user(),
                 'admin' => $admin,
@@ -105,6 +106,13 @@ class TeacherController extends Controller
 
     public function store(Request $request)
     {
+        // Check if current admin has permission to add teachers
+        $currentAdmin = \App\Models\Admin::where('user_id', Auth::id())->first();
+        
+        if ($currentAdmin && !$currentAdmin->can_add_teacher) {
+            return back()->withErrors(['error' => 'You do not have permission to add teachers. Please contact the Super Admin.']);
+        }
+
         $validated = $request->validate([
             'firstName' => 'required|string|max:255',
             'lastName' => 'required|string|max:255',

@@ -1237,7 +1237,8 @@ public function notEnrolled(Request $request)
             ],
         ];
 
-        $writer = \Spatie\SimpleExcel\SimpleExcelWriter::streamDownload('student_import_template.xlsx');
+        $writer = \Spatie\SimpleExcel\SimpleExcelWriter::streamDownload('student_import_template.xlsx')
+            ->noHeaderRow();
         
         foreach ($rows as $row) {
             $writer->addRow($row);

@@ -173,6 +173,9 @@ export default function AdminSidebar({ currentPath }: SidebarProps) {
                     </button>
                     {expandedMenus.registrar && (
                         <div className="bg-green-800">
+                            <Link href="/admin/registrar/student-checklist" className="block px-12 py-2 text-sm hover:bg-green-600">
+                                Student Checklist
+                            </Link>
                             <Link href="/admin/registrar/subject-listings" className="block px-12 py-2 text-sm hover:bg-green-600">
                                 Subject Listings
                             </Link>

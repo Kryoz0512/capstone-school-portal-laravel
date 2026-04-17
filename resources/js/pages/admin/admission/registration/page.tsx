@@ -125,6 +125,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
         last_name: '',
         first_name: '',
         middle_name: '',
+        suffix: '',
         grade_level_id: '',
         has_psa_birth_certificate: false,
         has_sf9: false,
@@ -523,7 +524,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
 
                         <div className="border-t border-gray-200 pt-6">
                             <h3 className="text-base font-semibold text-gray-900 mb-4">Personal Information</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-900 mb-2">
                                         Last Name <span className="text-red-500">*</span>
@@ -561,6 +562,24 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                         onChange={(e) => setData('middle_name', e.target.value)}
                                         className="h-11"
                                     />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                                        Suffix
+                                    </label>
+                                    <Select value={data.suffix || undefined} onValueChange={(value) => setData('suffix', value)}>
+                                        <SelectTrigger className="h-11">
+                                            <SelectValue placeholder="None" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Jr.">Jr.</SelectItem>
+                                            <SelectItem value="Sr.">Sr.</SelectItem>
+                                            <SelectItem value="II">II</SelectItem>
+                                            <SelectItem value="III">III</SelectItem>
+                                            <SelectItem value="IV">IV</SelectItem>
+                                            <SelectItem value="V">V</SelectItem>
+                                        </SelectContent>
+                                    </Select>
                                 </div>
                             </div>
                         </div>

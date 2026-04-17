@@ -7,6 +7,7 @@ use App\Models\GradeLevel;
 use App\Models\Student;
 use App\Models\User;
 use App\Models\Schedule;
+use App\Models\Archive;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -528,13 +529,14 @@ public function notEnrolled(Request $request)
     {
         $validated = $request->validate([
             'student_status' => 'required|in:new,transferee,returning',
-            'lrn' => 'required|numeric|size:12|unique:tbl_students,lrn',
+            'lrn' => 'required|numeric|size:12',
             'school_year' => 'required|string',
             'gender' => 'required|in:male,female',
             'birth_date' => 'required|date|before_or_equal:-10 years',
             'last_name' => 'required|string|max:255',
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
+            'suffix' => 'nullable|string|max:10',
             'grade_level_id' => 'nullable|exists:tbl_grade_levels,id',
             'has_psa_birth_certificate' => 'nullable|boolean',
             'has_sf9' => 'nullable|boolean',
@@ -544,7 +546,72 @@ public function notEnrolled(Request $request)
 
         DB::beginTransaction();
         try {
-            // Create user account for the student
+            // Check if student with this LRN already exists
+            $existingStudent = Student::where('lrn', $validated['lrn'])->first();
+            
+            if ($existingStudent) {
+                // If student exists and is being registered for the same school year, reject
+                if ($existingStudent->school_year === $validated['school_year']) {
+                    DB::rollBack();
+                    $studentName = trim($existingStudent->first_name . ' ' . $existingStudent->last_name);
+                    return redirect()->back()->withErrors([
+                        'lrn' => "Student '{$studentName}' with LRN {$validated['lrn']} is already registered for school year {$validated['school_year']}."
+                    ])->withInput();
+                }
+                
+                // If student exists and status is 'returning', validate grade level progression
+                if ($validated['student_status'] === 'returning') {
+                    $currentGradeLevel = $existingStudent->gradeLevel;
+                    $newGradeLevel = \App\Models\GradeLevel::find($validated['grade_level_id']);
+                    
+                    if ($currentGradeLevel && $newGradeLevel) {
+                        // Extract grade numbers (e.g., "Grade 7" -> 7)
+                        $currentGradeNumber = (int) filter_var($currentGradeLevel->name, FILTER_SANITIZE_NUMBER_INT);
+                        $newGradeNumber = (int) filter_var($newGradeLevel->name, FILTER_SANITIZE_NUMBER_INT);
+                        
+                        // Validate that new grade is exactly one level higher
+                        if ($newGradeNumber !== $currentGradeNumber + 1) {
+                            DB::rollBack();
+                            $studentName = trim($existingStudent->first_name . ' ' . $existingStudent->last_name);
+                            return redirect()->back()->withErrors([
+                                'grade_level_id' => "Student '{$studentName}' is currently in {$currentGradeLevel->name}. They can only advance to Grade " . ($currentGradeNumber + 1) . "."
+                            ])->withInput();
+                        }
+                        
+                        // Check if student has already graduated (Grade 10)
+                        if ($currentGradeNumber >= 10) {
+                            DB::rollBack();
+                            $studentName = trim($existingStudent->first_name . ' ' . $existingStudent->last_name);
+                            return redirect()->back()->withErrors([
+                                'lrn' => "Student '{$studentName}' has already completed Grade 10 and cannot be re-enrolled."
+                            ])->withInput();
+                        }
+                    }
+                    
+                    // Update existing student record for new school year
+                    $existingStudent->update([
+                        'school_year' => $validated['school_year'],
+                        'current_grade_level_id' => $validated['grade_level_id'],
+                        'student_status' => 'returning',
+                        'has_psa_birth_certificate' => $validated['has_psa_birth_certificate'] ?? $existingStudent->has_psa_birth_certificate,
+                        'has_sf9' => $validated['has_sf9'] ?? $existingStudent->has_sf9,
+                        'has_report_card' => $validated['has_report_card'] ?? $existingStudent->has_report_card,
+                        'has_good_moral' => $validated['has_good_moral'] ?? $existingStudent->has_good_moral,
+                    ]);
+                    
+                    DB::commit();
+                    return redirect()->back()->with('success', 'Returning student registered successfully for the new school year');
+                }
+                
+                // If student exists but not returning status, reject duplicate
+                DB::rollBack();
+                $studentName = trim($existingStudent->first_name . ' ' . $existingStudent->last_name);
+                return redirect()->back()->withErrors([
+                    'lrn' => "Student '{$studentName}' with LRN {$validated['lrn']} already exists in the system. Use 'Old Student' tab for returning students."
+                ])->withInput();
+            }
+
+            // Create user account for the student (new student only)
             $user = User::create([
                 'name' => trim($validated['first_name'] . ' ' . $validated['last_name']),
                 'email' => strtolower($validated['lrn']) . '@student.snhs.edu.ph',
@@ -571,6 +638,7 @@ public function notEnrolled(Request $request)
                 'last_name' => $validated['last_name'],
                 'first_name' => $validated['first_name'],
                 'middle_name' => $validated['middle_name'],
+                'suffix' => $validated['suffix'] ?? null,
                 'gender' => $validated['gender'],
                 'birth_date' => $validated['birth_date'],
                 'current_grade_level_id' => $gradeLevelId,
@@ -898,6 +966,7 @@ public function notEnrolled(Request $request)
                 'First Name',
                 'Middle Name',
                 'Last Name',
+                'Suffix',
                 'Date of Birth',
                 'Gender',
                 'Student Status',
@@ -916,6 +985,7 @@ public function notEnrolled(Request $request)
                     $student->first_name,
                     $student->middle_name ?? '',
                     $student->last_name,
+                    $student->suffix ?? '',
                     $student->birth_date ? \Carbon\Carbon::parse($student->birth_date)->format('Y-m-d') : '',
                     $student->gender,
                     $student->student_status,
@@ -1021,6 +1091,7 @@ public function notEnrolled(Request $request)
                         'first_name' => $row['First Name'],
                         'middle_name' => $row['Middle Name'] ?? null,
                         'last_name' => $row['Last Name'],
+                        'suffix' => $row['Suffix'] ?? null,
                         'birth_date' => $row['Date of Birth'],
                         'gender' => strtolower($row['Gender']),
                         'student_status' => strtolower($row['Student Status']),
@@ -1101,6 +1172,7 @@ public function notEnrolled(Request $request)
                 'First Name',
                 'Middle Name',
                 'Last Name',
+                'Suffix',
                 'Date of Birth',
                 'Gender',
                 'Student Status',
@@ -1116,6 +1188,7 @@ public function notEnrolled(Request $request)
                 'Juan',
                 'Dela',
                 'Cruz',
+                'Jr.',
                 '2010-01-15',
                 'male',
                 'new',
@@ -1131,6 +1204,7 @@ public function notEnrolled(Request $request)
                 'Maria',
                 'Santos',
                 'Garcia',
+                '',
                 '2009-03-22',
                 'female',
                 'transferee',
@@ -1181,6 +1255,123 @@ public function notEnrolled(Request $request)
             });
 
         return response()->json($students);
+    }
+
+    public function checklist()
+    {
+        // Get current students by grade level
+        $grade7Students = Student::with(['gradeLevel', 'section'])
+            ->whereHas('gradeLevel', function($query) {
+                $query->where('name', 'Grade 7');
+            })
+            ->get()
+            ->map(function($student) {
+                return [
+                    'id' => $student->id,
+                    'lrn' => $student->lrn,
+                    'name' => trim($student->first_name . ' ' . ($student->middle_name ? $student->middle_name . ' ' : '') . $student->last_name),
+                    'gender' => ucfirst($student->gender),
+                    'section' => $student->section ? $student->section->section_name : null,
+                    'school_year' => $student->school_year,
+                    'has_psa_birth_certificate' => $student->has_psa_birth_certificate,
+                    'has_sf9' => $student->has_sf9,
+                    'has_report_card' => $student->has_report_card,
+                    'has_good_moral' => $student->has_good_moral,
+                ];
+            });
+
+        $grade8Students = Student::with(['gradeLevel', 'section'])
+            ->whereHas('gradeLevel', function($query) {
+                $query->where('name', 'Grade 8');
+            })
+            ->get()
+            ->map(function($student) {
+                return [
+                    'id' => $student->id,
+                    'lrn' => $student->lrn,
+                    'name' => trim($student->first_name . ' ' . ($student->middle_name ? $student->middle_name . ' ' : '') . $student->last_name),
+                    'gender' => ucfirst($student->gender),
+                    'section' => $student->section ? $student->section->section_name : null,
+                    'school_year' => $student->school_year,
+                    'has_psa_birth_certificate' => $student->has_psa_birth_certificate,
+                    'has_sf9' => $student->has_sf9,
+                    'has_report_card' => $student->has_report_card,
+                    'has_good_moral' => $student->has_good_moral,
+                ];
+            });
+
+        $grade9Students = Student::with(['gradeLevel', 'section'])
+            ->whereHas('gradeLevel', function($query) {
+                $query->where('name', 'Grade 9');
+            })
+            ->get()
+            ->map(function($student) {
+                return [
+                    'id' => $student->id,
+                    'lrn' => $student->lrn,
+                    'name' => trim($student->first_name . ' ' . ($student->middle_name ? $student->middle_name . ' ' : '') . $student->last_name),
+                    'gender' => ucfirst($student->gender),
+                    'section' => $student->section ? $student->section->section_name : null,
+                    'school_year' => $student->school_year,
+                    'has_psa_birth_certificate' => $student->has_psa_birth_certificate,
+                    'has_sf9' => $student->has_sf9,
+                    'has_report_card' => $student->has_report_card,
+                    'has_good_moral' => $student->has_good_moral,
+                ];
+            });
+
+        $grade10Students = Student::with(['gradeLevel', 'section'])
+            ->whereHas('gradeLevel', function($query) {
+                $query->where('name', 'Grade 10');
+            })
+            ->get()
+            ->map(function($student) {
+                return [
+                    'id' => $student->id,
+                    'lrn' => $student->lrn,
+                    'name' => trim($student->first_name . ' ' . ($student->middle_name ? $student->middle_name . ' ' : '') . $student->last_name),
+                    'gender' => ucfirst($student->gender),
+                    'section' => $student->section ? $student->section->section_name : null,
+                    'school_year' => $student->school_year,
+                    'has_psa_birth_certificate' => $student->has_psa_birth_certificate,
+                    'has_sf9' => $student->has_sf9,
+                    'has_report_card' => $student->has_report_card,
+                    'has_good_moral' => $student->has_good_moral,
+                ];
+            });
+
+        // Get past students grouped by school year
+        // Since archives store data as JSON, we need to extract it differently
+        $pastStudents = Archive::where('archivable_type', 'App\\Models\\Student')
+            ->get()
+            ->map(function($archive) {
+                $data = $archive->data;
+                return [
+                    'school_year' => $data['school_year'] ?? 'Unknown',
+                    'grade_level' => $data['grade_level'] ?? 'Unknown',
+                ];
+            })
+            ->groupBy('school_year')
+            ->map(function($group, $schoolYear) {
+                return [
+                    'school_year' => $schoolYear,
+                    'count' => $group->count(),
+                    'grade7' => $group->where('grade_level', 'Grade 7')->count(),
+                    'grade8' => $group->where('grade_level', 'Grade 8')->count(),
+                    'grade9' => $group->where('grade_level', 'Grade 9')->count(),
+                    'grade10' => $group->where('grade_level', 'Grade 10')->count(),
+                ];
+            })
+            ->sortByDesc('school_year')
+            ->values();
+
+        return \Inertia\Inertia::render('admin/registrar/student-checklist/page', [
+            'grade7Students' => $grade7Students,
+            'grade8Students' => $grade8Students,
+            'grade9Students' => $grade9Students,
+            'grade10Students' => $grade10Students,
+            'pastStudents' => $pastStudents,
+        ]);
     }
 
     public function enrollmentList(Request $request)

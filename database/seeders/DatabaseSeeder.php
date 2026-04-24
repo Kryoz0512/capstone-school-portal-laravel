@@ -329,5 +329,197 @@ class DatabaseSeeder extends Seeder
                 }
             }
         }
+
+        // Seed students (both assigned and unassigned to sections)
+        $this->seedStudents();
+    }
+
+    /**
+     * Seed students - both assigned to sections and unassigned
+     */
+    private function seedStudents(): void
+    {
+        if (DB::table('tbl_students')->count() > 0) {
+            return; // Students already seeded
+        }
+
+        $gradeLevels = DB::table('tbl_grade_levels')->get();
+        $sections = DB::table('tbl_class_sections')->get();
+        
+        if ($gradeLevels->isEmpty() || $sections->isEmpty()) {
+            return;
+        }
+
+        $currentSchoolYear = '2024-2025';
+        
+        // Filipino names
+        $filipinoFirstNamesMale = ['Jose', 'Juan', 'Pedro', 'Antonio', 'Miguel', 'Carlos', 'Rafael', 'Luis', 'Manuel', 'Fernando'];
+        $filipinoFirstNamesFemale = ['Maria', 'Ana', 'Rosa', 'Carmen', 'Isabel', 'Teresa', 'Luz', 'Elena', 'Sofia', 'Gabriela'];
+        $filipinoLastNames = ['Santos', 'Reyes', 'Cruz', 'Bautista', 'Garcia', 'Mendoza', 'Torres', 'Flores', 'Rivera', 'Gonzales'];
+        $middleNames = ['Santos', 'Reyes', 'Cruz', 'Garcia', 'Mendoza'];
+        $suffixes = [null, null, null, 'Jr.'];
+        $statuses = ['new', 'transferee', 'returning'];
+        $usedLRNs = [];
+        
+        // Helper to generate unique LRN
+        $generateUniqueLRN = function() use (&$usedLRNs) {
+            do {
+                $lrn = '2024' . str_pad(rand(10000000, 99999999), 8, '0', STR_PAD_LEFT);
+            } while (in_array($lrn, $usedLRNs));
+            $usedLRNs[] = $lrn;
+            return $lrn;
+        };
+        
+        // PART 1: Create students ASSIGNED to sections (10 per section for speed)
+        foreach ($sections as $section) {
+            $studentsToCreate = 10; // Reduced from 40-47 to 10 for faster seeding
+            
+            for ($i = 0; $i < $studentsToCreate; $i++) {
+                $gender = ['male', 'female'][rand(0, 1)];
+                $firstName = $gender === 'male' 
+                    ? $filipinoFirstNamesMale[array_rand($filipinoFirstNamesMale)]
+                    : $filipinoFirstNamesFemale[array_rand($filipinoFirstNamesFemale)];
+                
+                $lastName = $filipinoLastNames[array_rand($filipinoLastNames)];
+                $middleName = $middleNames[array_rand($middleNames)];
+                $suffix = $suffixes[array_rand($suffixes)];
+                $lrn = $generateUniqueLRN();
+                
+                // Create user account
+                $userId = DB::table('users')->insertGetId([
+                    'name' => trim($firstName . ' ' . $lastName),
+                    'email' => 'SNHS-' . $lrn,
+                    'password' => Hash::make($lrn),
+                    'role' => 'student',
+                    'password_changed' => false, // Force password change on first login
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                
+                // Create student record
+                $studentId = DB::table('tbl_students')->insertGetId([
+                    'user_id' => $userId,
+                    'student_status' => $statuses[array_rand($statuses)],
+                    'lrn' => $lrn,
+                    'school_year' => $currentSchoolYear,
+                    'last_name' => $lastName,
+                    'first_name' => $firstName,
+                    'middle_name' => $middleName,
+                    'suffix' => $suffix,
+                    'gender' => $gender,
+                    'birth_date' => date('Y-m-d', strtotime('-' . rand(12, 16) . ' years')),
+                    'current_grade_level_id' => $section->grade_level_id,
+                    'current_section_id' => $section->id,
+                    'has_psa_birth_certificate' => rand(0, 1),
+                    'has_sf9' => rand(0, 1),
+                    'has_report_card' => rand(0, 1),
+                    'has_good_moral' => rand(0, 1),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                
+                // Create student profile
+                DB::table('tbl_student_profiles')->insert([
+                    'profileable_id' => $studentId,
+                    'profileable_type' => 'App\Models\Student',
+                    'place_of_birth' => 'Bongabon, Nueva Ecija',
+                    'city_municipality' => 'Bongabon',
+                    'province_state' => 'Nueva Ecija',
+                    'country' => 'Philippines',
+                    'nationality' => 'Filipino',
+                    'religion' => 'Roman Catholic',
+                    'contact_number' => '09' . rand(100000000, 999999999),
+                    'mobile_number' => '09' . rand(100000000, 999999999),
+                    'guardian_name' => $firstName . ' ' . $lastName,
+                    'relation' => 'Father',
+                    'father_first_name' => $firstName,
+                    'father_last_name' => $lastName,
+                    'mother_first_name' => $filipinoFirstNamesFemale[array_rand($filipinoFirstNamesFemale)],
+                    'mother_last_name' => $filipinoLastNames[array_rand($filipinoLastNames)],
+                    'guardian_first_name' => $firstName,
+                    'guardian_last_name' => $lastName,
+                    'indigenous_people' => 'No',
+                    'pwd' => 'No',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+        
+        // PART 2: Create students NOT ASSIGNED to sections (5 per grade level)
+        foreach ($gradeLevels as $gradeLevel) {
+            $unassignedToCreate = 5; // Reduced from 20-30 to 5 for faster seeding
+            
+            for ($i = 0; $i < $unassignedToCreate; $i++) {
+                $gender = ['male', 'female'][rand(0, 1)];
+                $firstName = $gender === 'male' 
+                    ? $filipinoFirstNamesMale[array_rand($filipinoFirstNamesMale)]
+                    : $filipinoFirstNamesFemale[array_rand($filipinoFirstNamesFemale)];
+                
+                $lastName = $filipinoLastNames[array_rand($filipinoLastNames)];
+                $middleName = $middleNames[array_rand($middleNames)];
+                $suffix = $suffixes[array_rand($suffixes)];
+                $lrn = $generateUniqueLRN();
+                
+                // Create user account
+                $userId = DB::table('users')->insertGetId([
+                    'name' => trim($firstName . ' ' . $lastName),
+                    'email' => 'SNHS-' . $lrn,
+                    'password' => Hash::make($lrn),
+                    'role' => 'student',
+                    'password_changed' => false, // Force password change on first login
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                
+                // Create student record WITHOUT section assignment
+                $studentId = DB::table('tbl_students')->insertGetId([
+                    'user_id' => $userId,
+                    'student_status' => $statuses[array_rand($statuses)],
+                    'lrn' => $lrn,
+                    'school_year' => $currentSchoolYear,
+                    'last_name' => $lastName,
+                    'first_name' => $firstName,
+                    'middle_name' => $middleName,
+                    'suffix' => $suffix,
+                    'gender' => $gender,
+                    'birth_date' => date('Y-m-d', strtotime('-' . rand(12, 16) . ' years')),
+                    'current_grade_level_id' => $gradeLevel->id,
+                    'current_section_id' => null,
+                    'has_psa_birth_certificate' => rand(0, 1),
+                    'has_sf9' => rand(0, 1),
+                    'has_report_card' => rand(0, 1),
+                    'has_good_moral' => rand(0, 1),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                
+                // Create student profile
+                DB::table('tbl_student_profiles')->insert([
+                    'profileable_id' => $studentId,
+                    'profileable_type' => 'App\Models\Student',
+                    'place_of_birth' => 'Bongabon, Nueva Ecija',
+                    'city_municipality' => 'Bongabon',
+                    'province_state' => 'Nueva Ecija',
+                    'country' => 'Philippines',
+                    'nationality' => 'Filipino',
+                    'religion' => 'Roman Catholic',
+                    'contact_number' => '09' . rand(100000000, 999999999),
+                    'mobile_number' => '09' . rand(100000000, 999999999),
+                    'guardian_name' => $firstName . ' ' . $lastName,
+                    'relation' => 'Father',
+                    'father_first_name' => $firstName,
+                    'father_last_name' => $lastName,
+                    'mother_first_name' => $filipinoFirstNamesFemale[array_rand($filipinoFirstNamesFemale)],
+                    'mother_last_name' => $filipinoLastNames[array_rand($filipinoLastNames)],
+                    'guardian_first_name' => $firstName,
+                    'guardian_last_name' => $lastName,
+                    'indigenous_people' => 'No',
+                    'pwd' => 'No',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
     }
 }

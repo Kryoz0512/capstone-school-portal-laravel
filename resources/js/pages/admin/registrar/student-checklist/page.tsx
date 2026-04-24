@@ -11,6 +11,7 @@ type Student = {
     lrn: string
     name: string
     gender: string
+    grade_level?: string
     section: string
     school_year: string
     has_psa_birth_certificate: boolean
@@ -32,6 +33,7 @@ type Props = {
             position: string
         }
     }
+    allStudents: Student[]
     grade7Students: Student[]
     grade8Students: Student[]
     grade9Students: Student[]
@@ -40,14 +42,15 @@ type Props = {
 }
 
 export default function StudentChecklist({ 
-    auth, 
+    auth,
+    allStudents = [],
     grade7Students = [], 
     grade8Students = [], 
     grade9Students = [], 
     grade10Students = [],
     pastStudents = []
 }: Props) {
-    const [activeTab, setActiveTab] = useState('grade7')
+    const [activeTab, setActiveTab] = useState('all')
     const [searchQuery, setSearchQuery] = useState('')
     const [currentPage, setCurrentPage] = useState(1)
     const itemsPerPage = 10
@@ -93,7 +96,7 @@ export default function StudentChecklist({
         setCurrentPage(1)
     }
 
-    const renderStudentTable = (students: Student[], gradeLevel: string) => {
+    const renderStudentTable = (students: Student[], gradeLevel: string, showGradeColumn = false) => {
         const paginated = paginateStudents(students)
         const filteredStudents = paginated.data
 
@@ -167,6 +170,11 @@ export default function StudentChecklist({
                                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                                         Student Info
                                     </th>
+                                    {showGradeColumn && (
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                            Grade Level
+                                        </th>
+                                    )}
                                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                                         Section
                                     </th>
@@ -187,7 +195,7 @@ export default function StudentChecklist({
                             <tbody className="divide-y divide-gray-200 bg-white">
                                 {filteredStudents.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="px-6 py-12 text-center">
+                                        <td colSpan={showGradeColumn ? 7 : 6} className="px-6 py-12 text-center">
                                             <div className="flex flex-col items-center gap-2">
                                                 <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
@@ -207,6 +215,11 @@ export default function StudentChecklist({
                                                         <p className="text-xs text-gray-500">LRN: {student.lrn}</p>
                                                     </div>
                                                 </td>
+                                                {showGradeColumn && (
+                                                    <td className="px-6 py-4">
+                                                        <span className="text-sm text-gray-700">{student.grade_level || 'N/A'}</span>
+                                                    </td>
+                                                )}
                                                 <td className="px-6 py-4">
                                                     <span className="text-sm text-gray-700">{student.section || 'Not Assigned'}</span>
                                                 </td>
@@ -360,7 +373,8 @@ export default function StudentChecklist({
 
                 {/* Tabs */}
                 <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-                    <TabsList className="grid w-full grid-cols-5 mb-6">
+                    <TabsList className="grid w-full grid-cols-6 mb-6">
+                        <TabsTrigger value="all">All Students</TabsTrigger>
                         <TabsTrigger value="grade7">Grade 7</TabsTrigger>
                         <TabsTrigger value="grade8">Grade 8</TabsTrigger>
                         <TabsTrigger value="grade9">Grade 9</TabsTrigger>
@@ -374,6 +388,10 @@ export default function StudentChecklist({
                             </div>
                         </TabsTrigger>
                     </TabsList>
+
+                    <TabsContent value="all">
+                        {renderStudentTable(allStudents, 'All Students', true)}
+                    </TabsContent>
 
                     <TabsContent value="grade7">
                         {renderStudentTable(grade7Students, 'Grade 7')}

@@ -1307,6 +1307,25 @@ public function notEnrolled(Request $request)
 
     public function checklist()
     {
+        // Get ALL students
+        $allStudents = Student::with(['gradeLevel', 'section'])
+            ->get()
+            ->map(function($student) {
+                return [
+                    'id' => $student->id,
+                    'lrn' => $student->lrn,
+                    'name' => trim($student->first_name . ' ' . ($student->middle_name ? $student->middle_name . ' ' : '') . $student->last_name),
+                    'gender' => ucfirst($student->gender),
+                    'grade_level' => $student->gradeLevel ? $student->gradeLevel->name : 'N/A',
+                    'section' => $student->section ? $student->section->section_name : null,
+                    'school_year' => $student->school_year,
+                    'has_psa_birth_certificate' => $student->has_psa_birth_certificate,
+                    'has_sf9' => $student->has_sf9,
+                    'has_report_card' => $student->has_report_card,
+                    'has_good_moral' => $student->has_good_moral,
+                ];
+            });
+        
         // Get current students by grade level
         $grade7Students = Student::with(['gradeLevel', 'section'])
             ->whereHas('gradeLevel', function($query) {
@@ -1414,6 +1433,7 @@ public function notEnrolled(Request $request)
             ->values();
 
         return \Inertia\Inertia::render('admin/registrar/student-checklist/page', [
+            'allStudents' => $allStudents,
             'grade7Students' => $grade7Students,
             'grade8Students' => $grade8Students,
             'grade9Students' => $grade9Students,

@@ -137,12 +137,12 @@ export default function AdminManagement({ admins, auth }: Props) {
                         <table className="w-full">
                             <thead className="bg-green-700">
                                 <tr>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Employee Number</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Name</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Username</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Position</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Last Updated</th>
-                                    <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Actions</th>
+                                    <th className="px-6 py-5 text-left text-sm font-bold text-white uppercase tracking-wider">Employee Number</th>
+                                    <th className="px-6 py-5 text-left text-sm font-bold text-white uppercase tracking-wider">Name</th>
+                                    <th className="px-6 py-5 text-left text-sm font-bold text-white uppercase tracking-wider">Username</th>
+                                    <th className="px-6 py-5 text-left text-sm font-bold text-white uppercase tracking-wider">Position</th>
+                                    <th className="px-6 py-5 text-left text-sm font-bold text-white uppercase tracking-wider">Last Updated</th>
+                                    <th className="px-6 py-5 text-center text-sm font-bold text-white uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
@@ -164,7 +164,7 @@ export default function AdminManagement({ admins, auth }: Props) {
                                                 )}
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="flex items-center gap-2">
+                                                <div className="flex items-center justify-center gap-2">
                                                     <button 
                                                         className="text-gray-600 hover:text-green-600"
                                                         onClick={() => handleEdit(admin)}
@@ -195,27 +195,23 @@ export default function AdminManagement({ admins, auth }: Props) {
                     {/* Pagination */}
                     {admins.length > 0 && (
                         <div className="p-4 border-t border-gray-200 flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm text-gray-600">Show</span>
-                                    <Select 
-                                        value={itemsPerPage.toString()} 
-                                        onValueChange={(value) => setItemsPerPage(Number(value))}
-                                    >
-                                        <SelectTrigger className="w-20">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="10">10</SelectItem>
-                                            <SelectItem value="25">25</SelectItem>
-                                            <SelectItem value="50">50</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    <span className="text-sm text-gray-600">entries</span>
-                                </div>
-                                <p className="text-sm text-gray-600">
-                                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalAdmins)} of {totalAdmins} entries
-                                </p>
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm text-gray-600">Show</span>
+                                <Select 
+                                    value={itemsPerPage.toString()} 
+                                    onValueChange={(value) => setItemsPerPage(Number(value))}
+                                >
+                                    <SelectTrigger className="w-20">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="10">10</SelectItem>
+                                        <SelectItem value="25">25</SelectItem>
+                                        <SelectItem value="50">50</SelectItem>
+                                        <SelectItem value="100">100</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <span className="text-sm text-gray-600">entries</span>
                             </div>
 
                             <div className="flex items-center gap-2">

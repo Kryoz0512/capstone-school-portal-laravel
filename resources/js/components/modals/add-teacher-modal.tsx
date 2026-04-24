@@ -149,7 +149,7 @@ export default function AddTeacherModal({ open, onOpenChange, subjects = [] }: A
                             value={data.email}
                             readOnly
                             className="bg-gray-50"
-                            placeholder="snhs-lastname.firstname@snhs.edu.ph"
+                            placeholder="SNHS-LASTNAME-FIRSTNAME"
                         />
                         <p className="text-xs text-gray-500 mt-1">Auto-generated as SNHS-LASTNAME-FIRSTNAME</p>
                         {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
@@ -161,9 +161,15 @@ export default function AddTeacherModal({ open, onOpenChange, subjects = [] }: A
                         </label>
                         <Input
                             required
+                            type="text"
                             value={data.employeeNumber}
-                            onChange={(e) => setData('employeeNumber', e.target.value)}
-                            placeholder="e.g., EMP-2024-001"
+                            onChange={(e) => {
+                                const value = e.target.value.replace(/[^0-9]/g, '')
+                                setData('employeeNumber', value)
+                            }}
+                            placeholder="e.g., 1000001"
+                            pattern="[0-9]+"
+                            title="Only numbers are allowed"
                             className={employeeNumberError ? 'border-red-500' : ''}
                         />
                         {checkingEmployeeNumber && (

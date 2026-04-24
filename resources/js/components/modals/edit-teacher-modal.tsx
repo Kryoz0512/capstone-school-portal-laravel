@@ -56,7 +56,7 @@ export default function EditTeacherModal({ open, onOpenChange, teacher, gradeLev
             setData({
                 firstName: firstName,
                 lastName: lastName,
-                email: teacher.email,
+                email: teacher.email, // Use the actual email from database
                 employeeNumber: teacher.employee_number || teacher.employee_no || '',
                 subject: teacher.subject,
                 position: teacher.position,
@@ -65,24 +65,7 @@ export default function EditTeacherModal({ open, onOpenChange, teacher, gradeLev
         }
     }, [teacher])
 
-    // Auto-generate email when first or last name changes
-    useEffect(() => {
-        if (data.firstName || data.lastName) {
-            // Remove all spaces from first and last name for email generation
-            const firstName = data.firstName.toLowerCase().trim().replace(/\s+/g, '')
-            const lastName = data.lastName.toLowerCase().trim().replace(/\s+/g, '')
-            const generatedEmail = firstName && lastName 
-                ? `${lastName}.${firstName}@snhs.edu.ph`
-                : firstName 
-                    ? `${firstName}@snhs.edu.ph`
-                    : lastName
-                        ? `${lastName}@snhs.edu.ph`
-                        : ''
-            setData('email', generatedEmail)
-        } else {
-            setData('email', '')
-        }
-    }, [data.firstName, data.lastName])
+    // Don't auto-generate email when editing - keep the original email from database
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
@@ -169,9 +152,15 @@ export default function EditTeacherModal({ open, onOpenChange, teacher, gradeLev
                         </label>
                         <Input
                             required
+                            type="text"
                             value={data.employeeNumber}
-                            onChange={(e) => setData('employeeNumber', e.target.value)}
-                            placeholder="e.g., EMP-2024-001"
+                            onChange={(e) => {
+                                const value = e.target.value.replace(/[^0-9]/g, '')
+                                setData('employeeNumber', value)
+                            }}
+                            placeholder="e.g., 1000001"
+                            pattern="[0-9]+"
+                            title="Only numbers are allowed"
                         />
                         {errors.employeeNumber && <p className="text-xs text-red-500 mt-1">{errors.employeeNumber}</p>}
                     </div>

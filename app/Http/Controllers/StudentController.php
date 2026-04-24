@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Illuminate\Support\Carbon;
 
@@ -816,7 +817,7 @@ public function notEnrolled(Request $request)
 
             // Update or create profile
             $student->profile()->updateOrCreate(
-                ['profileable_id' => $student->id, 'profileable_type' => 'student'],
+                ['profileable_id' => $student->id],
                 [
                     'extension_name' => $validated['extensionName'],
                     'religion' => $validated['religion'],
@@ -1503,4 +1504,61 @@ public function notEnrolled(Request $request)
             ],
         ]);
     }
+
+    public function uploadProfilePicture(Request $request)
+    {
+        $request->validate([
+            'profile_picture' => ['required', 'image', 'mimes:jpeg,jpg,png', 'max:2048'],
+        ]);
+
+        $user = Auth::user();
+        $student = Student::where('user_id', $user->id)->first();
+
+        if (!$student) {
+            return back()->withErrors(['error' => 'Student profile not found.']);
+        }
+
+        // Delete old profile picture if exists
+        $oldPicture = $student->profilePicture;
+        if ($oldPicture) {
+            Storage::disk('public')->delete($oldPicture->file_path);
+            $oldPicture->delete();
+        }
+
+        // Store new profile picture
+        $file = $request->file('profile_picture');
+        $fileName = time() . '_' . $file->getClientOriginalName();
+        $filePath = $file->storeAs('profile-pictures', $fileName, 'public');
+
+        // Create profile picture record
+        \App\Models\ProfilePicture::create([
+            'profileable_id' => $student->id,
+            'file_path' => $filePath,
+            'file_name' => $fileName,
+            'mime_type' => $file->getMimeType(),
+            'file_size' => $file->getSize(),
+        ]);
+
+        return back()->with('success', 'Profile picture updated successfully.');
+    }
+
+    public function deleteProfilePicture()
+    {
+        $user = Auth::user();
+        $student = Student::where('user_id', $user->id)->first();
+
+        if (!$student) {
+            return back()->withErrors(['error' => 'Student profile not found.']);
+        }
+
+        $profilePicture = $student->profilePicture;
+        
+        if ($profilePicture) {
+            Storage::disk('public')->delete($profilePicture->file_path);
+            $profilePicture->delete();
+        }
+
+        return back()->with('success', 'Profile picture deleted successfully.');
+    }
+
 }

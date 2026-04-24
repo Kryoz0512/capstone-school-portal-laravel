@@ -32,6 +32,7 @@ class DatabaseSeeder extends Seeder
             // Create admin record with 'Super Admin' role
             Admin::create([
                 'user_id' => $superAdminUser->id,
+                'employee_number' => '0000001',
                 'first_name' => 'Micah',
                 'last_name' => 'Bayudang',
                 'role' => 'Super Admin',
@@ -74,6 +75,7 @@ class DatabaseSeeder extends Seeder
             // Create admin record
             DB::table('tbl_admins')->insert([
                 'user_id' => $user->id,
+                'employee_number' => '0000002',
                 'first_name' => 'Mark',
                 'last_name' => 'Bayudang',
                 'position' => 'System Administrator',
@@ -138,93 +140,71 @@ class DatabaseSeeder extends Seeder
             }
         }
 
-        // Seed teachers
+        // Seed teachers - 2 teachers per subject
+        // Start employee numbers at 1000 to avoid conflicts with admin employee numbers (1-999)
         if (DB::table('tbl_teachers')->count() === 0) {
-            $teachers = [
-                [
-                    'firstName' => 'Maria',
-                    'lastName' => 'Santos',
-                    'employeeNumber' => '0000001',
-                    'subject' => 'English',
-                    'position' => 'Teacher I',
-                    'password' => 'teacher123',
-                ],
-                [
-                    'firstName' => 'Juan',
-                    'lastName' => 'Dela Cruz',
-                    'employeeNumber' => '0000002',
-                    'subject' => 'Filipino',
-                    'position' => 'Teacher II',
-                    'password' => 'teacher123',
-                ],
-                [
-                    'firstName' => 'Carlos',
-                    'lastName' => 'Mendoza',
-                    'employeeNumber' => '0000003',
-                    'subject' => 'Mathematics',
-                    'position' => 'Teacher II',
-                    'password' => 'teacher123',
-                ],
-                [
-                    'firstName' => 'Ana',
-                    'lastName' => 'Reyes',
-                    'employeeNumber' => '0000004',
-                    'subject' => 'Science',
-                    'position' => 'Teacher I',
-                    'password' => 'teacher123',
-                ],
-                [
-                    'firstName' => 'Pedro',
-                    'lastName' => 'Garcia',
-                    'employeeNumber' => '0000005',
-                    'subject' => 'Araling Panlipunan',
-                    'position' => 'Teacher III',
-                    'password' => 'teacher123',
-                ],
-                [
-                    'firstName' => 'Rosa',
-                    'lastName' => 'Cruz',
-                    'employeeNumber' => '0000006',
-                    'subject' => 'MAPEH',
-                    'position' => 'Teacher II',
-                    'password' => 'teacher123',
-                ],
-                [
-                    'firstName' => 'Jose',
-                    'lastName' => 'Ramos',
-                    'employeeNumber' => '0000007',
-                    'subject' => 'TLE',
-                    'position' => 'Teacher I',
-                    'password' => 'teacher123',
-                ],
+            $subjects = ['English', 'Filipino', 'Mathematics', 'Science', 'Araling Panlipunan', 'MAPEH', 'TLE'];
+            $positions = ['Teacher I', 'Teacher II', 'Teacher III'];
+            
+            // Filipino names for teachers
+            $firstNames = [
+                'Maria', 'Juan', 'Ana', 'Carlos', 'Rosa', 'Pedro', 'Elena', 'Miguel',
+                'Carmen', 'Luis', 'Isabel', 'Rafael', 'Teresa', 'Jose', 'Luz', 'Manuel',
+                'Sofia', 'Fernando', 'Gabriela', 'Antonio', 'Cristina', 'Ricardo'
             ];
+            $lastNames = [
+                'Santos', 'Reyes', 'Cruz', 'Bautista', 'Garcia', 'Mendoza', 'Torres',
+                'Flores', 'Rivera', 'Gonzales', 'Ramos', 'Dela Cruz', 'Aquino', 'Villanueva'
+            ];
+            
+            // Start teacher employee numbers at 1000001 to avoid conflicts with admins
+            $employeeNumber = 1000001;
+            $nameIndex = 0;
+            
+            // Create 2 teachers for each subject
+            foreach ($subjects as $subject) {
+                for ($i = 0; $i < 2; $i++) {
+                    $firstName = $firstNames[$nameIndex % count($firstNames)];
+                    $lastName = $lastNames[$nameIndex % count($lastNames)];
+                    $position = $positions[array_rand($positions)];
+                    
+                    // Generate email in format: SNHS-LASTNAME-FIRSTNAME
+                    $firstNameUpper = strtoupper(str_replace(' ', '', $firstName));
+                    $lastNameUpper = strtoupper(str_replace(' ', '', $lastName));
+                    $email = 'SNHS-' . $lastNameUpper . '-' . $firstNameUpper;
+                    
+                    // If email exists, add a number
+                    $emailSuffix = '';
+                    $counter = 1;
+                    while (User::where('email', $email . $emailSuffix)->exists()) {
+                        $emailSuffix = $counter;
+                        $counter++;
+                    }
+                    
+                    // Create user
+                    $user = User::create([
+                        'name' => $firstName . ' ' . $lastName,
+                        'email' => $email . $emailSuffix,
+                        'password' => bcrypt('teacher123'),
+                        'role' => 'teacher',
+                        'email_verified_at' => now(),
+                        'password_changed' => false,
+                    ]);
 
-            foreach ($teachers as $teacherData) {
-                // Generate email in format: SNHS-LASTNAME-FIRSTNAME
-                $firstName = strtoupper(str_replace(' ', '', $teacherData['firstName']));
-                $lastName = strtoupper(str_replace(' ', '', $teacherData['lastName']));
-                $email = 'SNHS-' . $lastName . '-' . $firstName;
-
-                // Create user
-                $user = User::create([
-                    'name' => $teacherData['firstName'] . ' ' . $teacherData['lastName'],
-                    'email' => $email,
-                    'password' => bcrypt($teacherData['password']),
-                    'role' => 'teacher',
-                    'email_verified_at' => now(),
-                    'password_changed' => false, // Teachers need to change password on first login
-                ]);
-
-                // Create teacher
-                DB::table('tbl_teachers')->insert([
-                    'user_id' => $user->id,
-                    'name' => $teacherData['firstName'] . ' ' . $teacherData['lastName'],
-                    'employee_number' => $teacherData['employeeNumber'],
-                    'subject' => $teacherData['subject'],
-                    'position' => $teacherData['position'],
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                    // Create teacher with unique employee number
+                    DB::table('tbl_teachers')->insert([
+                        'user_id' => $user->id,
+                        'name' => $firstName . ' ' . $lastName,
+                        'employee_number' => str_pad($employeeNumber, 7, '0', STR_PAD_LEFT),
+                        'subject' => $subject,
+                        'position' => $position,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                    
+                    $employeeNumber++;
+                    $nameIndex++;
+                }
             }
         }
 

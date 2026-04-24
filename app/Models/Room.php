@@ -23,4 +23,9 @@ class Room extends Model
     {
         return $this->hasMany(Schedule::class, 'room_id');
     }
+
+    public function sections()
+    {
+        return $this->hasMany(ClassSection::class, 'room_id');
+    }
 }

@@ -15,6 +15,7 @@ use App\Http\Controllers\ProfilePictureController;
 use App\Http\Controllers\GradeController;
 use App\Http\Controllers\PasswordChangeController;
 use App\Http\Controllers\AnnouncementController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Laravel\Fortify\Features;
 
@@ -100,6 +101,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('student/profile-settings', [StudentController::class, 'profileSettings'])->name('student.profile-settings');
     Route::put('student/profile-settings', [StudentController::class, 'updateProfileSettings'])->name('student.profile-settings.update');
     Route::put('student/profile-settings/password', [StudentController::class, 'updateStudentPassword'])->name('student.profile-settings.password');
+    Route::post('student/profile-picture/upload', [StudentController::class, 'uploadProfilePicture'])->name('student.profile-picture.upload');
+    Route::delete('student/profile-picture/delete', [StudentController::class, 'deleteProfilePicture'])->name('student.profile-picture.delete');
 
     // Teacher routes
     Route::get('teacher/dashboard', [TeacherController::class, 'dashboard'])->name('teacher.dashboard');
@@ -320,5 +323,109 @@ Route::get('/test-profile-picture', function () {
             'file_path' => $admin->profilePicture->file_path,
             'full_url' => asset('storage/' . $admin->profilePicture->file_path),
         ] : null,
+    ]);
+})->middleware('auth');
+
+// Test route to verify employee numbers
+Route::get('/test-employee-numbers', function () {
+    $admins = DB::table('tbl_admins')->select('id', 'first_name', 'last_name', 'employee_number')->get();
+    $teachers = DB::table('tbl_teachers')->select('id', 'name', 'employee_number')->limit(5)->get();
+    
+    return response()->json([
+        'admins' => $admins,
+        'teachers_sample' => $teachers,
+        'admin_count' => $admins->count(),
+        'teacher_count' => DB::table('tbl_teachers')->count(),
+    ]);
+})->middleware('auth');
+
+// API endpoint to search teachers by employee number
+Route::get('/api/search-teachers', function (Request $request) {
+    $employeeNumber = $request->input('employee_number', '');
+    
+    if (strlen($employeeNumber) < 3) {
+        return response()->json(['teachers' => []]);
+    }
+    
+    $teachers = DB::table('tbl_teachers')
+        ->join('users', 'tbl_teachers.user_id', '=', 'users.id')
+        ->where('tbl_teachers.employee_number', 'like', $employeeNumber . '%')
+        ->whereNotExists(function ($query) {
+            $query->select(DB::raw(1))
+                ->from('tbl_admins')
+                ->whereColumn('tbl_admins.user_id', 'tbl_teachers.user_id');
+        })
+        ->select('tbl_teachers.employee_number', 'tbl_teachers.name', 'tbl_teachers.position', 'users.email')
+        ->limit(10)
+        ->get()
+        ->map(function ($teacher) {
+            // Split name into first and last name
+            $nameParts = explode(' ', $teacher->name, 2);
+            return [
+                'employee_number' => $teacher->employee_number,
+                'first_name' => $nameParts[0] ?? '',
+                'last_name' => $nameParts[1] ?? '',
+                'position' => $teacher->position,
+                'email' => $teacher->email,
+            ];
+        });
+    
+    return response()->json(['teachers' => $teachers]);
+})->middleware('auth');
+
+// API endpoint to check employee number and get teacher data
+Route::get('/api/check-employee-number/{employeeNumber}', function ($employeeNumber) {
+    $teacher = DB::table('tbl_teachers')
+        ->join('users', 'tbl_teachers.user_id', '=', 'users.id')
+        ->where('tbl_teachers.employee_number', $employeeNumber)
+        ->select('tbl_teachers.*', 'users.email')
+        ->first();
+    
+    if ($teacher) {
+        // Check if this teacher is already an admin
+        $isAlreadyAdmin = DB::table('tbl_admins')
+            ->where('user_id', $teacher->user_id)
+            ->exists();
+        
+        if ($isAlreadyAdmin) {
+            return response()->json([
+                'exists' => true,
+                'is_teacher' => false,
+                'message' => 'This teacher is already an admin.'
+            ]);
+        }
+        
+        // Split name into first and last name
+        $nameParts = explode(' ', $teacher->name, 2);
+        return response()->json([
+            'exists' => true,
+            'is_teacher' => true,
+            'data' => [
+                'employee_number' => $teacher->employee_number,
+                'first_name' => $nameParts[0] ?? '',
+                'last_name' => $nameParts[1] ?? '',
+                'email' => $teacher->email,
+                'position' => $teacher->position,
+            ]
+        ]);
+    }
+    
+    // Check if employee number already exists in admins
+    $admin = DB::table('tbl_admins')
+        ->where('employee_number', $employeeNumber)
+        ->first();
+    
+    if ($admin) {
+        return response()->json([
+            'exists' => true,
+            'is_teacher' => false,
+            'message' => 'This employee number is already assigned to an admin.'
+        ]);
+    }
+    
+    return response()->json([
+        'exists' => false,
+        'is_teacher' => false,
+        'message' => 'Employee number is available.'
     ]);
 })->middleware('auth');

@@ -11,7 +11,11 @@ class RoomController extends Controller
 {
     public function index()
     {
-        $rooms = Room::orderBy('room_number')->get();
+        $rooms = Room::withCount([
+            'sections as students_count' => function ($query) {
+                $query->join('tbl_students', 'tbl_class_sections.id', '=', 'tbl_students.current_section_id');
+            }
+        ])->orderBy('room_number')->get();
         
         $admin = \App\Models\Admin::where('user_id', Auth::id())->first();
         

@@ -14,6 +14,7 @@ type Room = {
     room_number: string
     capacity: number
     status: 'Active' | 'In Construction' | 'Maintenance'
+    students_count: number
 }
 
 type Props = {
@@ -166,6 +167,9 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
                                         Capacity
                                     </th>
                                     <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
+                                        Students
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
                                         Status
                                     </th>
                                     <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
@@ -182,6 +186,9 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-900">
                                                 {room.capacity}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">
+                                                {room.students_count || 0}
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span
@@ -216,7 +223,7 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500">
+                                        <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-500">
                                             {searchTerm || capacityFilter !== '' || statusFilter !== 'All'
                                                 ? 'No rooms found matching your filters.'
                                                 : 'No rooms available. Click "+ Add Room" to create one.'

@@ -33,6 +33,7 @@ class SuperAdminController extends Controller
                 return [
                     'id' => $admin->id,
                     'user_id' => $admin->user_id,
+                    'employee_number' => $admin->employee_number,
                     'first_name' => $admin->first_name,
                     'last_name' => $admin->last_name,
                     'name' => $admin->first_name . ' ' . $admin->last_name,
@@ -71,11 +72,27 @@ class SuperAdminController extends Controller
         }
 
         $validated = $request->validate([
+            'employee_number' => ['required', 'string', 'size:7', 'regex:/^[0-9]{7}$/', 'unique:tbl_admins,employee_number'],
             'first_name' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\s]+$/'],
             'last_name' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\s]+$/'],
             'position' => ['required', 'string', 'max:255'],
             'password' => ['required', 'string', 'min:8'],
         ]);
+        
+        // Check if this employee number belongs to a teacher who is already an admin
+        $teacher = DB::table('tbl_teachers')
+            ->where('employee_number', $validated['employee_number'])
+            ->first();
+        
+        if ($teacher) {
+            $isAlreadyAdmin = DB::table('tbl_admins')
+                ->where('user_id', $teacher->user_id)
+                ->exists();
+            
+            if ($isAlreadyAdmin) {
+                return back()->withErrors(['employee_number' => 'This teacher is already an admin.']);
+            }
+        }
 
         // Generate email in format: SNHS-LASTNAME-FIRSTNAME
         $firstName = strtoupper(str_replace(' ', '', $validated['first_name']));
@@ -98,6 +115,7 @@ class SuperAdminController extends Controller
 
             Admin::create([
                 'user_id' => $user->id,
+                'employee_number' => $validated['employee_number'],
                 'first_name' => $validated['first_name'],
                 'last_name' => $validated['last_name'],
                 'role' => 'Admin',
@@ -109,7 +127,7 @@ class SuperAdminController extends Controller
             ActivityLog::create([
                 'user_id' => Auth::id(),
                 'action' => 'created',
-                'description' => 'Created admin: ' . $validated['first_name'] . ' ' . $validated['last_name'],
+                'description' => 'Created admin: ' . $validated['first_name'] . ' ' . $validated['last_name'] . ' (Employee #' . $validated['employee_number'] . ')',
             ]);
 
             DB::commit();

@@ -11,6 +11,7 @@ import { useState, useMemo } from 'react'
 type Admin = {
     id: number
     user_id: number
+    employee_number: string
     first_name: string
     last_name: string
     name: string
@@ -136,6 +137,7 @@ export default function AdminManagement({ admins, auth }: Props) {
                         <table className="w-full">
                             <thead className="bg-green-700">
                                 <tr>
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Employee Number</th>
                                     <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Name</th>
                                     <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Username</th>
                                     <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Position</th>
@@ -147,6 +149,7 @@ export default function AdminManagement({ admins, auth }: Props) {
                                 {paginatedAdmins.length > 0 ? (
                                     paginatedAdmins.map((admin) => (
                                         <tr key={admin.id} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 text-sm font-mono text-gray-900">{admin.employee_number}</td>
                                             <td className="px-6 py-4 text-sm text-gray-900">{admin.name}</td>
                                             <td className="px-6 py-4 text-sm text-gray-900">{admin.email}</td>
                                             <td className="px-6 py-4 text-sm text-gray-900">{admin.position}</td>
@@ -180,7 +183,7 @@ export default function AdminManagement({ admins, auth }: Props) {
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-500">
+                                        <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-500">
                                             No admin accounts found. Click "+ New Admin" to add one.
                                         </td>
                                     </tr>

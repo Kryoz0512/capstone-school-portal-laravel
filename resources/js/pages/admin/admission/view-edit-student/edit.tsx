@@ -579,6 +579,7 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
                             <label className="block text-sm font-medium text-gray-700">Father's Name</label>
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                 <div>
+                                    <label className="block text-xs text-gray-600 mb-1">Last Name</label>
                                     <Input
                                         value={data.fatherLastName}
                                         onChange={(e) => setData('fatherLastName', e.target.value)}
@@ -586,6 +587,7 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
                                     />
                                 </div>
                                 <div>
+                                    <label className="block text-xs text-gray-600 mb-1">First Name</label>
                                     <Input
                                         value={data.fatherFirstName}
                                         onChange={(e) => setData('fatherFirstName', e.target.value)}
@@ -593,6 +595,7 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
                                     />
                                 </div>
                                 <div>
+                                    <label className="block text-xs text-gray-600 mb-1">Middle Name</label>
                                     <Input
                                         value={data.fatherMiddleName}
                                         onChange={(e) => setData('fatherMiddleName', e.target.value)}
@@ -600,6 +603,7 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
                                     />
                                 </div>
                                 <div>
+                                    <label className="block text-xs text-gray-600 mb-1">Extn. Name</label>
                                     <Input
                                         value={data.fatherExtensionName}
                                         onChange={(e) => setData('fatherExtensionName', e.target.value)}
@@ -614,6 +618,7 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
                             <label className="block text-sm font-medium text-gray-700">Mother's Name</label>
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                 <div>
+                                    <label className="block text-xs text-gray-600 mb-1">Last Name</label>
                                     <Input
                                         value={data.motherLastName}
                                         onChange={(e) => setData('motherLastName', e.target.value)}
@@ -621,6 +626,7 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
                                     />
                                 </div>
                                 <div>
+                                    <label className="block text-xs text-gray-600 mb-1">First Name</label>
                                     <Input
                                         value={data.motherFirstName}
                                         onChange={(e) => setData('motherFirstName', e.target.value)}
@@ -628,6 +634,7 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
                                     />
                                 </div>
                                 <div>
+                                    <label className="block text-xs text-gray-600 mb-1">Middle Name</label>
                                     <Input
                                         value={data.motherMiddleName}
                                         onChange={(e) => setData('motherMiddleName', e.target.value)}
@@ -635,6 +642,7 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
                                     />
                                 </div>
                                 <div>
+                                    <label className="block text-xs text-gray-600 mb-1">Extn. Name</label>
                                     <Input
                                         value={data.motherExtensionName}
                                         onChange={(e) => setData('motherExtensionName', e.target.value)}
@@ -649,6 +657,7 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
                             <label className="block text-sm font-medium text-gray-700">Legal Guardian's Name</label>
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                 <div>
+                                    <label className="block text-xs text-gray-600 mb-1">Last Name</label>
                                     <Input
                                         value={data.guardianLastName}
                                         onChange={(e) => setData('guardianLastName', e.target.value)}
@@ -656,6 +665,7 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
                                     />
                                 </div>
                                 <div>
+                                    <label className="block text-xs text-gray-600 mb-1">First Name</label>
                                     <Input
                                         value={data.guardianFirstName}
                                         onChange={(e) => setData('guardianFirstName', e.target.value)}
@@ -663,6 +673,7 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
                                     />
                                 </div>
                                 <div>
+                                    <label className="block text-xs text-gray-600 mb-1">Middle Name</label>
                                     <Input
                                         value={data.guardianMiddleName}
                                         onChange={(e) => setData('guardianMiddleName', e.target.value)}
@@ -670,6 +681,7 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
                                     />
                                 </div>
                                 <div>
+                                    <label className="block text-xs text-gray-600 mb-1">Extn. Name</label>
                                     <Input
                                         value={data.guardianExtensionName}
                                         onChange={(e) => setData('guardianExtensionName', e.target.value)}

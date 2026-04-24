@@ -620,36 +620,75 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
 
                         <div className="border-t border-gray-200 pt-6">
                             <div className="flex items-center gap-2 mb-4">
-                                <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
                                 </div>
                                 <div>
                                     <h3 className="text-base font-semibold text-gray-900">
-                                        Required Documents <span className="text-red-500">*</span>
+                                        Student Documents
                                     </h3>
-                                    <p className="text-xs text-gray-600">Check the documents that have been submitted</p>
+                                    <p className="text-xs text-gray-600">Check the documents that have been submitted (can be submitted as follow-up)</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-xl p-4 mb-4">
+                                <div className="flex items-start gap-3">
+                                    <div className="flex-shrink-0 w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center mt-0.5">
+                                        <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-sm font-semibold text-amber-900 mb-1">Document Requirements</p>
+                                        <div className="text-xs text-amber-800 space-y-1">
+                                            {activeTab === 'new' && (
+                                                <p>• At least one: <strong>Form 138 (SF9)</strong> or <strong>Report Card</strong></p>
+                                            )}
+                                            {activeTab === 'transferee' && (
+                                                <>
+                                                    <p>• At least one: <strong>Form 138 (SF9)</strong> or <strong>Report Card</strong></p>
+                                                    <p>• <strong>Good Moral Certificate</strong> is required for transferees</p>
+                                                </>
+                                            )}
+                                            {activeTab === 'old' && (
+                                                <>
+                                                    <p>• <strong>PSA Birth Certificate</strong> is required</p>
+                                                    <p>• At least one: <strong>Form 138 (SF9)</strong> or <strong>Report Card</strong></p>
+                                                    <p>• <strong>Good Moral Certificate</strong> is required</p>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
                             <div className="space-y-4">
-                                {/* PSA Birth Certificate */}
-                                <div className="bg-white border-2 border-gray-200 rounded-xl p-4 hover:border-green-300 transition-colors">
+                                {/* PSA Birth Certificate - Required for Returning Students */}
+                                <div className={`bg-white border-2 rounded-xl p-4 transition-colors ${
+                                    activeTab === 'old' 
+                                        ? 'border-red-300 bg-gradient-to-br from-red-50 to-pink-50' 
+                                        : 'border-gray-200 hover:border-gray-300'
+                                }`}>
                                     <div className="flex items-start gap-3">
                                         <input
                                             type="checkbox"
                                             id="psa_birth_certificate"
                                             checked={data.has_psa_birth_certificate}
                                             onChange={(e) => setData('has_psa_birth_certificate', e.target.checked)}
-                                            className="mt-1 h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500 cursor-pointer"
+                                            className={`mt-1 h-5 w-5 rounded border-gray-300 cursor-pointer ${
+                                                activeTab === 'old' ? 'text-red-600 focus:ring-red-500' : 'text-gray-600 focus:ring-gray-500'
+                                            }`}
                                         />
                                         <label htmlFor="psa_birth_certificate" className="flex-1 cursor-pointer">
                                             <div className="flex items-center gap-2 mb-1">
                                                 <span className="text-sm font-semibold text-gray-900">PSA Birth Certificate</span>
-                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                                    Required
-                                                </span>
+                                                {activeTab === 'old' && (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                        Required
+                                                    </span>
+                                                )}
                                             </div>
                                             <p className="text-xs text-gray-600">Original or certified true copy from PSA</p>
                                         </label>
@@ -672,7 +711,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                     </div>
                                     
                                     <div className="space-y-3">
-                                        {/* SF9 */}
+                                        {/* Form 138 (SF9) */}
                                         <div className="bg-white rounded-lg p-3 border border-blue-200">
                                             <div className="flex items-start gap-3">
                                                 <input
@@ -683,11 +722,10 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                                     className="mt-1 h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                                                 />
                                                 <label htmlFor="sf9" className="flex-1 cursor-pointer">
-                                                    <span className="text-sm font-medium text-gray-900">SF9 (Form 138)</span>
+                                                    <span className="text-sm font-medium text-gray-900">Form 138 (SF9)</span>
                                                     <p className="text-xs text-gray-600 mt-0.5">Learner's Permanent Academic Record</p>
                                                 </label>
                                             </div>
-                                            {errors.has_sf9 && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_sf9}</p>}
                                         </div>
 
                                         {/* OR Divider */}
@@ -712,37 +750,46 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                                     <p className="text-xs text-gray-600 mt-0.5">Latest report card from previous school</p>
                                                 </label>
                                             </div>
-                                            {errors.has_report_card && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_report_card}</p>}
                                         </div>
                                     </div>
+                                    {errors.has_sf9 && <p className="text-xs text-red-500 mt-2">{errors.has_sf9}</p>}
+                                    {errors.has_report_card && <p className="text-xs text-red-500 mt-2">{errors.has_report_card}</p>}
                                 </div>
 
-                                {/* Good Moral - Only for Transferees */}
-                                {activeTab === 'transferee' && (
-                                    <div className="bg-white border-2 border-purple-200 rounded-xl p-4 hover:border-purple-300 transition-colors">
-                                        <div className="flex items-start gap-3">
-                                            <input
-                                                type="checkbox"
-                                                id="good_moral"
-                                                checked={data.has_good_moral}
-                                                onChange={(e) => setData('has_good_moral', e.target.checked)}
-                                                className="mt-1 h-5 w-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
-                                            />
-                                            <label htmlFor="good_moral" className="flex-1 cursor-pointer">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <span className="text-sm font-semibold text-gray-900">Good Moral Certificate</span>
+                                {/* Good Moral Certificate - Required for Transferees and Returning Students */}
+                                <div className={`bg-white border-2 rounded-xl p-4 transition-colors ${
+                                    activeTab === 'transferee' || activeTab === 'old'
+                                        ? 'border-purple-300 bg-gradient-to-br from-purple-50 to-pink-50' 
+                                        : 'border-gray-200 hover:border-gray-300'
+                                }`}>
+                                    <div className="flex items-start gap-3">
+                                        <input
+                                            type="checkbox"
+                                            id="good_moral"
+                                            checked={data.has_good_moral}
+                                            onChange={(e) => setData('has_good_moral', e.target.checked)}
+                                            className={`mt-1 h-5 w-5 rounded border-gray-300 cursor-pointer ${
+                                                activeTab === 'transferee' || activeTab === 'old' 
+                                                    ? 'text-purple-600 focus:ring-purple-500' 
+                                                    : 'text-gray-600 focus:ring-gray-500'
+                                            }`}
+                                        />
+                                        <label htmlFor="good_moral" className="flex-1 cursor-pointer">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-sm font-semibold text-gray-900">Good Moral Certificate</span>
+                                                {(activeTab === 'transferee' || activeTab === 'old') && (
                                                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                                        Transferee Only
+                                                        Required
                                                     </span>
-                                                </div>
-                                                <p className="text-xs text-gray-600">Certificate of Good Moral Character from previous school</p>
-                                            </label>
-                                        </div>
-                                        {errors.has_good_moral && (
-                                            <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_good_moral}</p>
-                                        )}
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-gray-600">Certificate of Good Moral Character from previous school</p>
+                                        </label>
                                     </div>
-                                )}
+                                    {errors.has_good_moral && (
+                                        <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_good_moral}</p>
+                                    )}
+                                </div>
                             </div>
                         </div>
 

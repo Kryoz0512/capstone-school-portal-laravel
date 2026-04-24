@@ -56,13 +56,26 @@ export default function StudentChecklist({
     const itemsPerPage = 10
 
     const getDocumentStatus = (student: Student) => {
-        const required = [
+        // At least one document is required for enrollment
+        // Other documents can be submitted as follow-up
+        const documents = [
             student.has_psa_birth_certificate,
-            student.has_sf9 || student.has_report_card,
+            student.has_sf9,
+            student.has_report_card,
+            student.has_good_moral,
         ]
-        const completed = required.filter(Boolean).length
-        const total = required.length
-        return { completed, total, percentage: (completed / total) * 100 }
+        const submitted = documents.filter(Boolean).length
+        const total = documents.length
+        
+        // Student needs at least 1 document to be considered enrolled
+        const hasMinimumRequirement = submitted >= 1
+        
+        return { 
+            completed: submitted, 
+            total, 
+            percentage: (submitted / total) * 100,
+            hasMinimumRequirement 
+        }
     }
 
     const filterStudents = (students: Student[]) => {

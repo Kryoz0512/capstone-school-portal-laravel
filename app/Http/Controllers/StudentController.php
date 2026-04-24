@@ -545,7 +545,8 @@ public function notEnrolled(Request $request)
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        // Base validation rules
+        $rules = [
             'student_status' => 'required|in:new,transferee,returning',
             'lrn' => 'required|numeric|size:12',
             'school_year' => 'required|string',
@@ -560,7 +561,38 @@ public function notEnrolled(Request $request)
             'has_sf9' => 'nullable|boolean',
             'has_report_card' => 'nullable|boolean',
             'has_good_moral' => 'nullable|boolean',
-        ]);
+        ];
+
+        $messages = [];
+
+        // Conditional validation based on student status
+        $studentStatus = $request->input('student_status');
+
+        // For returning students (old): PSA Birth Certificate and Good Moral are required
+        if ($studentStatus === 'returning') {
+            $rules['has_psa_birth_certificate'] = 'required|accepted';
+            $rules['has_good_moral'] = 'required|accepted';
+            $messages['has_psa_birth_certificate.required'] = 'PSA Birth Certificate is required for returning students.';
+            $messages['has_psa_birth_certificate.accepted'] = 'PSA Birth Certificate must be submitted for returning students.';
+            $messages['has_good_moral.required'] = 'Good Moral Certificate is required for returning students.';
+            $messages['has_good_moral.accepted'] = 'Good Moral Certificate must be submitted for returning students.';
+        }
+
+        // For transferees: Good Moral is required
+        if ($studentStatus === 'transferee') {
+            $rules['has_good_moral'] = 'required|accepted';
+            $messages['has_good_moral.required'] = 'Good Moral Certificate is required for transferee students.';
+            $messages['has_good_moral.accepted'] = 'Good Moral Certificate must be submitted for transferee students.';
+        }
+
+        $validated = $request->validate($rules, $messages);
+
+        // Additional validation: At least one academic record (SF9 or Report Card) is required
+        if (!$validated['has_sf9'] && !$validated['has_report_card']) {
+            return redirect()->back()->withErrors([
+                'has_sf9' => 'At least one academic record is required: Form 138 (SF9) or Report Card.'
+            ])->withInput();
+        }
 
         DB::beginTransaction();
         try {

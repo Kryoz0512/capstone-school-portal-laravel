@@ -195,7 +195,10 @@ export default function StudentChecklist({
                                         PSA Birth Cert
                                     </th>
                                     <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                        SF9/Report Card
+                                        SF9 (Form 138)
+                                    </th>
+                                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                        Report Card
                                     </th>
                                     <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
                                         Good Moral
@@ -208,7 +211,7 @@ export default function StudentChecklist({
                             <tbody className="divide-y divide-gray-200 bg-white">
                                 {filteredStudents.length === 0 ? (
                                     <tr>
-                                        <td colSpan={showGradeColumn ? 7 : 6} className="px-6 py-12 text-center">
+                                        <td colSpan={showGradeColumn ? 8 : 7} className="px-6 py-12 text-center">
                                             <div className="flex flex-col items-center gap-2">
                                                 <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
@@ -244,7 +247,14 @@ export default function StudentChecklist({
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-4 text-center">
-                                                    {student.has_sf9 || student.has_report_card ? (
+                                                    {student.has_sf9 ? (
+                                                        <CheckCircle2 className="w-5 h-5 text-green-600 mx-auto" />
+                                                    ) : (
+                                                        <XCircle className="w-5 h-5 text-red-400 mx-auto" />
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4 text-center">
+                                                    {student.has_report_card ? (
                                                         <CheckCircle2 className="w-5 h-5 text-green-600 mx-auto" />
                                                     ) : (
                                                         <XCircle className="w-5 h-5 text-red-400 mx-auto" />
@@ -254,7 +264,7 @@ export default function StudentChecklist({
                                                     {student.has_good_moral ? (
                                                         <CheckCircle2 className="w-5 h-5 text-green-600 mx-auto" />
                                                     ) : (
-                                                        <span className="text-xs text-gray-400">N/A</span>
+                                                        <XCircle className="w-5 h-5 text-red-400 mx-auto" />
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-4 text-center">

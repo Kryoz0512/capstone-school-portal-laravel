@@ -558,12 +558,15 @@ public function notEnrolled(Request $request)
             'suffix' => 'nullable|string|max:10',
             'grade_level_id' => 'nullable|exists:tbl_grade_levels,id',
             'has_psa_birth_certificate' => 'nullable|boolean',
-            'has_sf9' => 'nullable|boolean',
+            'has_sf9' => 'required|accepted', // SF9 is now required for all students
             'has_report_card' => 'nullable|boolean',
             'has_good_moral' => 'nullable|boolean',
         ];
 
-        $messages = [];
+        $messages = [
+            'has_sf9.required' => 'Form 138 (SF9) is required when enrolling.',
+            'has_sf9.accepted' => 'Form 138 (SF9) must be submitted.',
+        ];
 
         // Conditional validation based on student status
         $studentStatus = $request->input('student_status');
@@ -586,13 +589,6 @@ public function notEnrolled(Request $request)
         }
 
         $validated = $request->validate($rules, $messages);
-
-        // Additional validation: At least one academic record (SF9 or Report Card) is required
-        if (!$validated['has_sf9'] && !$validated['has_report_card']) {
-            return redirect()->back()->withErrors([
-                'has_sf9' => 'At least one academic record is required: Form 138 (SF9) or Report Card.'
-            ])->withInput();
-        }
 
         DB::beginTransaction();
         try {

@@ -479,10 +479,32 @@ class DatabaseSeeder extends Seeder
                     'updated_at' => now(),
                 ]);
                 
+                // Determine student status
+                $studentStatus = $statuses[array_rand($statuses)];
+                
+                // Generate documents based on student status
+                // SF9 (Form 138) is REQUIRED for all students
+                // Other documents vary by status
+                
+                $hasSf9 = true; // ALWAYS REQUIRED
+                $hasReportCard = rand(0, 1); // Optional - can be submitted as follow-up
+                $hasGoodMoral = false;
+                $hasPsaBirth = rand(0, 1); // Optional for new/transferee, required for returning
+                
+                if ($studentStatus === 'transferee') {
+                    // Transferees: SF9 (required) + Good Moral (required)
+                    $hasGoodMoral = true; // Always required for transferees
+                } elseif ($studentStatus === 'returning') {
+                    // Returning: SF9 (required) + PSA Birth Cert (required) + Good Moral (required)
+                    $hasPsaBirth = true; // Required for returning
+                    $hasGoodMoral = true; // Required for returning
+                }
+                // For 'new' students: only SF9 is required, others are optional
+                
                 // Create student record
                 $studentId = DB::table('tbl_students')->insertGetId([
                     'user_id' => $userId,
-                    'student_status' => $statuses[array_rand($statuses)],
+                    'student_status' => $studentStatus,
                     'lrn' => $lrn,
                     'school_year' => $currentSchoolYear,
                     'last_name' => $lastName,
@@ -493,10 +515,10 @@ class DatabaseSeeder extends Seeder
                     'birth_date' => date('Y-m-d', strtotime('-' . rand(12, 16) . ' years')),
                     'current_grade_level_id' => $section->grade_level_id,
                     'current_section_id' => $section->id,
-                    'has_psa_birth_certificate' => rand(0, 1),
-                    'has_sf9' => rand(0, 1),
-                    'has_report_card' => rand(0, 1),
-                    'has_good_moral' => rand(0, 1),
+                    'has_psa_birth_certificate' => $hasPsaBirth,
+                    'has_sf9' => $hasSf9,
+                    'has_report_card' => $hasReportCard,
+                    'has_good_moral' => $hasGoodMoral,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -564,10 +586,33 @@ class DatabaseSeeder extends Seeder
                     'updated_at' => now(),
                 ]);
                 
+                // Determine student status
+                $studentStatus = $statuses[array_rand($statuses)];
+                
+                // Generate documents based on student status
+                // New students: At least 1 document (SF9 or Report Card)
+                // Transferees: At least 2 documents (SF9/Report Card + Good Moral)
+                // Returning: SF9 (required) + PSA Birth Cert (required) + Good Moral (required)
+                
+                $hasSf9 = true; // ALWAYS REQUIRED
+                $hasReportCard = rand(0, 1); // Optional - can be submitted as follow-up
+                $hasGoodMoral = false;
+                $hasPsaBirth = rand(0, 1); // Optional for new/transferee, required for returning
+                
+                if ($studentStatus === 'transferee') {
+                    // Transferees: SF9 (required) + Good Moral (required)
+                    $hasGoodMoral = true; // Always required for transferees
+                } elseif ($studentStatus === 'returning') {
+                    // Returning: SF9 (required) + PSA Birth Cert (required) + Good Moral (required)
+                    $hasPsaBirth = true; // Required for returning
+                    $hasGoodMoral = true; // Required for returning
+                }
+                // For 'new' students: only SF9 is required, others are optional
+                
                 // Create student record WITHOUT section assignment
                 $studentId = DB::table('tbl_students')->insertGetId([
                     'user_id' => $userId,
-                    'student_status' => $statuses[array_rand($statuses)],
+                    'student_status' => $studentStatus,
                     'lrn' => $lrn,
                     'school_year' => $currentSchoolYear,
                     'last_name' => $lastName,
@@ -578,10 +623,10 @@ class DatabaseSeeder extends Seeder
                     'birth_date' => date('Y-m-d', strtotime('-' . rand(12, 16) . ' years')),
                     'current_grade_level_id' => $gradeLevel->id,
                     'current_section_id' => null,
-                    'has_psa_birth_certificate' => rand(0, 1),
-                    'has_sf9' => rand(0, 1),
-                    'has_report_card' => rand(0, 1),
-                    'has_good_moral' => rand(0, 1),
+                    'has_psa_birth_certificate' => $hasPsaBirth,
+                    'has_sf9' => $hasSf9,
+                    'has_report_card' => $hasReportCard,
+                    'has_good_moral' => $hasGoodMoral,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);

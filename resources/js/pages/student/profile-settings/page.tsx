@@ -234,12 +234,12 @@ export default function ProfileSettings({ student, auth }: Props) {
                 </div>
 
                 {/* Profile Picture Section */}
-                <Card>
+                <Card className="overflow-visible">
                     <CardHeader>
                         <CardTitle>Profile Picture</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        <div className="flex items-center gap-6">
+                    <CardContent className="overflow-visible">
+                        <div className="flex items-center gap-6 ml-8">
                             <div className="relative">
                                 {previewImage ? (
                                     <img 
@@ -261,8 +261,9 @@ export default function ProfileSettings({ student, auth }: Props) {
                                         <Camera className="w-4 h-4" />
                                     </button>
                                     
+                                    {/* Upload Options Popup */}
                                     {showUploadOptions && (
-                                        <div className="absolute top-full right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 p-2 z-10 min-w-[200px]">
+                                        <div className="absolute top-full left-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 p-2 z-10 min-w-[200px]">
                                             <button
                                                 onClick={() => {
                                                     setShowCameraDialog(true)

@@ -1521,11 +1521,12 @@ public function notEnrolled(Request $request)
             return back()->withErrors(['error' => 'Student profile not found.']);
         }
 
-        // Delete old profile picture if exists
-        $oldPicture = $student->profilePicture;
-        if ($oldPicture) {
-            Storage::disk('public')->delete($oldPicture->file_path);
-            $oldPicture->delete();
+        // Get existing profile picture
+        $existingPicture = $student->profilePicture;
+
+        // Delete old file if exists
+        if ($existingPicture && Storage::disk('public')->exists($existingPicture->file_path)) {
+            Storage::disk('public')->delete($existingPicture->file_path);
         }
 
         // Store new profile picture
@@ -1533,14 +1534,24 @@ public function notEnrolled(Request $request)
         $fileName = time() . '_' . $file->getClientOriginalName();
         $filePath = $file->storeAs('profile-pictures', $fileName, 'public');
 
-        // Create profile picture record
-        \App\Models\ProfilePicture::create([
-            'profileable_id' => $student->id,
-            'file_path' => $filePath,
-            'file_name' => $fileName,
-            'mime_type' => $file->getMimeType(),
-            'file_size' => $file->getSize(),
-        ]);
+        // Update or create profile picture record
+        if ($existingPicture) {
+            // Update existing record
+            $existingPicture->update([
+                'file_path' => $filePath,
+                'file_name' => $fileName,
+                'mime_type' => $file->getMimeType(),
+                'file_size' => $file->getSize(),
+            ]);
+        } else {
+            // Create new record - Laravel will automatically set profileable_type
+            $student->profilePicture()->create([
+                'file_path' => $filePath,
+                'file_name' => $fileName,
+                'mime_type' => $file->getMimeType(),
+                'file_size' => $file->getSize(),
+            ]);
+        }
 
         return back()->with('success', 'Profile picture updated successfully.');
     }

@@ -173,11 +173,33 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
             }
         }
         
-        put(update.url({ id: student.id }))
+        // Get the grade level from URL query parameter for redirect after save
+        const urlParams = new URLSearchParams(window.location.search)
+        const grade = urlParams.get('grade')
+        
+        put(update.url({ id: student.id }), {
+            onSuccess: () => {
+                // Redirect back with the grade level parameter if it exists
+                if (grade) {
+                    router.visit(`/admin/admission/view-edit-student?grade=${encodeURIComponent(grade)}`)
+                } else {
+                    router.visit('/admin/admission/view-edit-student')
+                }
+            }
+        })
     }
 
     const handleCancel = () => {
-        router.visit('/admin/admission/view-edit-student')
+        // Get the grade level from URL query parameter
+        const urlParams = new URLSearchParams(window.location.search)
+        const grade = urlParams.get('grade')
+        
+        // Navigate back with the grade level parameter if it exists
+        if (grade) {
+            router.visit(`/admin/admission/view-edit-student?grade=${encodeURIComponent(grade)}`)
+        } else {
+            router.visit('/admin/admission/view-edit-student')
+        }
     }
 
     return (

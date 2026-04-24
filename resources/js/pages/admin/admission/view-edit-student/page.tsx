@@ -37,9 +37,13 @@ type Props = {
 }
 
 export default function ViewEditStudent({ auth, students = [], gradeLevels = [] }: Props) {
+    // Get grade level from URL query parameter if it exists
+    const urlParams = new URLSearchParams(window.location.search)
+    const initialGrade = urlParams.get('grade') || 'all'
+    
     const [nameSearch, setNameSearch] = useState('')
     const [lrnSearch, setLrnSearch] = useState('')
-    const [gradeFilter, setGradeFilter] = useState('all')
+    const [gradeFilter, setGradeFilter] = useState(initialGrade)
     const [sectionFilter, setSectionFilter] = useState('')
     const [currentPage, setCurrentPage] = useState(1)
     const [perPage, setPerPage] = useState(10)
@@ -85,7 +89,8 @@ export default function ViewEditStudent({ auth, students = [], gradeLevels = [] 
     }
 
     const handleEdit = (student: Student) => {
-        router.visit(`/admin/admission/view-edit-student/${student.id}/edit`)
+        // Pass the current grade level as a query parameter
+        router.visit(`/admin/admission/view-edit-student/${student.id}/edit?grade=${encodeURIComponent(gradeFilter)}`)
     }
 
     return (

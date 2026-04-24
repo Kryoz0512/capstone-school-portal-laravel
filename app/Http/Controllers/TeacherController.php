@@ -8,10 +8,12 @@ use App\Models\Student;
 use App\Models\Schedule;
 use App\Models\ActivityLog;
 use App\Models\Archive;
+use App\Models\ProfilePicture;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class TeacherController extends Controller
@@ -691,7 +693,7 @@ class TeacherController extends Controller
     public function profileSettings()
     {
         $user = Auth::user();
-        $teacher = Teacher::where('user_id', $user->id)->with('user')->first();
+        $teacher = Teacher::where('user_id', $user->id)->with(['user', 'profilePicture'])->first();
 
         if (!$teacher) {
             return redirect()->route('login')->withErrors(['error' => 'Teacher profile not found.']);
@@ -709,6 +711,7 @@ class TeacherController extends Controller
                 'email' => $teacher->user->email,
                 'phone' => $teacher->phone ?? '',
                 'address' => $teacher->address ?? '',
+                'profile_picture' => $teacher->profilePicture && $teacher->profilePicture->file_path ? asset('storage/' . $teacher->profilePicture->file_path) : null,
             ],
             'auth' => [
                 'user' => $user
@@ -779,5 +782,61 @@ class TeacherController extends Controller
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Failed to change password: ' . $e->getMessage()]);
         }
+    }
+
+    public function uploadProfilePicture(Request $request)
+    {
+        $request->validate([
+            'profile_picture' => ['required', 'image', 'mimes:jpeg,jpg,png', 'max:2048'],
+        ]);
+
+        $user = Auth::user();
+        $teacher = Teacher::where('user_id', $user->id)->first();
+
+        if (!$teacher) {
+            return back()->withErrors(['error' => 'Teacher profile not found.']);
+        }
+
+        // Delete old profile picture if exists
+        $oldPicture = $teacher->profilePicture;
+        if ($oldPicture) {
+            Storage::disk('public')->delete($oldPicture->file_path);
+            $oldPicture->delete();
+        }
+
+        // Store new profile picture
+        $file = $request->file('profile_picture');
+        $fileName = time() . '_' . $file->getClientOriginalName();
+        $filePath = $file->storeAs('profile-pictures', $fileName, 'public');
+
+        // Create profile picture record
+        ProfilePicture::create([
+            'profileable_id' => $teacher->id,
+            'file_path' => $filePath,
+            'file_name' => $fileName,
+            'mime_type' => $file->getMimeType(),
+            'file_size' => $file->getSize(),
+        ]);
+
+        return back()->with('success', 'Profile picture updated successfully.');
+    }
+
+    public function deleteProfilePicture()
+    {
+        $user = Auth::user();
+        $teacher = Teacher::where('user_id', $user->id)->first();
+
+        if (!$teacher) {
+            return back()->withErrors(['error' => 'Teacher profile not found.']);
+        }
+
+        $profilePicture = $teacher->profilePicture;
+        
+        if ($profilePicture) {
+            Storage::disk('public')->delete($profilePicture->file_path);
+            $profilePicture->delete();
+        }
+
+        return back()->with('success', 'Profile picture deleted successfully.');
     }
 }

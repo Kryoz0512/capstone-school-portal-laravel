@@ -35,11 +35,69 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
-        return [
+        $user = $request->user();
+        $profilePicture = null;
+        $userTypeData = null;
+
+        if ($user) {
+            // Get profile picture based on user role
+            switch ($user->role) {
+                case 'admin':
+                case 'super_admin':
+                    $admin = \App\Models\Admin::where('user_id', $user->id)->with('profilePicture')->first();
+                    if ($admin) {
+                        $profilePicture = $admin->profilePicture?->file_path 
+                            ? asset('storage/' . $admin->profilePicture->file_path) 
+                            : null;
+                        
+                        \Log::info('Middleware sharing admin data', [
+                            'admin_id' => $admin->id,
+                            'has_profile_picture' => $admin->profilePicture ? 'yes' : 'no',
+                            'profile_picture_url' => $profilePicture,
+                        ]);
+                        
+                        $userTypeData = [
+                            'role' => $admin->role,
+                            'position' => $admin->position,
+                            'profile_picture' => $profilePicture,
+                        ];
+                    }
+                    break;
+                    
+                case 'teacher':
+                    $teacher = \App\Models\Teacher::where('user_id', $user->id)->with('profilePicture')->first();
+                    if ($teacher) {
+                        $profilePicture = $teacher->profilePicture?->file_path 
+                            ? asset('storage/' . $teacher->profilePicture->file_path) 
+                            : null;
+                        $userTypeData = [
+                            'profile_picture' => $profilePicture,
+                        ];
+                    }
+                    break;
+                    
+                case 'student':
+                    $student = \App\Models\Student::where('user_id', $user->id)->with('profilePicture')->first();
+                    if ($student) {
+                        $profilePicture = $student->profilePicture?->file_path 
+                            ? asset('storage/' . $student->profilePicture->file_path) 
+                            : null;
+                        $userTypeData = [
+                            'profile_picture' => $profilePicture,
+                        ];
+                    }
+                    break;
+            }
+        }
+
+        $sharedData = [
             ...parent::share($request),
             'name' => config('app.name'),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $user,
+                'admin' => $user && in_array($user->role, ['admin', 'super_admin']) ? $userTypeData : null,
+                'teacher' => $user && $user->role === 'teacher' ? $userTypeData : null,
+                'student' => $user && $user->role === 'student' ? $userTypeData : null,
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => [
@@ -49,5 +107,13 @@ class HandleInertiaRequests extends Middleware
                 'import_errors' => $request->session()->get('import_errors'),
             ],
         ];
+        
+        \Log::info('Middleware final shared data', [
+            'has_auth' => isset($sharedData['auth']),
+            'has_admin' => isset($sharedData['auth']['admin']),
+            'admin_data' => $sharedData['auth']['admin'] ?? null,
+        ]);
+        
+        return $sharedData;
     }
 }

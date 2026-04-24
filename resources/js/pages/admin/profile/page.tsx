@@ -1,9 +1,10 @@
-import { Head, usePage, useForm } from '@inertiajs/react'
+import { Head, usePage, useForm, router } from '@inertiajs/react'
 import AdminLayout from '@/layouts/admin-layout'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { useState } from 'react'
+import { Camera, Trash2, Upload, X } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
 
 type Props = {
     profile: {
@@ -15,6 +16,7 @@ type Props = {
         position: string
         role: string
         initials: string
+        profile_picture: string | null
     }
 }
 
@@ -24,6 +26,14 @@ export default function ProfileSettings({ profile }: Props) {
     const [showNewPassword, setShowNewPassword] = useState(false)
     const [showConfirmPassword, setShowConfirmPassword] = useState(false)
     const [showSuccessDialog, setShowSuccessDialog] = useState(false)
+    const [showCameraDialog, setShowCameraDialog] = useState(false)
+    const [showUploadOptions, setShowUploadOptions] = useState(false)
+    const [previewImage, setPreviewImage] = useState<string | null>(profile.profile_picture)
+    const [isCameraActive, setIsCameraActive] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
+    const videoRef = useRef<HTMLVideoElement>(null)
+    const canvasRef = useRef<HTMLCanvasElement>(null)
+    const streamRef = useRef<MediaStream | null>(null)
 
     const { data, setData, put, processing, errors, reset, recentlySuccessful } = useForm({
         current_password: '',
@@ -42,6 +52,145 @@ export default function ProfileSettings({ profile }: Props) {
         })
     }
 
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (file) {
+            // Validate file type
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file')
+                return
+            }
+            
+            // Validate file size (2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                alert('File size must be less than 2MB')
+                return
+            }
+
+            // Preview image
+            const reader = new FileReader()
+            reader.onloadend = () => {
+                setPreviewImage(reader.result as string)
+            }
+            reader.readAsDataURL(file)
+
+            // Upload image
+            const formData = new FormData()
+            formData.append('profile_picture', file)
+
+            router.post('/admin/profile/picture', formData, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    // Image uploaded successfully
+                },
+                onError: (errors) => {
+                    alert(errors.profile_picture || 'Failed to upload image')
+                    setPreviewImage(profile.profile_picture)
+                }
+            })
+        }
+    }
+
+    const handleDeletePicture = () => {
+        if (confirm('Are you sure you want to delete your profile picture?')) {
+            router.delete('/admin/profile/picture', {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setPreviewImage(null)
+                }
+            })
+        }
+    }
+
+    const startCamera = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: 'user' } // Use front camera
+            })
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream
+                streamRef.current = stream
+                setIsCameraActive(true)
+            }
+        } catch (error) {
+            alert('Unable to access camera. Please check permissions.')
+            console.error('Camera error:', error)
+        }
+    }
+
+    const stopCamera = () => {
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop())
+            streamRef.current = null
+        }
+        setIsCameraActive(false)
+    }
+
+    const capturePhoto = () => {
+        if (videoRef.current && canvasRef.current) {
+            const video = videoRef.current
+            const canvas = canvasRef.current
+            
+            canvas.width = video.videoWidth
+            canvas.height = video.videoHeight
+            
+            const context = canvas.getContext('2d')
+            if (context) {
+                context.drawImage(video, 0, 0)
+                
+                canvas.toBlob((blob) => {
+                    if (blob) {
+                        const file = new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' })
+                        uploadImage(file)
+                        stopCamera()
+                        setShowCameraDialog(false)
+                    }
+                }, 'image/jpeg', 0.95)
+            }
+        }
+    }
+
+    const uploadImage = (file: File) => {
+        // Preview image
+        const reader = new FileReader()
+        reader.onloadend = () => {
+            setPreviewImage(reader.result as string)
+        }
+        reader.readAsDataURL(file)
+
+        // Upload image
+        const formData = new FormData()
+        formData.append('profile_picture', file)
+
+        router.post('/admin/profile/picture', formData, {
+            preserveScroll: true,
+            onSuccess: () => {
+                // Image uploaded successfully
+            },
+            onError: (errors) => {
+                alert(errors.profile_picture || 'Failed to upload image')
+                setPreviewImage(profile.profile_picture)
+            }
+        })
+    }
+
+    const handleCameraDialogClose = () => {
+        stopCamera()
+        setShowCameraDialog(false)
+    }
+
+    // Close upload options when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (showUploadOptions && !(event.target as Element).closest('.upload-options-container')) {
+                setShowUploadOptions(false)
+            }
+        }
+
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [showUploadOptions])
+
     return (
         <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title="Profile Settings" />
@@ -56,9 +205,71 @@ export default function ProfileSettings({ profile }: Props) {
 
                 {/* Profile Card */}
                 <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-gray-200 p-6">
-                    <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-2xl font-bold">
-                            {profile.initials}
+                    <div className="flex items-center gap-6">
+                        <div className="relative">
+                            {previewImage ? (
+                                <img 
+                                    src={previewImage} 
+                                    alt="Profile" 
+                                    className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
+                                />
+                            ) : (
+                                <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-3xl font-bold border-4 border-white shadow-lg">
+                                    {profile.initials}
+                                </div>
+                            )}
+                            <div className="upload-options-container">
+                                <button
+                                    onClick={() => setShowUploadOptions(!showUploadOptions)}
+                                    className="absolute bottom-0 right-0 bg-green-600 hover:bg-green-700 text-white p-2 rounded-full shadow-lg transition-colors"
+                                    title="Change profile picture"
+                                >
+                                    <Camera className="w-4 h-4" />
+                                </button>
+                                
+                                {/* Upload Options Popup */}
+                                {showUploadOptions && (
+                                    <div className="absolute top-full right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 p-2 z-10 min-w-[200px]">
+                                        <button
+                                            onClick={() => {
+                                                setShowCameraDialog(true)
+                                                setShowUploadOptions(false)
+                                                setTimeout(() => startCamera(), 100)
+                                            }}
+                                            className="w-full flex items-center gap-2 px-4 py-2 text-left hover:bg-gray-100 rounded-md transition-colors"
+                                        >
+                                            <Camera className="w-4 h-4" />
+                                            <span className="text-sm">Take Photo</span>
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                fileInputRef.current?.click()
+                                                setShowUploadOptions(false)
+                                            }}
+                                            className="w-full flex items-center gap-2 px-4 py-2 text-left hover:bg-gray-100 rounded-md transition-colors"
+                                        >
+                                            <Upload className="w-4 h-4" />
+                                            <span className="text-sm">Upload Photo</span>
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                            {previewImage && (
+                                <button
+                                    onClick={handleDeletePicture}
+                                    className="absolute top-0 right-0 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full shadow-lg transition-colors"
+                                    title="Delete profile picture"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            )}
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/jpeg,image/jpg,image/png"
+                                onChange={handleFileSelect}
+                                className="hidden"
+                            />
                         </div>
                         <div>
                             <h2 className="text-xl font-bold text-gray-900">{profile.full_name}</h2>
@@ -67,6 +278,7 @@ export default function ProfileSettings({ profile }: Props) {
                                 <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">{profile.role}</span>
                                 <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded">Active Account</span>
                             </div>
+                            <p className="text-xs text-gray-500 mt-2">Click camera icon to take photo or upload. Max 2MB (JPG, PNG)</p>
                         </div>
                     </div>
                 </div>
@@ -256,6 +468,51 @@ export default function ProfileSettings({ profile }: Props) {
                         >
                             Got it
                         </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Camera Dialog */}
+            <Dialog open={showCameraDialog} onOpenChange={handleCameraDialogClose}>
+                <DialogContent className="sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Take a Photo</DialogTitle>
+                        <DialogDescription>
+                            Position yourself in the frame and click capture when ready
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <div className="relative bg-black rounded-lg overflow-hidden" style={{ aspectRatio: '4/3' }}>
+                            <video
+                                ref={videoRef}
+                                autoPlay
+                                playsInline
+                                className="w-full h-full object-cover"
+                            />
+                            {!isCameraActive && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+                                    <p className="text-white">Starting camera...</p>
+                                </div>
+                            )}
+                        </div>
+                        <canvas ref={canvasRef} className="hidden" />
+                        <div className="flex justify-end gap-3">
+                            <Button
+                                variant="outline"
+                                onClick={handleCameraDialogClose}
+                            >
+                                <X className="w-4 h-4 mr-2" />
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={capturePhoto}
+                                disabled={!isCameraActive}
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                            >
+                                <Camera className="w-4 h-4 mr-2" />
+                                Capture Photo
+                            </Button>
+                        </div>
                     </div>
                 </DialogContent>
             </Dialog>

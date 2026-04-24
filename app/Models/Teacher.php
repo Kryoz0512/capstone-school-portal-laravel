@@ -65,4 +65,12 @@ class Teacher extends Model
     {
         return $this->belongsTo(User::class, 'updated_by');
     }
+
+    /**
+     * Get the teacher's profile picture.
+     */
+    public function profilePicture()
+    {
+        return $this->hasOne(ProfilePicture::class, 'profileable_id');
+    }
 }

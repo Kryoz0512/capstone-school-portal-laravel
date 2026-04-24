@@ -69,4 +69,12 @@ class Student extends Model
     {
         return $this->hasOne(StudentProfile::class, 'profileable_id');
     }
+
+    /**
+     * Get the student's profile picture.
+     */
+    public function profilePicture()
+    {
+        return $this->hasOne(ProfilePicture::class, 'profileable_id');
+    }
 }

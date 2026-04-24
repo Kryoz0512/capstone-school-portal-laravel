@@ -12,6 +12,7 @@ type AdminLayoutProps = {
     admin?: {
         role: string
         position: string
+        profile_picture?: string | null
     }
 }
 

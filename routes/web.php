@@ -127,6 +127,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('teacher/profile-settings', [TeacherController::class, 'profileSettings'])->name('teacher.profile-settings');
     Route::put('teacher/profile-settings', [TeacherController::class, 'updateProfile'])->name('teacher.profile-settings.update');
     Route::put('teacher/profile-settings/password', [TeacherController::class, 'updatePassword'])->name('teacher.profile-settings.password');
+    Route::post('teacher/profile-settings/picture', [TeacherController::class, 'uploadProfilePicture'])->name('teacher.profile-settings.picture.upload');
+    Route::delete('teacher/profile-settings/picture', [TeacherController::class, 'deleteProfilePicture'])->name('teacher.profile-settings.picture.delete');
 
     // Admin routes
     Route::get('admin/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
@@ -289,9 +291,34 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Admin Profile route
     Route::get('admin/profile', [AdminProfileController::class, 'show'])->name('admin.profile');
     Route::put('admin/profile/password', [AdminProfileController::class, 'updatePassword'])->name('admin.profile.password.update');
+    Route::post('admin/profile/picture', [AdminProfileController::class, 'uploadProfilePicture'])->name('admin.profile.picture.upload');
+    Route::delete('admin/profile/picture', [AdminProfileController::class, 'deleteProfilePicture'])->name('admin.profile.picture.delete');
 });
 
 // Public API for login slides
 Route::get('api/login-slides', [App\Http\Controllers\LoginSlideController::class, 'getActiveSlides']);
 
 require __DIR__.'/settings.php';
+
+// Test route to check profile picture data
+Route::get('/test-profile-picture', function () {
+    $user = auth()->user();
+    if (!$user) {
+        return response()->json(['error' => 'Not authenticated']);
+    }
+    
+    $admin = \App\Models\Admin::where('user_id', $user->id)->with('profilePicture')->first();
+    
+    return response()->json([
+        'user_id' => $user->id,
+        'user_role' => $user->role,
+        'admin_id' => $admin ? $admin->id : null,
+        'has_profile_picture' => $admin && $admin->profilePicture ? true : false,
+        'profile_picture_data' => $admin && $admin->profilePicture ? [
+            'id' => $admin->profilePicture->id,
+            'profileable_id' => $admin->profilePicture->profileable_id,
+            'file_path' => $admin->profilePicture->file_path,
+            'full_url' => asset('storage/' . $admin->profilePicture->file_path),
+        ] : null,
+    ]);
+})->middleware('auth');

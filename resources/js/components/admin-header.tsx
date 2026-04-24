@@ -1,4 +1,4 @@
-import { router, Link } from '@inertiajs/react'
+import { router, Link, usePage } from '@inertiajs/react'
 import { User, Settings, LogOut, ChevronDown } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 
@@ -11,12 +11,34 @@ type HeaderProps = {
     admin?: {
         role: string
         position: string
+        profile_picture?: string | null
     }
 }
 
 export default function AdminHeader({ user, admin }: HeaderProps) {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false)
     const dropdownRef = useRef<HTMLDivElement>(null)
+    
+    // Get shared data directly from Inertia
+    const page = usePage()
+    const { auth } = page.props as { auth: { admin?: { profile_picture?: string | null } } }
+    
+    // Handle profile picture - could be a string URL or an object with file_path
+    let profilePicture: string | null = null
+    
+    // First try from shared auth data (middleware)
+    if (auth?.admin?.profile_picture && typeof auth.admin.profile_picture === 'string') {
+        profilePicture = auth.admin.profile_picture
+    }
+    // Then try from props (controller) - might be an object
+    else if (admin?.profile_picture) {
+        if (typeof admin.profile_picture === 'string') {
+            profilePicture = admin.profile_picture
+        } else if (typeof admin.profile_picture === 'object' && 'file_path' in admin.profile_picture) {
+            // It's the full profile picture object, extract the URL
+            profilePicture = `${window.location.origin}/storage/${admin.profile_picture.file_path}`
+        }
+    }
 
     const currentDate = new Date().toLocaleDateString('en-US', {
         weekday: 'long',
@@ -55,9 +77,17 @@ export default function AdminHeader({ user, admin }: HeaderProps) {
                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                         className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors"
                     >
-                            <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">
-                                <User className="w-6 h-6 text-white" />
-                            </div>
+                            {profilePicture && typeof profilePicture === 'string' ? (
+                                <img 
+                                    src={profilePicture} 
+                                    alt="Profile" 
+                                    className="w-10 h-10 rounded-full object-cover border-2 border-green-600"
+                                />
+                            ) : (
+                                <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">
+                                    <User className="w-6 h-6 text-white" />
+                                </div>
+                            )}
                             <div className="text-left">
                                 <p className="text-sm font-medium text-gray-900">{user?.name || 'Admin'}</p>
                                 <p className="text-xs text-gray-500">{admin?.role || 'Admin'}</p>

@@ -5,8 +5,6 @@ import {
     BookOpen,
     FileText,
     FileSpreadsheet,
-    Settings,
-    User,
     GraduationCap
 } from 'lucide-react'
 
@@ -149,25 +147,6 @@ export default function StudentSidebar({ currentPath, user, student }: SidebarPr
                         <FileSpreadsheet className="w-4 h-4" />
                     </div>
                     <span className="font-medium">Report Card</span>
-                </Link>
-
-                {/* Profile Settings */}
-                <Link
-                    href="/student/profile-settings"
-                    className={`flex items-center gap-3 px-4 py-3 mb-1 rounded-xl transition-all duration-300 group ${
-                        isActive('/student/profile-settings') 
-                            ? 'bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-500/30 scale-[1.02]' 
-                            : 'text-purple-100 hover:bg-purple-700/50 hover:translate-x-1'
-                    }`}
-                >
-                    <div className={`p-2 rounded-lg transition-all duration-300 ${
-                        isActive('/student/profile-settings')
-                            ? 'bg-white/20'
-                            : 'bg-purple-700/30 group-hover:bg-purple-600/40'
-                    }`}>
-                        <Settings className="w-4 h-4" />
-                    </div>
-                    <span className="font-medium">Profile Settings</span>
                 </Link>
             </nav>
         </div>

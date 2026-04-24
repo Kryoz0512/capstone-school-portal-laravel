@@ -63,10 +63,10 @@ class Student extends Model
     }
 
     /**
-     * Get the student's profile (polymorphic relationship).
+     * Get the student's profile.
      */
     public function profile()
     {
-        return $this->morphOne(StudentProfile::class, 'profileable');
+        return $this->hasOne(StudentProfile::class, 'profileable_id');
     }
 }

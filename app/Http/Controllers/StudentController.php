@@ -665,7 +665,7 @@ public function notEnrolled(Request $request)
                 'has_good_moral' => $validated['has_good_moral'] ?? false,
             ]);
 
-            // Create student profile using polymorphic relationship
+            // Create student profile using relationship
             $student->profile()->create([
                 'place_of_birth' => 'Bongabon, Nueva Ecija',
                 'city_municipality' => 'Bongabon',
@@ -877,9 +877,15 @@ public function notEnrolled(Request $request)
                 'firstName' => $student->first_name,
                 'lastName' => $student->last_name,
                 'email' => $user->email,
-                'phone' => $student->profile ? ($student->profile->mobile_number ?? '') : '',
+                'mobileNumber' => $student->profile ? ($student->profile->mobile_number ?? '') : '',
+                'contactNumber' => $student->profile ? ($student->profile->contact_number ?? '') : '',
                 'birthDate' => $student->birth_date ? $student->birth_date->format('Y-m-d') : '',
-                'address' => $student->profile ? ($student->profile->house_no ?? '') : '',
+                'placeOfBirth' => $student->profile ? ($student->profile->place_of_birth ?? '') : '',
+                'cityMunicipality' => $student->profile ? ($student->profile->city_municipality ?? '') : '',
+                'provinceState' => $student->profile ? ($student->profile->province_state ?? '') : '',
+                'country' => $student->profile ? ($student->profile->country ?? '') : '',
+                'nationality' => $student->profile ? ($student->profile->nationality ?? '') : '',
+                'religion' => $student->profile ? ($student->profile->religion ?? '') : '',
             ],
             'auth' => [
                 'user' => $user
@@ -899,9 +905,15 @@ public function notEnrolled(Request $request)
         $validated = $request->validate([
             'firstName' => 'required|string|max:255',
             'lastName' => 'required|string|max:255',
-            'phone' => 'nullable|string|max:20',
+            'mobileNumber' => 'nullable|string|max:11',
+            'contactNumber' => 'nullable|string|max:11',
             'birthDate' => 'nullable|date',
-            'address' => 'nullable|string|max:255',
+            'placeOfBirth' => 'nullable|string|max:255',
+            'cityMunicipality' => 'nullable|string|max:255',
+            'provinceState' => 'nullable|string|max:255',
+            'country' => 'nullable|string|max:255',
+            'nationality' => 'nullable|string|max:255',
+            'religion' => 'nullable|string|max:255',
         ]);
 
         DB::beginTransaction();
@@ -920,14 +932,25 @@ public function notEnrolled(Request $request)
             // Update or create profile
             if ($student->profile) {
                 $student->profile->update([
-                    'mobile_number' => $validated['phone'],
-                    'house_no' => $validated['address'],
+                    'mobile_number' => $validated['mobileNumber'],
+                    'contact_number' => $validated['contactNumber'],
+                    'place_of_birth' => $validated['placeOfBirth'],
+                    'city_municipality' => $validated['cityMunicipality'],
+                    'province_state' => $validated['provinceState'],
+                    'country' => $validated['country'],
+                    'nationality' => $validated['nationality'],
+                    'religion' => $validated['religion'],
                 ]);
             } else {
                 $student->profile()->create([
-                    'profileable_type' => 'student',
-                    'mobile_number' => $validated['phone'],
-                    'house_no' => $validated['address'],
+                    'mobile_number' => $validated['mobileNumber'],
+                    'contact_number' => $validated['contactNumber'],
+                    'place_of_birth' => $validated['placeOfBirth'],
+                    'city_municipality' => $validated['cityMunicipality'],
+                    'province_state' => $validated['provinceState'],
+                    'country' => $validated['country'],
+                    'nationality' => $validated['nationality'],
+                    'religion' => $validated['religion'],
                 ]);
             }
 

@@ -1,6 +1,7 @@
 import { Head, useForm } from '@inertiajs/react'
 import TeacherLayout from '@/layouts/teacher-layout'
 import { Input } from '@/components/ui/input'
+import { PhoneInput } from '@/components/ui/phone-input'
 import { Button } from '@/components/ui/button'
 import { useState } from 'react'
 
@@ -129,11 +130,9 @@ export default function ProfileSettings({ teacher, auth }: Props) {
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Phone Number
                                 </label>
-                                <Input 
-                                    type="tel" 
+                                <PhoneInput 
                                     value={profileForm.data.phone}
-                                    onChange={(e) => profileForm.setData('phone', e.target.value)}
-                                    placeholder="Enter phone number"
+                                    onChange={(value) => profileForm.setData('phone', value)}
                                 />
                                 {profileForm.errors.phone && (
                                     <p className="text-xs text-red-500 mt-1">{profileForm.errors.phone}</p>

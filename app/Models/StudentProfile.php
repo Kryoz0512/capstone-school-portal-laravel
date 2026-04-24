@@ -13,7 +13,6 @@ class StudentProfile extends Model
 
     protected $fillable = [
         'profileable_id',
-        'profileable_type',
         'extension_name',
         'religion',
         'indigenous_people',
@@ -51,10 +50,10 @@ class StudentProfile extends Model
     ];
 
     /**
-     * Get the parent profileable model (Student).
+     * Get the student that owns the profile.
      */
-    public function profileable()
+    public function student()
     {
-        return $this->morphTo();
+        return $this->belongsTo(Student::class, 'profileable_id');
     }
 }

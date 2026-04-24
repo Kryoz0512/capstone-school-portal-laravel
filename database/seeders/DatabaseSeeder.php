@@ -350,7 +350,7 @@ class DatabaseSeeder extends Seeder
             return;
         }
 
-        $currentSchoolYear = '2024-2025';
+        $currentSchoolYear = '2026-2027';
         
         // Filipino names
         $filipinoFirstNamesMale = ['Jose', 'Juan', 'Pedro', 'Antonio', 'Miguel', 'Carlos', 'Rafael', 'Luis', 'Manuel', 'Fernando'];
@@ -421,10 +421,10 @@ class DatabaseSeeder extends Seeder
                 // Create student profile
                 DB::table('tbl_student_profiles')->insert([
                     'profileable_id' => $studentId,
-                    'profileable_type' => 'App\Models\Student',
                     'place_of_birth' => 'Bongabon, Nueva Ecija',
                     'city_municipality' => 'Bongabon',
                     'province_state' => 'Nueva Ecija',
+                    'zip_code' => '3128',
                     'country' => 'Philippines',
                     'nationality' => 'Filipino',
                     'religion' => 'Roman Catholic',
@@ -432,12 +432,21 @@ class DatabaseSeeder extends Seeder
                     'mobile_number' => '09' . rand(100000000, 999999999),
                     'guardian_name' => $firstName . ' ' . $lastName,
                     'relation' => 'Father',
+                    'house_no' => 'House No./Street/Barangay',
+                    'height' => rand(140, 180),
+                    'weight' => rand(40, 80),
+                    'build' => 'Average',
+                    'eye_color' => 'Brown',
+                    'hair_color' => 'Black',
                     'father_first_name' => $firstName,
                     'father_last_name' => $lastName,
+                    'father_middle_name' => $middleNames[array_rand($middleNames)],
                     'mother_first_name' => $filipinoFirstNamesFemale[array_rand($filipinoFirstNamesFemale)],
                     'mother_last_name' => $filipinoLastNames[array_rand($filipinoLastNames)],
+                    'mother_middle_name' => $middleNames[array_rand($middleNames)],
                     'guardian_first_name' => $firstName,
                     'guardian_last_name' => $lastName,
+                    'guardian_middle_name' => $middleNames[array_rand($middleNames)],
                     'indigenous_people' => 'No',
                     'pwd' => 'No',
                     'created_at' => now(),
@@ -497,10 +506,10 @@ class DatabaseSeeder extends Seeder
                 // Create student profile
                 DB::table('tbl_student_profiles')->insert([
                     'profileable_id' => $studentId,
-                    'profileable_type' => 'App\Models\Student',
                     'place_of_birth' => 'Bongabon, Nueva Ecija',
                     'city_municipality' => 'Bongabon',
                     'province_state' => 'Nueva Ecija',
+                    'zip_code' => '3128',
                     'country' => 'Philippines',
                     'nationality' => 'Filipino',
                     'religion' => 'Roman Catholic',
@@ -508,12 +517,21 @@ class DatabaseSeeder extends Seeder
                     'mobile_number' => '09' . rand(100000000, 999999999),
                     'guardian_name' => $firstName . ' ' . $lastName,
                     'relation' => 'Father',
+                    'house_no' => 'House No./Street/Barangay',
+                    'height' => rand(140, 180),
+                    'weight' => rand(40, 80),
+                    'build' => 'Average',
+                    'eye_color' => 'Brown',
+                    'hair_color' => 'Black',
                     'father_first_name' => $firstName,
                     'father_last_name' => $lastName,
+                    'father_middle_name' => $middleNames[array_rand($middleNames)],
                     'mother_first_name' => $filipinoFirstNamesFemale[array_rand($filipinoFirstNamesFemale)],
                     'mother_last_name' => $filipinoLastNames[array_rand($filipinoLastNames)],
+                    'mother_middle_name' => $middleNames[array_rand($middleNames)],
                     'guardian_first_name' => $firstName,
                     'guardian_last_name' => $lastName,
+                    'guardian_middle_name' => $middleNames[array_rand($middleNames)],
                     'indigenous_people' => 'No',
                     'pwd' => 'No',
                     'created_at' => now(),
@@ -523,3 +541,5 @@ class DatabaseSeeder extends Seeder
         }
     }
 }
+
+

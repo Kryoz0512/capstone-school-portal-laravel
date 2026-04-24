@@ -2,6 +2,7 @@ import { Head, useForm } from '@inertiajs/react'
 import StudentLayout from '@/layouts/student-layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { PhoneInput } from '@/components/ui/phone-input'
 import { Button } from '@/components/ui/button'
 import { Eye, EyeOff } from 'lucide-react'
 import { useState } from 'react'
@@ -10,9 +11,15 @@ type Student = {
     firstName: string
     lastName: string
     email: string
-    phone: string
+    mobileNumber: string
+    contactNumber: string
     birthDate: string
-    address: string
+    placeOfBirth: string
+    cityMunicipality: string
+    provinceState: string
+    country: string
+    nationality: string
+    religion: string
 }
 
 type Props = {
@@ -36,9 +43,15 @@ export default function ProfileSettings({ student, auth }: Props) {
     const profileForm = useForm({
         firstName: student.firstName,
         lastName: student.lastName,
-        phone: student.phone,
+        mobileNumber: student.mobileNumber,
+        contactNumber: student.contactNumber,
         birthDate: student.birthDate,
-        address: student.address,
+        placeOfBirth: student.placeOfBirth,
+        cityMunicipality: student.cityMunicipality,
+        provinceState: student.provinceState,
+        country: student.country,
+        nationality: student.nationality,
+        religion: student.religion,
     })
 
     // Password form
@@ -119,14 +132,23 @@ export default function ProfileSettings({ student, auth }: Props) {
                                     <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                                    <Input 
-                                        value={profileForm.data.phone}
-                                        onChange={(e) => profileForm.setData('phone', e.target.value)}
-                                        placeholder="Enter phone number"
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Mobile Number</label>
+                                    <PhoneInput 
+                                        value={profileForm.data.mobileNumber}
+                                        onChange={(value) => profileForm.setData('mobileNumber', value)}
                                     />
-                                    {profileForm.errors.phone && (
-                                        <p className="text-xs text-red-500 mt-1">{profileForm.errors.phone}</p>
+                                    {profileForm.errors.mobileNumber && (
+                                        <p className="text-xs text-red-500 mt-1">{profileForm.errors.mobileNumber}</p>
+                                    )}
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Guardian's Contact Number</label>
+                                    <PhoneInput 
+                                        value={profileForm.data.contactNumber}
+                                        onChange={(value) => profileForm.setData('contactNumber', value)}
+                                    />
+                                    {profileForm.errors.contactNumber && (
+                                        <p className="text-xs text-red-500 mt-1">{profileForm.errors.contactNumber}</p>
                                     )}
                                 </div>
                                 <div>
@@ -141,14 +163,69 @@ export default function ProfileSettings({ student, auth }: Props) {
                                     )}
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Place of Birth</label>
                                     <Input 
-                                        value={profileForm.data.address}
-                                        onChange={(e) => profileForm.setData('address', e.target.value)}
-                                        placeholder="Enter address"
+                                        value={profileForm.data.placeOfBirth}
+                                        onChange={(e) => profileForm.setData('placeOfBirth', e.target.value)}
+                                        placeholder="Enter place of birth"
                                     />
-                                    {profileForm.errors.address && (
-                                        <p className="text-xs text-red-500 mt-1">{profileForm.errors.address}</p>
+                                    {profileForm.errors.placeOfBirth && (
+                                        <p className="text-xs text-red-500 mt-1">{profileForm.errors.placeOfBirth}</p>
+                                    )}
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">City/Municipality</label>
+                                    <Input 
+                                        value={profileForm.data.cityMunicipality}
+                                        onChange={(e) => profileForm.setData('cityMunicipality', e.target.value)}
+                                        placeholder="Enter city/municipality"
+                                    />
+                                    {profileForm.errors.cityMunicipality && (
+                                        <p className="text-xs text-red-500 mt-1">{profileForm.errors.cityMunicipality}</p>
+                                    )}
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Province/State</label>
+                                    <Input 
+                                        value={profileForm.data.provinceState}
+                                        onChange={(e) => profileForm.setData('provinceState', e.target.value)}
+                                        placeholder="Enter province/state"
+                                    />
+                                    {profileForm.errors.provinceState && (
+                                        <p className="text-xs text-red-500 mt-1">{profileForm.errors.provinceState}</p>
+                                    )}
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
+                                    <Input 
+                                        value={profileForm.data.country}
+                                        onChange={(e) => profileForm.setData('country', e.target.value)}
+                                        placeholder="Enter country"
+                                    />
+                                    {profileForm.errors.country && (
+                                        <p className="text-xs text-red-500 mt-1">{profileForm.errors.country}</p>
+                                    )}
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Nationality</label>
+                                    <Input 
+                                        value={profileForm.data.nationality}
+                                        onChange={(e) => profileForm.setData('nationality', e.target.value)}
+                                        placeholder="Enter nationality"
+                                    />
+                                    {profileForm.errors.nationality && (
+                                        <p className="text-xs text-red-500 mt-1">{profileForm.errors.nationality}</p>
+                                    )}
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Religion</label>
+                                    <Input 
+                                        value={profileForm.data.religion}
+                                        onChange={(e) => profileForm.setData('religion', e.target.value)}
+                                        placeholder="Enter religion"
+                                    />
+                                    {profileForm.errors.religion && (
+                                        <p className="text-xs text-red-500 mt-1">{profileForm.errors.religion}</p>
                                     )}
                                 </div>
                             </div>

@@ -2,9 +2,18 @@ import { Head, router, useForm } from '@inertiajs/react'
 import AdminLayout from '@/layouts/admin-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PhoneInput } from '@/components/ui/phone-input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useEffect } from 'react'
+import { useState } from 'react'
 import { update } from '@/routes/admin/admission/view-edit-student'
+import {
+    AlertDialog,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 type Student = {
     id: number
@@ -74,6 +83,9 @@ type Props = {
 }
 
 export default function EditStudentGSPIS({ auth, student }: Props) {
+    const [showErrorModal, setShowErrorModal] = useState(false)
+    const [errorMessage, setErrorMessage] = useState('')
+    
     const { data, setData, put, processing, errors } = useForm({
         // Personal Information
         lastName: student.lastName || '',
@@ -129,6 +141,38 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
     })
 
     const handleSave = () => {
+        // Remove dashes from phone numbers to get raw digits
+        const mobileDigits = data.mobileNumber.replace(/-/g, '')
+        const contactDigits = data.contactNumber.replace(/-/g, '')
+        
+        // Validate mobile number
+        if (mobileDigits) {
+            if (mobileDigits.length !== 11) {
+                setErrorMessage('Mobile number must be exactly 11 digits.')
+                setShowErrorModal(true)
+                return
+            }
+            if (!mobileDigits.startsWith('09')) {
+                setErrorMessage('Mobile number must start with 09.')
+                setShowErrorModal(true)
+                return
+            }
+        }
+        
+        // Validate contact number
+        if (contactDigits) {
+            if (contactDigits.length !== 11) {
+                setErrorMessage('Guardian\'s contact number must be exactly 11 digits.')
+                setShowErrorModal(true)
+                return
+            }
+            if (!contactDigits.startsWith('09')) {
+                setErrorMessage('Guardian\'s contact number must start with 09.')
+                setShowErrorModal(true)
+                return
+            }
+        }
+        
         put(update.url({ id: student.id }))
     }
 
@@ -369,10 +413,9 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Mobile Number
                                 </label>
-                                <Input
+                                <PhoneInput
                                     value={data.mobileNumber}
-                                    onChange={(e) => setData('mobileNumber', e.target.value)}
-                                    placeholder="Mobile Number"
+                                    onChange={(value) => setData('mobileNumber', value)}
                                 />
                             </div>
                         </div>
@@ -393,10 +436,9 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Contact Number / Guardian Name
                                 </label>
-                                <Input
+                                <PhoneInput
                                     value={data.contactNumber}
-                                    onChange={(e) => setData('contactNumber', e.target.value)}
-                                    placeholder="Contact Number"
+                                    onChange={(value) => setData('contactNumber', value)}
                                 />
                             </div>
                             <div>
@@ -659,6 +701,22 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
                     </div>
                 </div>
             </div>
+
+            {/* Error Modal */}
+            <AlertDialog open={showErrorModal} onOpenChange={setShowErrorModal}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogDescription className="text-base text-gray-900">
+                            {errorMessage}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <Button onClick={() => setShowErrorModal(false)}>
+                            OK
+                        </Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </AdminLayout>
     )
 }

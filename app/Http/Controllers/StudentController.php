@@ -461,6 +461,7 @@ public function notEnrolled(Request $request)
     public function scheduleIndex(Request $request)
     {
         $search = $request->input('search', '');
+        $perPage = $request->input('per_page', 10);
         
         // Fetch students who have been assigned a section with pagination
         $students = Student::with(['gradeLevel', 'section'])
@@ -472,7 +473,7 @@ public function notEnrolled(Request $request)
                       ->orWhere('lrn', 'like', "%{$search}%");
                 });
             })
-            ->paginate(10)
+            ->paginate($perPage)
             ->through(function ($student) {
                 return [
                     'id' => $student->id,

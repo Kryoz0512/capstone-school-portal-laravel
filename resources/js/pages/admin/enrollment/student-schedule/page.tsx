@@ -1,9 +1,8 @@
 import { Head, router } from '@inertiajs/react'
 import AdminLayout from '@/layouts/admin-layout'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
+import { Pagination } from '@/components/pagination'
 import { useState, useEffect } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 type Student = {
     id: number
@@ -47,17 +46,18 @@ type Props = {
 
 export default function StudentSchedule({ auth, students, filters }: Props) {
     const [searchTerm, setSearchTerm] = useState(filters?.search || '')
+    const [perPage, setPerPage] = useState(10)
 
     useEffect(() => {
         const timer = setTimeout(() => {
             router.get('/admin/enrollment/student-schedule', 
-                { search: searchTerm },
+                { search: searchTerm, per_page: perPage },
                 { preserveState: true, replace: true }
             )
         }, 300)
 
         return () => clearTimeout(timer)
-    }, [searchTerm])
+    }, [searchTerm, perPage])
 
     const handleStudentClick = (studentId: number) => {
         router.visit(`/admin/enrollment/student-schedule/${studentId}`)
@@ -67,6 +67,10 @@ export default function StudentSchedule({ auth, students, filters }: Props) {
         if (url) {
             router.visit(url)
         }
+    }
+
+    const handlePerPageChange = (newPerPage: number) => {
+        setPerPage(newPerPage)
     }
 
     return (
@@ -104,10 +108,10 @@ export default function StudentSchedule({ auth, students, filters }: Props) {
                         <table className="w-full">
                             <thead className="bg-green-700">
                                 <tr>
-                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Student Name</th>
-                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">LRN</th>
-                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Grade Level</th>
-                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Section</th>
+                                    <th className="px-6 py-5 text-left text-base font-semibold text-white uppercase tracking-wider">Student Name</th>
+                                    <th className="px-6 py-5 text-left text-base font-semibold text-white uppercase tracking-wider">LRN</th>
+                                    <th className="px-6 py-5 text-left text-base font-semibold text-white uppercase tracking-wider">Grade Level</th>
+                                    <th className="px-6 py-5 text-left text-base font-semibold text-white uppercase tracking-wider">Section</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
@@ -140,72 +144,15 @@ export default function StudentSchedule({ auth, students, filters }: Props) {
 
                     {/* Pagination */}
                     {students.data.length > 0 && (
-                        <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
-                            <div className="flex items-center justify-between">
-                                <div className="flex-1 flex justify-between sm:hidden">
-                                    <Button
-                                        onClick={() => handlePageChange(students.links[0]?.url)}
-                                        disabled={students.current_page === 1}
-                                        variant="outline"
-                                        size="sm"
-                                    >
-                                        Previous
-                                    </Button>
-                                    <Button
-                                        onClick={() => handlePageChange(students.links[students.links.length - 1]?.url)}
-                                        disabled={students.current_page === students.last_page}
-                                        variant="outline"
-                                        size="sm"
-                                    >
-                                        Next
-                                    </Button>
-                                </div>
-                                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                                    <div>
-                                        <p className="text-sm text-gray-700">
-                                            Showing <span className="font-medium">{(students.current_page - 1) * students.per_page + 1}</span> to{' '}
-                                            <span className="font-medium">
-                                                {Math.min(students.current_page * students.per_page, students.total)}
-                                            </span> of{' '}
-                                            <span className="font-medium">{students.total}</span> results
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                                            <Button
-                                                onClick={() => handlePageChange(students.links[0]?.url)}
-                                                disabled={students.current_page === 1}
-                                                variant="outline"
-                                                size="sm"
-                                                className="relative inline-flex items-center px-2 py-2 rounded-l-md"
-                                            >
-                                                <ChevronLeft className="h-4 w-4" />
-                                            </Button>
-                                            {students.links.slice(1, -1).map((link, index) => (
-                                                <Button
-                                                    key={index}
-                                                    onClick={() => handlePageChange(link.url)}
-                                                    variant={link.active ? "default" : "outline"}
-                                                    size="sm"
-                                                    className={link.active ? "bg-green-600 hover:bg-green-700" : ""}
-                                                >
-                                                    {link.label}
-                                                </Button>
-                                            ))}
-                                            <Button
-                                                onClick={() => handlePageChange(students.links[students.links.length - 1]?.url)}
-                                                disabled={students.current_page === students.last_page}
-                                                variant="outline"
-                                                size="sm"
-                                                className="relative inline-flex items-center px-2 py-2 rounded-r-md"
-                                            >
-                                                <ChevronRight className="h-4 w-4" />
-                                            </Button>
-                                        </nav>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <Pagination
+                            currentPage={students.current_page}
+                            lastPage={students.last_page}
+                            perPage={students.per_page}
+                            total={students.total}
+                            links={students.links}
+                            onPageChange={handlePageChange}
+                            onPerPageChange={handlePerPageChange}
+                        />
                     )}
                 </div>
             </div>

@@ -144,7 +144,7 @@ class DatabaseSeeder extends Seeder
                 [
                     'firstName' => 'Maria',
                     'lastName' => 'Santos',
-                    'employeeNumber' => 'T-2024-001',
+                    'employeeNumber' => '0000001',
                     'subject' => 'English',
                     'position' => 'Teacher I',
                     'password' => 'teacher123',
@@ -152,7 +152,7 @@ class DatabaseSeeder extends Seeder
                 [
                     'firstName' => 'Juan',
                     'lastName' => 'Dela Cruz',
-                    'employeeNumber' => 'T-2024-002',
+                    'employeeNumber' => '0000002',
                     'subject' => 'Filipino',
                     'position' => 'Teacher II',
                     'password' => 'teacher123',
@@ -160,7 +160,7 @@ class DatabaseSeeder extends Seeder
                 [
                     'firstName' => 'Carlos',
                     'lastName' => 'Mendoza',
-                    'employeeNumber' => 'T-2024-003',
+                    'employeeNumber' => '0000003',
                     'subject' => 'Mathematics',
                     'position' => 'Teacher II',
                     'password' => 'teacher123',
@@ -168,7 +168,7 @@ class DatabaseSeeder extends Seeder
                 [
                     'firstName' => 'Ana',
                     'lastName' => 'Reyes',
-                    'employeeNumber' => 'T-2024-004',
+                    'employeeNumber' => '0000004',
                     'subject' => 'Science',
                     'position' => 'Teacher I',
                     'password' => 'teacher123',
@@ -176,7 +176,7 @@ class DatabaseSeeder extends Seeder
                 [
                     'firstName' => 'Pedro',
                     'lastName' => 'Garcia',
-                    'employeeNumber' => 'T-2024-005',
+                    'employeeNumber' => '0000005',
                     'subject' => 'Araling Panlipunan',
                     'position' => 'Teacher III',
                     'password' => 'teacher123',
@@ -184,7 +184,7 @@ class DatabaseSeeder extends Seeder
                 [
                     'firstName' => 'Rosa',
                     'lastName' => 'Cruz',
-                    'employeeNumber' => 'T-2024-006',
+                    'employeeNumber' => '0000006',
                     'subject' => 'MAPEH',
                     'position' => 'Teacher II',
                     'password' => 'teacher123',
@@ -192,7 +192,7 @@ class DatabaseSeeder extends Seeder
                 [
                     'firstName' => 'Jose',
                     'lastName' => 'Ramos',
-                    'employeeNumber' => 'T-2024-007',
+                    'employeeNumber' => '0000007',
                     'subject' => 'TLE',
                     'position' => 'Teacher I',
                     'password' => 'teacher123',
@@ -330,8 +330,111 @@ class DatabaseSeeder extends Seeder
             }
         }
 
+        // Seed adviser assignments (one teacher per section)
+        if (DB::table('tbl_adviser_section')->count() === 0) {
+            $sections = DB::table('tbl_class_sections')->get();
+            $teachers = DB::table('tbl_teachers')->get();
+            $currentSchoolYear = '2026-2027';
+            
+            foreach ($sections as $index => $section) {
+                // Assign teachers in round-robin fashion
+                $teacher = $teachers[$index % $teachers->count()];
+                
+                DB::table('tbl_adviser_section')->insert([
+                    'teacher_id' => $teacher->id,
+                    'class_section_id' => $section->id,
+                    'school_year' => $currentSchoolYear,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        }
+
+        // Seed schedules with conflict checking
+        if (DB::table('tbl_schedules')->count() === 0) {
+            $this->seedSchedules();
+        }
+
         // Seed students (both assigned and unassigned to sections)
         $this->seedStudents();
+    }
+
+    /**
+     * Seed schedules with conflict checking
+     */
+    private function seedSchedules(): void
+    {
+        $sections = DB::table('tbl_class_sections')->get();
+        $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        
+        // Time slots (8 AM to 5 PM, 1-hour slots)
+        $timeSlots = [
+            ['08:00:00', '09:00:00'],
+            ['09:00:00', '10:00:00'],
+            ['10:00:00', '11:00:00'],
+            ['11:00:00', '12:00:00'],
+            ['13:00:00', '14:00:00'], // After lunch
+            ['14:00:00', '15:00:00'],
+            ['15:00:00', '16:00:00'],
+            ['16:00:00', '17:00:00'],
+        ];
+        
+        // Track teacher schedules to avoid conflicts
+        $teacherSchedules = [];
+        
+        foreach ($sections as $section) {
+            // Get subjects for this section's grade level
+            $subjects = DB::table('tbl_subjects')
+                ->where('grade_level_id', $section->grade_level_id)
+                ->get();
+            
+            $slotIndex = 0;
+            
+            foreach ($subjects as $subject) {
+                // Get a teacher for this subject
+                $teacher = DB::table('tbl_teachers')
+                    ->join('tbl_teacher_subjects', 'tbl_teachers.id', '=', 'tbl_teacher_subjects.teacher_id')
+                    ->where('tbl_teacher_subjects.subject_id', $subject->id)
+                    ->select('tbl_teachers.*')
+                    ->first();
+                
+                if (!$teacher) continue;
+                
+                // Find an available time slot for this teacher
+                $scheduled = false;
+                $attempts = 0;
+                
+                while (!$scheduled && $attempts < 100) {
+                    $day = $days[$slotIndex % count($days)];
+                    $timeSlot = $timeSlots[floor($slotIndex / count($days)) % count($timeSlots)];
+                    
+                    // Check if teacher has conflict
+                    $conflictKey = $teacher->id . '_' . $day . '_' . $timeSlot[0];
+                    
+                    if (!isset($teacherSchedules[$conflictKey])) {
+                        // No conflict, schedule it
+                        DB::table('tbl_schedules')->insert([
+                            'class_section_id' => $section->id,
+                            'subject_id' => $subject->id,
+                            'teacher_id' => $teacher->id,
+                            'room_id' => $section->room_id,
+                            'day_of_week' => $day,
+                            'start_time' => $timeSlot[0],
+                            'end_time' => $timeSlot[1],
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                        
+                        // Mark this slot as used by this teacher
+                        $teacherSchedules[$conflictKey] = true;
+                        $scheduled = true;
+                    }
+                    
+                    $slotIndex++;
+                    $attempts++;
+                }
+            }
+        }
     }
 
     /**

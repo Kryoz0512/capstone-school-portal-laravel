@@ -2,8 +2,9 @@ import { Head, router } from '@inertiajs/react'
 import AdminLayout from '@/layouts/admin-layout'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Pencil } from 'lucide-react'
-import { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Pencil, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
 
 type Student = {
     id: number
@@ -40,15 +41,48 @@ export default function ViewEditStudent({ auth, students = [], gradeLevels = [] 
     const [lrnSearch, setLrnSearch] = useState('')
     const [gradeFilter, setGradeFilter] = useState('all')
     const [sectionFilter, setSectionFilter] = useState('')
+    const [currentPage, setCurrentPage] = useState(1)
+    const [perPage, setPerPage] = useState(10)
 
     // Filter students based on search criteria
     const filteredStudents = students.filter(student => {
+        // Must select a grade level first
+        if (gradeFilter === 'all') return false
+        
         const matchesName = student.studentName.toLowerCase().includes(nameSearch.toLowerCase())
         const matchesLrn = student.lrn.toLowerCase().includes(lrnSearch.toLowerCase())
-        const matchesGrade = gradeFilter === 'all' || student.gradeLevel === gradeFilter
+        const matchesGrade = student.gradeLevel === gradeFilter
+        const matchesSection = sectionFilter === '' || student.section.toLowerCase().includes(sectionFilter.toLowerCase())
         
-        return matchesName && matchesLrn && matchesGrade
+        return matchesName && matchesLrn && matchesGrade && matchesSection
     })
+
+    // Reset to page 1 when filters change
+    useEffect(() => {
+        setCurrentPage(1)
+    }, [nameSearch, lrnSearch, gradeFilter, sectionFilter, perPage])
+
+    // Reset section filter when grade level changes
+    useEffect(() => {
+        setSectionFilter('')
+    }, [gradeFilter])
+
+    // Calculate pagination
+    const totalPages = Math.ceil(filteredStudents.length / perPage)
+    const startIndex = (currentPage - 1) * perPage
+    const endIndex = startIndex + perPage
+    const paginatedStudents = filteredStudents.slice(startIndex, endIndex)
+
+    const handlePerPageChange = (newPerPage: number) => {
+        setPerPage(newPerPage)
+        setCurrentPage(1)
+    }
+
+    const handlePageChange = (page: number) => {
+        if (page >= 1 && page <= totalPages) {
+            setCurrentPage(page)
+        }
+    }
 
     const handleEdit = (student: Student) => {
         router.visit(`/admin/admission/view-edit-student/${student.id}/edit`)
@@ -116,37 +150,31 @@ export default function ViewEditStudent({ auth, students = [], gradeLevels = [] 
                             </label>
                             <Input
                                 type="text"
-                                placeholder="Select a specific grade level first"
+                                placeholder={gradeFilter === 'all' ? "Select a grade level first" : "Search by section"}
                                 value={sectionFilter}
                                 onChange={(e) => setSectionFilter(e.target.value)}
-                                disabled
-                                className="bg-gray-100"
+                                disabled={gradeFilter === 'all'}
+                                className={gradeFilter === 'all' ? "bg-gray-100" : ""}
                             />
                         </div>
                     </div>
                 </div>
 
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                    <div className="p-4 border-b border-gray-200">
-                        <p className="text-sm text-gray-600">
-                            Showing {filteredStudents.length} of {students.length} entries
-                        </p>
-                    </div>
-
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead className="bg-green-700">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-white">Student Name</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">LRN</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Grade Level</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Section</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Actions</th>
+                                    <th className="px-6 py-5 text-left text-base font-semibold text-white uppercase tracking-wider">Student Name</th>
+                                    <th className="px-6 py-5 text-left text-base font-semibold text-white uppercase tracking-wider">LRN</th>
+                                    <th className="px-6 py-5 text-left text-base font-semibold text-white uppercase tracking-wider">Grade Level</th>
+                                    <th className="px-6 py-5 text-left text-base font-semibold text-white uppercase tracking-wider">Section</th>
+                                    <th className="px-6 py-5 text-left text-base font-semibold text-white uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                {filteredStudents.length > 0 ? (
-                                    filteredStudents.map((student) => (
+                                {paginatedStudents.length > 0 ? (
+                                    paginatedStudents.map((student) => (
                                         <tr key={student.id} className="hover:bg-gray-50">
                                             <td className="px-6 py-4 text-sm text-gray-900">{student.studentName}</td>
                                             <td className="px-6 py-4 text-sm text-gray-900">{student.lrn}</td>
@@ -165,9 +193,11 @@ export default function ViewEditStudent({ auth, students = [], gradeLevels = [] 
                                 ) : (
                                     <tr>
                                         <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-500">
-                                            {students.length === 0 
-                                                ? 'No enrolled students found. Students will appear here after being assigned a section.'
-                                                : 'No students match your search criteria.'
+                                            {gradeFilter === 'all'
+                                                ? 'Please select a grade level to view students.'
+                                                : students.length === 0 
+                                                    ? 'No enrolled students found. Students will appear here after being assigned a section.'
+                                                    : 'No students match your search criteria.'
                                             }
                                         </td>
                                     </tr>
@@ -175,6 +205,62 @@ export default function ViewEditStudent({ auth, students = [], gradeLevels = [] 
                             </tbody>
                         </table>
                     </div>
+
+                    {/* Pagination */}
+                    {filteredStudents.length > 0 && (
+                        <div className="bg-white px-4 py-3 border-t border-gray-200 sm:px-6">
+                            <div className="flex items-center justify-between">
+                                {/* Entries per page selector */}
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm text-gray-700">Entries:</span>
+                                    <Select value={perPage.toString()} onValueChange={(value) => handlePerPageChange(parseInt(value))}>
+                                        <SelectTrigger className="w-[80px]">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="10">10</SelectItem>
+                                            <SelectItem value="25">25</SelectItem>
+                                            <SelectItem value="50">50</SelectItem>
+                                            <SelectItem value="100">100</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Pagination controls */}
+                                <div className="flex items-center gap-1">
+                                    <Button
+                                        onClick={() => handlePageChange(currentPage - 1)}
+                                        disabled={currentPage === 1}
+                                        variant="outline"
+                                        size="sm"
+                                        className="relative inline-flex items-center px-3 py-2"
+                                    >
+                                        <ChevronLeft className="h-4 w-4" />
+                                    </Button>
+                                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                        <Button
+                                            key={page}
+                                            onClick={() => handlePageChange(page)}
+                                            variant={currentPage === page ? "default" : "outline"}
+                                            size="sm"
+                                            className={`px-3 py-2 min-w-[40px] ${currentPage === page ? "bg-green-600 hover:bg-green-700 text-white" : ""}`}
+                                        >
+                                            {page}
+                                        </Button>
+                                    ))}
+                                    <Button
+                                        onClick={() => handlePageChange(currentPage + 1)}
+                                        disabled={currentPage === totalPages}
+                                        variant="outline"
+                                        size="sm"
+                                        className="relative inline-flex items-center px-3 py-2"
+                                    >
+                                        <ChevronRight className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </AdminLayout>

@@ -172,9 +172,6 @@ class GradeController extends Controller
                 'quarter' => $quarter,
                 'school_year' => $schoolYear,
             ],
-            'auth' => [
-                'user' => $user
-            ]
         ]);
     }
 
@@ -377,10 +374,6 @@ class GradeController extends Controller
                 'grade_level_id' => $gradeLevelId,
                 'section_id' => $sectionId,
             ],
-            'auth' => [
-                'user' => $user,
-                'admin' => \App\Models\Admin::where('user_id', $user->id)->first(),
-            ]
         ]);
     }
 

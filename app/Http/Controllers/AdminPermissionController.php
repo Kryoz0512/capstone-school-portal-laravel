@@ -30,10 +30,6 @@ class AdminPermissionController extends Controller
 
         return Inertia::render('admin/maintenance/admin-permissions/page', [
             'admins' => $admins,
-            'auth' => [
-                'user' => \Illuminate\Support\Facades\Auth::user(),
-                'admin' => $currentAdmin,
-            ],
         ]);
     }
 

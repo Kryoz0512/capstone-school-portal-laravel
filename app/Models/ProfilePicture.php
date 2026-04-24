@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Auth;
 
 class ProfilePicture extends Model
 {
@@ -14,6 +13,7 @@ class ProfilePicture extends Model
 
     protected $fillable = [
         'profileable_id',
+        'profileable_type',
         'file_path',
         'file_name',
         'mime_type',
@@ -21,28 +21,10 @@ class ProfilePicture extends Model
     ];
 
     /**
-     * Get the owning model based on the authenticated user's role.
-     * This is a custom implementation without using profileable_type.
+     * Get the owning profileable model (Admin, Teacher, or Student).
      */
-    public function getOwner()
+    public function profileable()
     {
-        $user = Auth::user();
-        
-        if (!$user) {
-            return null;
-        }
-
-        // Determine the model based on user role
-        switch ($user->role) {
-            case 'student':
-                return Student::find($this->profileable_id);
-            case 'teacher':
-                return Teacher::find($this->profileable_id);
-            case 'admin':
-            case 'super_admin':
-                return Admin::find($this->profileable_id);
-            default:
-                return null;
-        }
+        return $this->morphTo();
     }
 }

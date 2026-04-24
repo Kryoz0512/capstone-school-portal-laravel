@@ -36,10 +36,6 @@ class SubjectController extends Controller
         return Inertia::render('admin/registrar/subject-listings/page', [
             'subjects' => $subjects,
             'gradeLevels' => $gradeLevels,
-            'auth' => [
-                'user' => Auth::user(),
-                'admin' => $admin,
-            ],
         ]);
     }
 

@@ -1,5 +1,5 @@
 import { router, Link, usePage } from '@inertiajs/react'
-import { User, Settings, LogOut, ChevronDown } from 'lucide-react'
+import { User, LogOut, ChevronDown } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 
 type HeaderProps = {
@@ -23,20 +23,37 @@ export default function AdminHeader({ user, admin }: HeaderProps) {
     const page = usePage()
     const { auth } = page.props as { auth: { admin?: { profile_picture?: string | null } } }
     
-    // Handle profile picture - could be a string URL or an object with file_path
+    // Handle profile picture - ensure it's always an absolute URL
     let profilePicture: string | null = null
     
     // First try from shared auth data (middleware)
-    if (auth?.admin?.profile_picture && typeof auth.admin.profile_picture === 'string') {
-        profilePicture = auth.admin.profile_picture
+    if (auth?.admin?.profile_picture) {
+        const pic = auth.admin.profile_picture
+        if (typeof pic === 'string') {
+            // If it's already a full URL, use it
+            if (pic.startsWith('http://') || pic.startsWith('https://') || pic.startsWith('/')) {
+                profilePicture = pic
+            } else {
+                // Otherwise, construct the full URL
+                profilePicture = `${window.location.origin}/storage/${pic}`
+            }
+        }
     }
-    // Then try from props (controller) - might be an object
+    // Then try from props (controller)
     else if (admin?.profile_picture) {
-        if (typeof admin.profile_picture === 'string') {
-            profilePicture = admin.profile_picture
-        } else if (typeof admin.profile_picture === 'object' && 'file_path' in admin.profile_picture) {
+        const pic = admin.profile_picture
+        if (typeof pic === 'string') {
+            // If it's already a full URL, use it
+            if (pic.startsWith('http://') || pic.startsWith('https://') || pic.startsWith('/')) {
+                profilePicture = pic
+            } else {
+                // Otherwise, construct the full URL
+                profilePicture = `${window.location.origin}/storage/${pic}`
+            }
+        } else if (typeof pic === 'object' && pic !== null && 'file_path' in pic) {
             // It's the full profile picture object, extract the URL
-            profilePicture = `${window.location.origin}/storage/${admin.profile_picture.file_path}`
+            const picObj = pic as { file_path: string }
+            profilePicture = `${window.location.origin}/storage/${picObj.file_path}`
         }
     }
 

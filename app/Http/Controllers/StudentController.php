@@ -37,9 +37,6 @@ class StudentController extends Controller
 
         return Inertia::render('student/dashboard/page', [
             'studentInfo' => $studentInfo,
-            'auth' => [
-                'user' => $user
-            ]
         ]);
     }
 
@@ -99,9 +96,6 @@ class StudentController extends Controller
             'filters' => [
                 'school_year' => $schoolYear,
             ],
-            'auth' => [
-                'user' => $user
-            ]
         ]);
     }
 
@@ -134,9 +128,6 @@ class StudentController extends Controller
 
         return Inertia::render('student/clearance/page', [
             'clearances' => $clearances,
-            'auth' => [
-                'user' => $user
-            ]
         ]);
     }
 
@@ -221,9 +212,6 @@ class StudentController extends Controller
             'filters' => [
                 'school_year' => $schoolYear,
             ],
-            'auth' => [
-                'user' => $user
-            ]
         ]);
     }
 
@@ -319,9 +307,6 @@ class StudentController extends Controller
             'filters' => [
                 'school_year' => $schoolYear,
             ],
-            'auth' => [
-                'user' => $user
-            ]
         ]);
     }
 
@@ -400,10 +385,6 @@ public function notEnrolled(Request $request)
         'gradeLevels' => $gradeLevels,
         'sections' => $sections,
         'filters' => $request->only(['search', 'grade_level', 'gender', 'age']),
-        'auth' => [
-            'user' => \Illuminate\Support\Facades\Auth::user(),
-            'admin' => \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first(),
-        ],
     ]);
 }
 
@@ -452,10 +433,6 @@ public function notEnrolled(Request $request)
         return Inertia::render('admin/admission/view-edit-student/page', [
             'students' => $students,
             'gradeLevels' => $gradeLevels,
-            'auth' => [
-                'user' => \Illuminate\Support\Facades\Auth::user(),
-                'admin' => \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first(),
-            ],
         ]);
     }
 
@@ -489,10 +466,6 @@ public function notEnrolled(Request $request)
             'students' => $students,
             'filters' => [
                 'search' => $search,
-            ],
-            'auth' => [
-                'user' => \Illuminate\Support\Facades\Auth::user(),
-                'admin' => \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first(),
             ],
         ]);
     }
@@ -536,10 +509,6 @@ public function notEnrolled(Request $request)
         return Inertia::render('admin/enrollment/student-schedule/show', [
             'student' => $studentData,
             'schedules' => $schedules,
-            'auth' => [
-                'user' => \Illuminate\Support\Facades\Auth::user(),
-                'admin' => \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first(),
-            ],
         ]);
     }
 
@@ -776,10 +745,6 @@ public function notEnrolled(Request $request)
         
         return Inertia::render('admin/admission/view-edit-student/edit', [
             'student' => $studentData,
-            'auth' => [
-                'user' => \Illuminate\Support\Facades\Auth::user(),
-                'admin' => \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first(),
-            ],
         ]);
     }
 
@@ -896,7 +861,7 @@ public function notEnrolled(Request $request)
     public function profileSettings()
     {
         $user = Auth::user();
-        $student = Student::where('user_id', $user->id)->with('profile')->first();
+        $student = Student::where('user_id', $user->id)->with(['profile', 'profilePicture'])->first();
 
         if (!$student) {
             return redirect()->route('login')->withErrors(['error' => 'Student profile not found.']);
@@ -916,10 +881,8 @@ public function notEnrolled(Request $request)
                 'country' => $student->profile ? ($student->profile->country ?? '') : '',
                 'nationality' => $student->profile ? ($student->profile->nationality ?? '') : '',
                 'religion' => $student->profile ? ($student->profile->religion ?? '') : '',
+                'profile_picture' => $student->profilePicture && $student->profilePicture->file_path ? asset('storage/' . $student->profilePicture->file_path) : null,
             ],
-            'auth' => [
-                'user' => $user
-            ]
         ]);
     }
 
@@ -1467,10 +1430,6 @@ public function notEnrolled(Request $request)
             'grade9Students' => $grade9Students,
             'grade10Students' => $grade10Students,
             'pastStudents' => $pastStudents,
-            'auth' => [
-                'user' => \Illuminate\Support\Facades\Auth::user(),
-                'admin' => \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first(),
-            ],
         ]);
     }
 
@@ -1545,10 +1504,6 @@ public function notEnrolled(Request $request)
                 'grade_level' => $request->grade_level,
                 'section' => $request->section,
                 'search' => $request->search,
-            ],
-            'auth' => [
-                'user' => \Illuminate\Support\Facades\Auth::user(),
-                'admin' => \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first(),
             ],
         ]);
     }

@@ -69,10 +69,6 @@ class ArchiveController extends Controller
         return Inertia::render('admin/archive/page', [
             'archives' => $archives,
             'currentType' => $type,
-            'auth' => [
-                'user' => Auth::user(),
-                'admin' => $admin,
-            ]
         ]);
     }
 

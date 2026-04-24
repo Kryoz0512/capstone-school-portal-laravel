@@ -50,12 +50,6 @@ class HandleInertiaRequests extends Middleware
                             ? asset('storage/' . $admin->profilePicture->file_path) 
                             : null;
                         
-                        \Log::info('Middleware sharing admin data', [
-                            'admin_id' => $admin->id,
-                            'has_profile_picture' => $admin->profilePicture ? 'yes' : 'no',
-                            'profile_picture_url' => $profilePicture,
-                        ]);
-                        
                         $userTypeData = [
                             'role' => $admin->role,
                             'position' => $admin->position,
@@ -107,12 +101,6 @@ class HandleInertiaRequests extends Middleware
                 'import_errors' => $request->session()->get('import_errors'),
             ],
         ];
-        
-        \Log::info('Middleware final shared data', [
-            'has_auth' => isset($sharedData['auth']),
-            'has_admin' => isset($sharedData['auth']['admin']),
-            'admin_data' => $sharedData['auth']['admin'] ?? null,
-        ]);
         
         return $sharedData;
     }

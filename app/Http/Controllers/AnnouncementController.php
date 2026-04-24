@@ -47,13 +47,6 @@ class AnnouncementController extends Controller
             'announcements' => $announcements,
             'isSuperAdmin' => $isSuperAdmin,
             'pendingCount' => $pendingCount,
-            'auth' => [
-                'user' => $user,
-                'admin' => $admin ? [
-                    'role' => $admin->role,
-                    'position' => $admin->position,
-                ] : null,
-            ],
         ]);
     }
 

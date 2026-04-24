@@ -101,6 +101,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('student/profile-settings', [StudentController::class, 'profileSettings'])->name('student.profile-settings');
     Route::put('student/profile-settings', [StudentController::class, 'updateProfileSettings'])->name('student.profile-settings.update');
     Route::put('student/profile-settings/password', [StudentController::class, 'updateStudentPassword'])->name('student.profile-settings.password');
+    Route::post('student/profile-settings/picture', [StudentController::class, 'uploadProfilePicture'])->name('student.profile-settings.picture.upload');
+    Route::delete('student/profile-settings/picture', [StudentController::class, 'deleteProfilePicture'])->name('student.profile-settings.picture.delete');
     Route::post('student/profile-picture/upload', [StudentController::class, 'uploadProfilePicture'])->name('student.profile-picture.upload');
     Route::delete('student/profile-picture/delete', [StudentController::class, 'deleteProfilePicture'])->name('student.profile-picture.delete');
 
@@ -187,10 +189,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         
         return \Inertia\Inertia::render('admin/admission/registration/page', [
             'gradeLevels' => $gradeLevels,
-            'auth' => [
-                'user' => \Illuminate\Support\Facades\Auth::user(),
-                'admin' => $admin,
-            ],
         ]);
     })->name('admin.admission.registration');
     
@@ -231,10 +229,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
         
         return \Inertia\Inertia::render('admin/records/transcript-of-records/page', [
-            'auth' => [
-                'user' => \Illuminate\Support\Facades\Auth::user(),
-                'admin' => $admin,
-            ],
         ]);
     })->name('admin.records.transcript-of-records');
     
@@ -261,10 +255,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
         
         return \Inertia\Inertia::render('admin/documents/page', [
-            'auth' => [
-                'user' => \Illuminate\Support\Facades\Auth::user(),
-                'admin' => $admin,
-            ],
         ]);
     })->name('admin.documents');
     

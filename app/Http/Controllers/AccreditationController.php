@@ -29,10 +29,6 @@ class AccreditationController extends Controller
 
         return Inertia::render('admin/admission/accreditation/page', [
             'accreditations' => $accreditations,
-            'auth' => [
-                'user' => \Illuminate\Support\Facades\Auth::user(),
-                'admin' => $admin,
-            ],
         ]);
     }
 

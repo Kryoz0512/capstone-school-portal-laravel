@@ -54,9 +54,6 @@ class TeacherController extends Controller
                 'sectionsAssigned' => $sectionsAssigned,
                 'currentSchoolYear' => $currentSchoolYear,
             ],
-            'auth' => [
-                'user' => $user
-            ]
         ]);
     }
 
@@ -99,10 +96,6 @@ class TeacherController extends Controller
             'gradeLevels' => $gradeLevels,
             'subjects' => $subjects,
             'canAddTeacher' => $admin ? $admin->can_add_teacher : true,
-            'auth' => [
-                'user' => \Illuminate\Support\Facades\Auth::user(),
-                'admin' => $admin,
-            ],
         ]);
     }
 
@@ -391,9 +384,6 @@ class TeacherController extends Controller
                 'section_id' => $sectionId,
                 'school_year' => $schoolYear,
             ],
-            'auth' => [
-                'user' => $user
-            ]
         ]);
     }
 
@@ -409,7 +399,6 @@ class TeacherController extends Controller
         $filters = $this->getFinalReportFilters($request, $teacher);
 
         return Inertia::render('teacher/final-report/page', array_merge($filters, [
-            'auth' => ['user' => $user]
         ]));
     }
 
@@ -633,9 +622,6 @@ class TeacherController extends Controller
             'filters' => [
                 'school_year' => $schoolYear,
             ],
-            'auth' => [
-                'user' => $user
-            ]
         ]);
     }
 
@@ -684,9 +670,6 @@ class TeacherController extends Controller
                 'position' => $teacher->position ?? 'Teacher',
             ],
             'assignedClasses' => $assignedClasses,
-            'auth' => [
-                'user' => $user
-            ]
         ]);
     }
 
@@ -713,9 +696,6 @@ class TeacherController extends Controller
                 'address' => $teacher->address ?? '',
                 'profile_picture' => $teacher->profilePicture && $teacher->profilePicture->file_path ? asset('storage/' . $teacher->profilePicture->file_path) : null,
             ],
-            'auth' => [
-                'user' => $user
-            ]
         ]);
     }
 

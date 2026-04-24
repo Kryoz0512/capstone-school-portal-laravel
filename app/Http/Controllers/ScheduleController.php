@@ -32,10 +32,6 @@ class ScheduleController extends Controller
 
         return Inertia::render('admin/enrollment/load-scheduling/page', [
             'teachers' => $teachers,
-            'auth' => [
-                'user' => \Illuminate\Support\Facades\Auth::user(),
-                'admin' => $admin,
-            ],
         ]);
     }
 
@@ -112,10 +108,6 @@ class ScheduleController extends Controller
             'gradeLevels' => $gradeLevels,
             'subjects' => $subjects,
             'rooms' => $rooms,
-            'auth' => [
-                'user' => \Illuminate\Support\Facades\Auth::user(),
-                'admin' => $admin,
-            ],
         ]);
     }
 
@@ -167,10 +159,6 @@ class ScheduleController extends Controller
             'gradeLevels' => $gradeLevels,
             'subjects' => $subjects,
             'rooms' => $rooms,
-            'auth' => [
-                'user' => \Illuminate\Support\Facades\Auth::user(),
-                'admin' => $admin,
-            ],
         ]);
     }
 
@@ -234,10 +222,6 @@ class ScheduleController extends Controller
             'gradeLevels' => $gradeLevels,
             'subjects' => $subjects,
             'rooms' => $rooms,
-            'auth' => [
-                'user' => \Illuminate\Support\Facades\Auth::user(),
-                'admin' => $admin,
-            ],
         ]);
     }
 
@@ -458,10 +442,6 @@ class ScheduleController extends Controller
 
         return Inertia::render('admin/enrollment/room-schedule/page', [
             'rooms' => $rooms,
-            'auth' => [
-                'user' => \Illuminate\Support\Facades\Auth::user(),
-                'admin' => $admin,
-            ],
         ]);
     }
 
@@ -497,10 +477,6 @@ class ScheduleController extends Controller
                 'capacity' => $room->capacity,
             ],
             'schedules' => $schedules,
-            'auth' => [
-                'user' => \Illuminate\Support\Facades\Auth::user(),
-                'admin' => $admin,
-            ],
         ]);
     }
 }

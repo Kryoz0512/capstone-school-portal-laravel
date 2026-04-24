@@ -47,13 +47,6 @@ class SuperAdminController extends Controller
 
         return Inertia::render('admin/user-management/admin/page', [
             'admins' => $admins,
-            'auth' => [
-                'user' => Auth::user(),
-                'admin' => [
-                    'role' => $currentAdmin->role,
-                    'position' => $currentAdmin->position,
-                ],
-            ]
         ]);
     }
 

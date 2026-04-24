@@ -24,6 +24,10 @@ class AdminProfileController extends Controller
             return redirect()->route('admin.dashboard')->withErrors(['error' => 'Admin profile not found.']);
         }
 
+        $profilePictureUrl = $admin->profilePicture && $admin->profilePicture->file_path 
+            ? asset('storage/' . $admin->profilePicture->file_path) 
+            : null;
+
         $profileData = [
             'id' => $admin->id,
             'first_name' => $admin->first_name,
@@ -33,15 +37,11 @@ class AdminProfileController extends Controller
             'position' => $admin->position,
             'role' => $admin->role,
             'initials' => strtoupper(substr($admin->first_name, 0, 1) . substr($admin->last_name, 0, 1)),
-            'profile_picture' => $admin->profilePicture && $admin->profilePicture->file_path ? asset('storage/' . $admin->profilePicture->file_path) : null,
+            'profile_picture' => $profilePictureUrl,
         ];
 
         return Inertia::render('admin/profile/page', [
             'profile' => $profileData,
-            'auth' => [
-                'user' => $user,
-                'admin' => $admin,
-            ],
         ]);
     }
 
@@ -72,11 +72,12 @@ class AdminProfileController extends Controller
             return back()->withErrors(['error' => 'Admin profile not found.']);
         }
 
-        // Delete old profile picture if exists
-        $oldPicture = $admin->profilePicture;
-        if ($oldPicture) {
-            Storage::disk('public')->delete($oldPicture->file_path);
-            $oldPicture->delete();
+        // Get existing profile picture
+        $existingPicture = $admin->profilePicture;
+
+        // Delete old file if exists
+        if ($existingPicture && Storage::disk('public')->exists($existingPicture->file_path)) {
+            Storage::disk('public')->delete($existingPicture->file_path);
         }
 
         // Store new profile picture
@@ -84,14 +85,24 @@ class AdminProfileController extends Controller
         $fileName = time() . '_' . $file->getClientOriginalName();
         $filePath = $file->storeAs('profile-pictures', $fileName, 'public');
 
-        // Create profile picture record
-        ProfilePicture::create([
-            'profileable_id' => $admin->id,
-            'file_path' => $filePath,
-            'file_name' => $fileName,
-            'mime_type' => $file->getMimeType(),
-            'file_size' => $file->getSize(),
-        ]);
+        // Update or create profile picture record
+        if ($existingPicture) {
+            // Update existing record
+            $existingPicture->update([
+                'file_path' => $filePath,
+                'file_name' => $fileName,
+                'mime_type' => $file->getMimeType(),
+                'file_size' => $file->getSize(),
+            ]);
+        } else {
+            // Create new record - Laravel will automatically set profileable_type
+            $admin->profilePicture()->create([
+                'file_path' => $filePath,
+                'file_name' => $fileName,
+                'mime_type' => $file->getMimeType(),
+                'file_size' => $file->getSize(),
+            ]);
+        }
 
         return back()->with('success', 'Profile picture updated successfully.');
     }

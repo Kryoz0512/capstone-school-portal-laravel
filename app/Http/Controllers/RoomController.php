@@ -21,10 +21,6 @@ class RoomController extends Controller
         
         return Inertia::render('admin/enrollment/room-listings/page', [
             'rooms' => $rooms,
-            'auth' => [
-                'user' => Auth::user(),
-                'admin' => $admin,
-            ],
         ]);
     }
 

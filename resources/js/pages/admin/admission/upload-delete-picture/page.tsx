@@ -28,6 +28,8 @@ type VerifiedUser = {
     identifier: string
     type: string
     profile_picture: string | null
+    grade_level?: string | null
+    section?: string | null
 }
 
 export default function UploadDeletePicturePage({ auth }: Props) {
@@ -82,22 +84,71 @@ export default function UploadDeletePicturePage({ auth }: Props) {
         }
     }
 
-    const handleUpload = () => {
+    const handleUpload = async () => {
         if (!selectedFile || !verifiedUser) {
             alert('Please verify user and select a file first')
             return
         }
-        // TODO: Implement upload logic
-        console.log('Uploading:', { verifiedUser, selectedFile })
+
+        try {
+            const formData = new FormData()
+            formData.append('picture', selectedFile)
+            formData.append('user_id', verifiedUser.id.toString())
+            formData.append('user_type', verifiedUser.type)
+
+            const response = await axios.post('/admin/admission/profile-picture/upload', formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            })
+
+            if (response.data.success) {
+                alert('Profile picture uploaded successfully!')
+                // Update the verified user with new profile picture
+                setVerifiedUser({
+                    ...verifiedUser,
+                    profile_picture: response.data.profile_picture
+                })
+                // Clear the file input
+                setSelectedFile(null)
+                setPreviewUrl(null)
+            }
+        } catch (error: any) {
+            console.error('Upload error:', error)
+            alert(error.response?.data?.message || 'Failed to upload profile picture')
+        }
     }
 
-    const handleDelete = () => {
+    const handleDelete = async () => {
         if (!verifiedUser) {
             alert('Please verify user first')
             return
         }
-        // TODO: Implement delete logic
-        console.log('Deleting picture for:', verifiedUser)
+
+        if (!confirm('Are you sure you want to delete this profile picture? This action cannot be undone.')) {
+            return
+        }
+
+        try {
+            const response = await axios.delete('/admin/admission/profile-picture/delete', {
+                data: {
+                    user_id: verifiedUser.id,
+                    user_type: verifiedUser.type
+                }
+            })
+
+            if (response.data.success) {
+                alert('Profile picture deleted successfully!')
+                // Update the verified user to remove profile picture
+                setVerifiedUser({
+                    ...verifiedUser,
+                    profile_picture: null
+                })
+            }
+        } catch (error: any) {
+            console.error('Delete error:', error)
+            alert(error.response?.data?.message || 'Failed to delete profile picture')
+        }
     }
 
     const handleUserTypeChange = (type: string) => {
@@ -250,7 +301,44 @@ export default function UploadDeletePicturePage({ auth }: Props) {
                 {/* Upload Section */}
                 {verifiedUser && (
                     <div className="bg-white rounded-lg border border-gray-200 p-6">
-                        <h2 className="text-lg font-semibold text-gray-900 mb-4">Upload Picture</h2>
+                        <h2 className="text-lg font-semibold text-gray-900 mb-4">Current Profile Picture</h2>
+                        <div className="flex items-center gap-6 mb-6">
+                            <div className="w-32 h-32 rounded-full border-4 border-gray-200 overflow-hidden bg-gray-100 flex items-center justify-center">
+                                {verifiedUser.profile_picture ? (
+                                    <img
+                                        src={verifiedUser.profile_picture}
+                                        alt={verifiedUser.name}
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <div className="text-center">
+                                        <User className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                                        <p className="text-xs text-gray-500">No picture</p>
+                                    </div>
+                                )}
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-gray-900">{verifiedUser.name}</h3>
+                                <p className="text-sm text-gray-600">
+                                    {verifiedUser.type === 'student' ? 'LRN' : 'Employee No'}: {verifiedUser.identifier}
+                                </p>
+                                {verifiedUser.type === 'student' && (
+                                    <div className="text-sm text-gray-600 space-y-0.5 mt-1">
+                                        {verifiedUser.grade_level && (
+                                            <p>Grade Level: <span className="font-medium">{verifiedUser.grade_level}</span></p>
+                                        )}
+                                        {verifiedUser.section && (
+                                            <p>Section: <span className="font-medium">{verifiedUser.section}</span></p>
+                                        )}
+                                    </div>
+                                )}
+                                <p className="text-sm text-gray-500 mt-1">
+                                    {verifiedUser.profile_picture ? 'Profile picture is set' : 'No profile picture uploaded'}
+                                </p>
+                            </div>
+                        </div>
+
+                        <h2 className="text-lg font-semibold text-gray-900 mb-4">Upload New Picture</h2>
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -297,13 +385,13 @@ export default function UploadDeletePicturePage({ auth }: Props) {
                 )}
 
                 {/* Delete Section */}
-                {verifiedUser && (
-                    <div className="bg-white rounded-lg border border-gray-200 p-6">
+                {verifiedUser && verifiedUser.profile_picture && (
+                    <div className="bg-white rounded-lg border border-red-200 p-6">
                         <h2 className="text-lg font-semibold text-gray-900 mb-4">Delete Picture</h2>
                         <div className="flex items-center gap-4">
                             <div className="flex-1">
                                 <p className="text-sm text-gray-600">
-                                    Remove the profile picture for the selected user. This action cannot be undone.
+                                    Remove the profile picture for <strong>{verifiedUser.name}</strong>. This action cannot be undone.
                                 </p>
                             </div>
                             <Button

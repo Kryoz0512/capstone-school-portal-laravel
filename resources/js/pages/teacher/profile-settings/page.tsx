@@ -1,9 +1,11 @@
-import { Head, useForm } from '@inertiajs/react'
+import { Head, useForm, router, usePage } from '@inertiajs/react'
 import TeacherLayout from '@/layouts/teacher-layout'
 import { Input } from '@/components/ui/input'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { Button } from '@/components/ui/button'
-import { useState } from 'react'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Camera, Trash2, Upload, X } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
 
 type Teacher = {
     firstName: string
@@ -11,6 +13,7 @@ type Teacher = {
     email: string
     phone: string
     address: string
+    profile_picture?: string | null
 }
 
 type Props = {
@@ -22,13 +25,27 @@ type Props = {
             email: string
             role: string
         }
+        teacher?: {
+            profile_picture?: string | null
+        }
     }
 }
 
 export default function ProfileSettings({ teacher, auth }: Props) {
+    const { auth: pageAuth } = usePage<{ auth: { teacher?: { profile_picture?: string | null } } }>().props
     const [showCurrentPassword, setShowCurrentPassword] = useState(false)
     const [showNewPassword, setShowNewPassword] = useState(false)
     const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+    const [showCameraDialog, setShowCameraDialog] = useState(false)
+    const [showUploadOptions, setShowUploadOptions] = useState(false)
+    const [previewImage, setPreviewImage] = useState<string | null>(
+        pageAuth?.teacher?.profile_picture || teacher.profile_picture || null
+    )
+    const [isCameraActive, setIsCameraActive] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
+    const videoRef = useRef<HTMLVideoElement>(null)
+    const canvasRef = useRef<HTMLCanvasElement>(null)
+    const streamRef = useRef<MediaStream | null>(null)
 
     // Profile form
     const profileForm = useForm({
@@ -65,6 +82,132 @@ export default function ProfileSettings({ teacher, auth }: Props) {
         })
     }
 
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (file) {
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file')
+                return
+            }
+            
+            if (file.size > 2 * 1024 * 1024) {
+                alert('File size must be less than 2MB')
+                return
+            }
+
+            const reader = new FileReader()
+            reader.onloadend = () => {
+                setPreviewImage(reader.result as string)
+            }
+            reader.readAsDataURL(file)
+
+            const formData = new FormData()
+            formData.append('profile_picture', file)
+
+            router.post('/teacher/profile-settings/picture', formData, {
+                preserveScroll: true,
+                onError: (errors) => {
+                    alert(errors.profile_picture || 'Failed to upload image')
+                    setPreviewImage(teacher.profile_picture || null)
+                }
+            })
+        }
+    }
+
+    const handleDeletePicture = () => {
+        if (confirm('Are you sure you want to delete your profile picture?')) {
+            router.delete('/teacher/profile-settings/picture', {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setPreviewImage(null)
+                }
+            })
+        }
+    }
+
+    const startCamera = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: 'user' }
+            })
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream
+                streamRef.current = stream
+                setIsCameraActive(true)
+            }
+        } catch (error) {
+            alert('Unable to access camera. Please check permissions.')
+            console.error('Camera error:', error)
+        }
+    }
+
+    const stopCamera = () => {
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop())
+            streamRef.current = null
+        }
+        setIsCameraActive(false)
+    }
+
+    const capturePhoto = () => {
+        if (videoRef.current && canvasRef.current) {
+            const video = videoRef.current
+            const canvas = canvasRef.current
+            
+            canvas.width = video.videoWidth
+            canvas.height = video.videoHeight
+            
+            const context = canvas.getContext('2d')
+            if (context) {
+                context.drawImage(video, 0, 0)
+                
+                canvas.toBlob((blob) => {
+                    if (blob) {
+                        const file = new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' })
+                        uploadImage(file)
+                        stopCamera()
+                        setShowCameraDialog(false)
+                    }
+                }, 'image/jpeg', 0.95)
+            }
+        }
+    }
+
+    const uploadImage = (file: File) => {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+            setPreviewImage(reader.result as string)
+        }
+        reader.readAsDataURL(file)
+
+        const formData = new FormData()
+        formData.append('profile_picture', file)
+
+        router.post('/teacher/profile-settings/picture', formData, {
+            preserveScroll: true,
+            onError: (errors) => {
+                alert(errors.profile_picture || 'Failed to upload image')
+                setPreviewImage(teacher.profile_picture || null)
+            }
+        })
+    }
+
+    const handleCameraDialogClose = () => {
+        stopCamera()
+        setShowCameraDialog(false)
+    }
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (showUploadOptions && !(event.target as Element).closest('.upload-options-container')) {
+                setShowUploadOptions(false)
+            }
+        }
+
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [showUploadOptions])
+
     return (
         <TeacherLayout user={auth?.user}>
             <Head title="Profile Settings" />
@@ -75,6 +218,81 @@ export default function ProfileSettings({ teacher, auth }: Props) {
                     <p className="text-sm text-gray-500 mt-1">
                         Update your profile and change your password
                     </p>
+                </div>
+
+                {/* Profile Picture Section */}
+                <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border border-gray-200 p-6">
+                    <div className="flex items-center gap-6">
+                        <div className="relative">
+                            {previewImage ? (
+                                <img 
+                                    src={previewImage} 
+                                    alt="Profile" 
+                                    className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
+                                />
+                            ) : (
+                                <div className="w-24 h-24 bg-gradient-to-br from-green-500 to-blue-500 rounded-full flex items-center justify-center text-white text-3xl font-bold border-4 border-white shadow-lg">
+                                    {teacher.firstName.charAt(0)}{teacher.lastName.charAt(0)}
+                                </div>
+                            )}
+                            <div className="upload-options-container">
+                                <button
+                                    onClick={() => setShowUploadOptions(!showUploadOptions)}
+                                    className="absolute bottom-0 right-0 bg-green-600 hover:bg-green-700 text-white p-2 rounded-full shadow-lg transition-colors"
+                                    title="Change profile picture"
+                                >
+                                    <Camera className="w-4 h-4" />
+                                </button>
+                                
+                                {showUploadOptions && (
+                                    <div className="absolute top-full right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 p-2 z-10 min-w-[200px]">
+                                        <button
+                                            onClick={() => {
+                                                setShowCameraDialog(true)
+                                                setShowUploadOptions(false)
+                                                setTimeout(() => startCamera(), 100)
+                                            }}
+                                            className="w-full flex items-center gap-2 px-4 py-2 text-left hover:bg-gray-100 rounded-md transition-colors"
+                                        >
+                                            <Camera className="w-4 h-4" />
+                                            <span className="text-sm">Take Photo</span>
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                fileInputRef.current?.click()
+                                                setShowUploadOptions(false)
+                                            }}
+                                            className="w-full flex items-center gap-2 px-4 py-2 text-left hover:bg-gray-100 rounded-md transition-colors"
+                                        >
+                                            <Upload className="w-4 h-4" />
+                                            <span className="text-sm">Upload Photo</span>
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                            {previewImage && (
+                                <button
+                                    onClick={handleDeletePicture}
+                                    className="absolute top-0 right-0 bg-red-600 hover:bg-red-700 text-white p-2 rounded-full shadow-lg transition-colors"
+                                    title="Delete profile picture"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            )}
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/jpeg,image/jpg,image/png"
+                                onChange={handleFileSelect}
+                                className="hidden"
+                            />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold text-gray-900">{teacher.firstName} {teacher.lastName}</h2>
+                            <p className="text-sm text-gray-600">{teacher.email}</p>
+                            <p className="text-xs text-gray-500 mt-2">Click camera icon to take photo or upload. Max 2MB (JPG, PNG)</p>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Personal Information */}
@@ -264,6 +482,51 @@ export default function ProfileSettings({ teacher, auth }: Props) {
                     </form>
                 </div>
             </div>
+
+            {/* Camera Dialog */}
+            <Dialog open={showCameraDialog} onOpenChange={handleCameraDialogClose}>
+                <DialogContent className="sm:max-w-2xl">
+                    <DialogHeader>
+                        <DialogTitle>Take a Photo</DialogTitle>
+                        <DialogDescription>
+                            Position yourself in the frame and click capture when ready
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <div className="relative bg-black rounded-lg overflow-hidden" style={{ aspectRatio: '4/3' }}>
+                            <video
+                                ref={videoRef}
+                                autoPlay
+                                playsInline
+                                className="w-full h-full object-cover"
+                            />
+                            {!isCameraActive && (
+                                <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+                                    <p className="text-white">Starting camera...</p>
+                                </div>
+                            )}
+                        </div>
+                        <canvas ref={canvasRef} className="hidden" />
+                        <div className="flex justify-end gap-3">
+                            <Button
+                                variant="outline"
+                                onClick={handleCameraDialogClose}
+                            >
+                                <X className="w-4 h-4 mr-2" />
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={capturePhoto}
+                                disabled={!isCameraActive}
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                            >
+                                <Camera className="w-4 h-4 mr-2" />
+                                Capture Photo
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </TeacherLayout>
     )
 }

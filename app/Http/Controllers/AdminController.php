@@ -13,17 +13,6 @@ class AdminController extends Controller
      */
     public function dashboard()
     {
-        // Get the admin record for the current user
-        $admin = Admin::where('user_id', Auth::id())->first();
-        
-        return Inertia::render('admin/dashboard/page', [
-            'auth' => [
-                'user' => Auth::user(),
-                'admin' => $admin ? [
-                    'role' => $admin->role,
-                    'position' => $admin->position,
-                ] : null,
-            ]
-        ]);
+        return Inertia::render('admin/dashboard/page');
     }
 }

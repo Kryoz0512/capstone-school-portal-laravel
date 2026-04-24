@@ -49,10 +49,6 @@ public function index()
         'teachers' => $teachers,
         'gradeLevels' => $gradeLevels,
         'subjects' => $subjects,
-        'auth' => [
-            'user' => \Illuminate\Support\Facades\Auth::user(),
-            'admin' => $admin,
-        ],
     ]);
 }
 

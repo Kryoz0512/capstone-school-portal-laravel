@@ -38,6 +38,6 @@ class Admin extends Model
      */
     public function profilePicture()
     {
-        return $this->hasOne(ProfilePicture::class, 'profileable_id');
+        return $this->morphOne(ProfilePicture::class, 'profileable');
     }
 }

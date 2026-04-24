@@ -43,10 +43,6 @@ class ClassSectionController extends Controller
             'sections' => $sections,
             'gradeLevels' => $gradeLevels,
             'rooms' => $rooms,
-            'auth' => [
-                'user' => \Illuminate\Support\Facades\Auth::user(),
-                'admin' => $admin,
-            ],
         ]);
     }
 

@@ -10,6 +10,7 @@ export default function Portal({ slides = [] }: Props) {
     const [currentSlide, setCurrentSlide] = useState(0)
     const [scrolled, setScrolled] = useState(false)
     const [activeSection, setActiveSection] = useState('home')
+    const [showPortalDropdown, setShowPortalDropdown] = useState(false)
 
     useEffect(() => {
         if (slides.length <= 1) return
@@ -22,7 +23,7 @@ export default function Portal({ slides = [] }: Props) {
     useEffect(() => {
         const handleScroll = () => {
             setScrolled(window.scrollY > 80)
-            const sections = ['home', 'about', 'features', 'portal']
+            const sections = ['home', 'about', 'features']
             for (const id of sections.reverse()) {
                 const el = document.getElementById(id)
                 if (el && window.scrollY >= el.offsetTop - 100) {
@@ -43,7 +44,6 @@ export default function Portal({ slides = [] }: Props) {
         { id: 'home', label: 'Home' },
         { id: 'about', label: 'About' },
         { id: 'features', label: 'Features' },
-        { id: 'portal', label: 'Portal' },
     ]
 
     const features = [
@@ -94,43 +94,6 @@ export default function Portal({ slides = [] }: Props) {
             color: 'from-teal-500 to-teal-600',
             bg: 'bg-teal-50',
             border: 'border-teal-100',
-        },
-    ]
-
-    const roles = [
-        {
-            href: '/login/student',
-            icon: <GraduationCap className="w-10 h-10 text-white" />,
-            title: 'Student',
-            desc: 'View your grades, class schedules, enrollment status, and personal academic records.',
-            gradient: 'from-violet-600 to-violet-700',
-            ring: 'ring-violet-200',
-            hover: 'hover:shadow-violet-100',
-            badge: 'bg-violet-50 text-violet-700',
-            btnBg: 'bg-violet-600 hover:bg-violet-700',
-        },
-        {
-            href: '/login/teacher',
-            icon: <BookOpen className="w-10 h-10 text-white" />,
-            title: 'Teacher',
-            desc: 'Manage classes, input and review grades, view schedules, and access student information.',
-            gradient: 'from-sky-600 to-sky-700',
-            ring: 'ring-sky-200',
-            hover: 'hover:shadow-sky-100',
-            badge: 'bg-sky-50 text-sky-700',
-            btnBg: 'bg-sky-600 hover:bg-sky-700',
-            featured: true,
-        },
-        {
-            href: '/login/staff',
-            icon: <Users className="w-10 h-10 text-white" />,
-            title: 'Staff',
-            desc: 'Administrative access for system management, enrollment processing, and school operations.',
-            gradient: 'from-emerald-600 to-emerald-700',
-            ring: 'ring-emerald-200',
-            hover: 'hover:shadow-emerald-100',
-            badge: 'bg-emerald-50 text-emerald-700',
-            btnBg: 'bg-emerald-600 hover:bg-emerald-700',
         },
     ]
 
@@ -239,7 +202,7 @@ export default function Portal({ slides = [] }: Props) {
             {/* ── NAVBAR ── */}
             <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-400 ${
                 scrolled
-                    ? 'bg-green-900/98 backdrop-blur-xl shadow-lg shadow-green-950/20'
+                    ? 'bg-green-800/80 backdrop-blur-xl shadow-lg shadow-green-950/20'
                     : 'bg-transparent'
             }`}>
                 <div className="max-w-7xl mx-auto px-6 lg:px-8">
@@ -264,13 +227,64 @@ export default function Portal({ slides = [] }: Props) {
                             ))}
                         </div>
 
-                        <button
-                            onClick={() => scrollToSection('portal')}
-                            className="hidden md:flex items-center gap-2 bg-white text-green-800 px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-green-50 transition-all shadow-sm hover:shadow-md"
-                        >
-                            Access Portal
-                            <ArrowRight className="w-4 h-4" />
-                        </button>
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowPortalDropdown(!showPortalDropdown)}
+                                onBlur={() => setTimeout(() => setShowPortalDropdown(false), 200)}
+                                className="hidden md:flex items-center gap-2 bg-white text-green-800 px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-green-50 transition-all shadow-sm hover:shadow-md"
+                            >
+                                Access Portal
+                                <ChevronDown className={`w-4 h-4 transition-transform ${showPortalDropdown ? 'rotate-180' : ''}`} />
+                            </button>
+                            
+                            {showPortalDropdown && (
+                                <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden z-50">
+                                    <div className="p-2">
+                                        <Link
+                                            href="/login/student"
+                                            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-violet-50 transition-colors group"
+                                        >
+                                            <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-violet-600 rounded-lg flex items-center justify-center text-white">
+                                                <GraduationCap className="w-5 h-5" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="font-semibold text-gray-900 text-sm">Student Portal</div>
+                                                <div className="text-xs text-gray-500">View grades & schedules</div>
+                                            </div>
+                                            <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-violet-600 group-hover:translate-x-1 transition-all" />
+                                        </Link>
+                                        
+                                        <Link
+                                            href="/login/teacher"
+                                            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-sky-50 transition-colors group"
+                                        >
+                                            <div className="w-10 h-10 bg-gradient-to-br from-sky-500 to-sky-600 rounded-lg flex items-center justify-center text-white">
+                                                <BookOpen className="w-5 h-5" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="font-semibold text-gray-900 text-sm">Teacher Portal</div>
+                                                <div className="text-xs text-gray-500">Manage classes & grades</div>
+                                            </div>
+                                            <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-sky-600 group-hover:translate-x-1 transition-all" />
+                                        </Link>
+                                        
+                                        <Link
+                                            href="/login/staff"
+                                            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-emerald-50 transition-colors group"
+                                        >
+                                            <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center text-white">
+                                                <Users className="w-5 h-5" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="font-semibold text-gray-900 text-sm">Staff Portal</div>
+                                                <div className="text-xs text-gray-500">Administrative access</div>
+                                            </div>
+                                            <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-emerald-600 group-hover:translate-x-1 transition-all" />
+                                        </Link>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </nav>
@@ -342,18 +356,11 @@ export default function Portal({ slides = [] }: Props) {
                         {/* CTAs */}
                         <div className="animate-fade-up-delay-2 flex flex-col sm:flex-row items-center gap-4">
                             <button
-                                onClick={() => scrollToSection('portal')}
+                                onClick={() => scrollToSection('about')}
                                 className="flex items-center gap-2 bg-white text-green-800 px-8 py-4 rounded-2xl font-semibold text-base hover:bg-green-50 transition-all shadow-xl shadow-black/20 hover:shadow-2xl hover:scale-[1.02]"
                             >
-                                Access Your Portal
-                                <ArrowRight className="w-5 h-5" />
-                            </button>
-                            <button
-                                onClick={() => scrollToSection('about')}
-                                className="flex items-center gap-2 text-white/80 hover:text-white text-base font-medium px-6 py-4 transition-colors"
-                            >
                                 Learn More
-                                <ChevronDown className="w-4 h-4" />
+                                <ArrowRight className="w-5 h-5" />
                             </button>
                         </div>
                     </div>
@@ -462,62 +469,6 @@ export default function Portal({ slides = [] }: Props) {
                                     <p className="text-gray-500 text-sm leading-relaxed">{f.desc}</p>
                                 </div>
                             ))}
-                        </div>
-                    </div>
-                </section>
-
-                {/* ── PORTAL ACCESS ── */}
-                <section id="portal" className="relative py-24 lg:py-32 overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-green-950 via-green-900 to-emerald-800" />
-                    <div className="absolute inset-0 opacity-[0.04]" style={{
-                        backgroundImage: `linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px),
-                                          linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)`,
-                        backgroundSize: '40px 40px'
-                    }} />
-
-                    <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-8">
-                        <div className="text-center mb-16">
-                            <p className="text-green-400 text-xs font-semibold uppercase tracking-widest mb-4">Choose Your Role</p>
-                            <h2 className="font-display text-4xl md:text-5xl text-white mb-4 leading-tight">
-                                Access the DigiStar Portal
-                            </h2>
-                            <p className="text-green-100/70 text-lg max-w-xl mx-auto">
-                                Select how you're connected to Santor National High School to get started.
-                            </p>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-                            {roles.map((role) => (
-                                <Link key={role.title} href={role.href} className="group block">
-                                    <div className={`role-card bg-white rounded-3xl p-8 shadow-lg ${role.hover} hover:shadow-2xl h-full flex flex-col ${role.featured ? 'ring-2 ring-white/30' : ''}`}>
-                                        {role.featured && (
-                                            <div className="text-center mb-4">
-                                                <span className="bg-sky-100 text-sky-700 text-xs font-semibold px-3 py-1 rounded-full">Most Used</span>
-                                            </div>
-                                        )}
-
-                                        <div className={`bg-gradient-to-br ${role.gradient} w-16 h-16 rounded-2xl flex items-center justify-center mb-6 shadow-lg group-hover:scale-105 group-hover:rotate-1 transition-all duration-300`}>
-                                            {role.icon}
-                                        </div>
-
-                                        <h3 className="text-xl font-semibold text-gray-900 mb-3">{role.title}</h3>
-                                        <p className="text-gray-500 text-sm leading-relaxed flex-grow mb-6">{role.desc}</p>
-
-                                        <div className={`${role.btnBg} text-white flex items-center justify-center gap-2 py-3 px-5 rounded-xl text-sm font-semibold transition-colors`}>
-                                            Login as {role.title}
-                                            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                                        </div>
-                                    </div>
-                                </Link>
-                            ))}
-                        </div>
-
-                        {/* Trust note */}
-                        <div className="text-center mt-10">
-                            <p className="text-green-200/50 text-sm flex items-center justify-center gap-2">
-                                <Shield className="w-4 h-4" />
-                                Secured with end-to-end encryption. Your data stays private.
-                            </p>
                         </div>
                     </div>
                 </section>

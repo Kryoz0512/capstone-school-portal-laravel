@@ -17,6 +17,7 @@ use App\Http\Controllers\PasswordChangeController;
 use App\Http\Controllers\AnnouncementController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\DB;
 use Laravel\Fortify\Features;
 
 Route::get('/', function () {
@@ -291,12 +292,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
 // Public API for login slides
 Route::get('api/login-slides', [App\Http\Controllers\LoginSlideController::class, 'getActiveSlides']);
 
+// API endpoint to check if email is locked (higher rate limit for polling)
+Route::post('api/check-lock-status', [App\Http\Controllers\Auth\LoginController::class, 'checkLockStatus'])
+    ->middleware('throttle:60,1'); // 60 requests per minute
+
 require __DIR__.'/settings.php';
 
 // Test route to check profile picture data
 Route::get('/test-profile-picture', function () {
+    // @phpstan-ignore-next-line
     $user = auth()->user();
-    if (!$user) {
+    if (!$user instanceof \App\Models\User) {
         return response()->json(['error' => 'Not authenticated']);
     }
     

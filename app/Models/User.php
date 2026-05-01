@@ -20,6 +20,8 @@ class User extends Authenticatable
         'password',
         'role',
         'password_changed',
+        'failed_login_attempts',
+        'locked_until',
     ];
 
     protected $hidden = [
@@ -36,6 +38,8 @@ class User extends Authenticatable
             'password'                => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
             'password_changed'        => 'boolean',
+            'failed_login_attempts'   => 'integer',
+            'locked_until'            => 'datetime',
         ];
     }
 

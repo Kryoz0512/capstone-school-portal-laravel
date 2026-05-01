@@ -61,35 +61,110 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
         Fortify::createUsersUsing(CreateNewUser::class);
         
-        // Customize authentication error message
+        // Customize authentication with lockout mechanism
         Fortify::authenticateUsing(function (Request $request) {
             $user = \App\Models\User::where('email', $request->email)->first();
 
-            if ($user && \Illuminate\Support\Facades\Hash::check($request->password, $user->password)) {
-                // Validate role selection
-                $selectedRole = $request->input('role');
-                
-                // Map 'staff' to 'admin' for validation
-                $roleMap = [
-                    'staff' => 'admin',
-                    'teacher' => 'teacher',
-                    'student' => 'student',
-                ];
-                
-                $expectedRole = $roleMap[$selectedRole] ?? $selectedRole;
-                
-                if ($user->role !== $expectedRole) {
-                    throw \Illuminate\Validation\ValidationException::withMessages([
-                        'role' => ['You are not registered as a ' . ucfirst($selectedRole) . '. Please select the correct role.'],
-                    ]);
-                }
-                
-                return $user;
+            if (!$user) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'email' => ['These credentials do not match our records.'],
+                ]);
             }
 
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'email' => ['Email or password is incorrect.'],
+            // Check if account is locked
+            if ($user->locked_until && \Carbon\Carbon::now()->lt($user->locked_until)) {
+                $secondsLeft = (int) \Carbon\Carbon::now()->diffInSeconds($user->locked_until);
+                $minutes = floor($secondsLeft / 60);
+                $seconds = $secondsLeft % 60;
+                
+                $timeMessage = '';
+                if ($minutes > 0) {
+                    $timeMessage = $minutes . ' minute' . ($minutes > 1 ? 's' : '');
+                    if ($seconds > 0) {
+                        $timeMessage .= ' and ' . $seconds . ' second' . ($seconds > 1 ? 's' : '');
+                    }
+                } else {
+                    $timeMessage = $seconds . ' second' . ($seconds > 1 ? 's' : '');
+                }
+                
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'email' => ['This account is locked. Please try again in ' . $timeMessage . '.'],
+                ]);
+            }
+
+            // If lock period has expired, reset the attempts
+            if ($user->locked_until && \Carbon\Carbon::now()->gte($user->locked_until)) {
+                $user->update([
+                    'failed_login_attempts' => 0,
+                    'locked_until' => null,
+                ]);
+            }
+
+            // Check password
+            if (!\Illuminate\Support\Facades\Hash::check($request->password, $user->password)) {
+                // Increment failed attempts
+                $user->increment('failed_login_attempts');
+                $user->refresh(); // Reload to get updated count
+
+                // Lock account if 3 failed attempts
+                if ($user->failed_login_attempts >= 3) {
+                    $lockDuration = 10;
+                    $lockUntil = \Carbon\Carbon::now()->addSeconds($lockDuration);
+                    
+                    $user->update([
+                        'locked_until' => $lockUntil, 
+                    ]);
+
+                    // Format the duration message
+                    $minutes = floor($lockDuration / 60);
+                    $seconds = $lockDuration % 60;
+                    
+                    $durationMessage = '';
+                    if ($minutes > 0) {
+                        $durationMessage = $minutes . ' minute' . ($minutes > 1 ? 's' : '');
+                        if ($seconds > 0) {
+                            $durationMessage .= ' and ' . $seconds . ' second' . ($seconds > 1 ? 's' : '');
+                        }
+                    } else {
+                        $durationMessage = $seconds . ' second' . ($seconds > 1 ? 's' : '');
+                    }
+
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'email' => ["Too many failed login attempts. This account is locked for {$durationMessage}."],
+                    ]);
+                }
+
+                $attemptsLeft = 3 - $user->failed_login_attempts;
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'password' => ["Invalid password. You have {$attemptsLeft} attempt(s) remaining."],
+                ]);
+            }
+
+            // Validate role selection
+            $selectedRole = $request->input('role');
+            
+            // Map 'staff' to 'admin' for validation
+            $roleMap = [
+                'staff' => 'admin',
+                'teacher' => 'teacher',
+                'student' => 'student',
+            ];
+            
+            $expectedRole = $roleMap[$selectedRole] ?? $selectedRole;
+            
+            if ($user->role !== $expectedRole) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'role' => ['You are not registered as a ' . ucfirst($selectedRole) . '. Please select the correct role.'],
+                ]);
+            }
+
+            // Successful login - reset failed attempts
+            $user->update([
+                'failed_login_attempts' => 0,
+                'locked_until' => null,
             ]);
+            
+            return $user;
         });
     }
 

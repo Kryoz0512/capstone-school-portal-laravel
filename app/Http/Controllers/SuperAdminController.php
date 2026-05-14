@@ -40,6 +40,7 @@ class SuperAdminController extends Controller
                     'email' => $admin->user->email,
                     'position' => $admin->position,
                     'role' => $admin->role,
+                    'can_add_teacher' => $admin->can_add_teacher,
                     'updated_by' => $admin->updatedBy ? $admin->updatedBy->name : null,
                     'updated_at' => $admin->updated_at ? $admin->updated_at->timezone('Asia/Manila')->format('M d, Y h:i A') : null,
                 ];
@@ -70,6 +71,7 @@ class SuperAdminController extends Controller
             'last_name' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\s]+$/'],
             'position' => ['required', 'string', 'max:255'],
             'password' => ['required', 'string', 'min:8'],
+            'can_add_teacher' => ['boolean'],
         ]);
         
         // Check if this employee number belongs to a teacher who is already an admin
@@ -113,6 +115,7 @@ class SuperAdminController extends Controller
                 'last_name' => $validated['last_name'],
                 'role' => 'Admin',
                 'position' => $validated['position'],
+                'can_add_teacher' => $validated['can_add_teacher'] ?? true,
                 'updated_by' => Auth::id(),
             ]);
 
@@ -151,6 +154,7 @@ class SuperAdminController extends Controller
             'last_name' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\s]+$/'],
             'position' => ['required', 'string', 'max:255'],
             'password' => ['nullable', 'string', 'min:8'],
+            'can_add_teacher' => ['boolean'],
         ]);
 
         // Generate email in format: SNHS-LASTNAME-FIRSTNAME
@@ -180,6 +184,7 @@ class SuperAdminController extends Controller
                 'first_name' => $validated['first_name'],
                 'last_name' => $validated['last_name'],
                 'position' => $validated['position'],
+                'can_add_teacher' => $validated['can_add_teacher'] ?? $admin->can_add_teacher,
                 'updated_by' => Auth::id(),
             ]);
 

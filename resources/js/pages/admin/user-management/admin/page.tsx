@@ -18,6 +18,7 @@ type Admin = {
     email: string
     position: string
     role: 'Admin' | 'Staff'
+    can_add_teacher: boolean
     updated_by: string | null
     updated_at: string | null
 }
@@ -141,6 +142,7 @@ export default function AdminManagement({ admins, auth }: Props) {
                                     <th className="px-6 py-5 text-left text-sm font-bold text-white uppercase tracking-wider">Name</th>
                                     <th className="px-6 py-5 text-left text-sm font-bold text-white uppercase tracking-wider">Username</th>
                                     <th className="px-6 py-5 text-left text-sm font-bold text-white uppercase tracking-wider">Position</th>
+                                    <th className="px-6 py-5 text-center text-sm font-bold text-white uppercase tracking-wider">Can Add Teacher</th>
                                     <th className="px-6 py-5 text-left text-sm font-bold text-white uppercase tracking-wider">Last Updated</th>
                                     <th className="px-6 py-5 text-center text-sm font-bold text-white uppercase tracking-wider">Actions</th>
                                 </tr>
@@ -153,6 +155,19 @@ export default function AdminManagement({ admins, auth }: Props) {
                                             <td className="px-6 py-4 text-sm text-gray-900">{admin.name}</td>
                                             <td className="px-6 py-4 text-sm text-gray-900">{admin.email}</td>
                                             <td className="px-6 py-4 text-sm text-gray-900">{admin.position}</td>
+                                            <td className="px-6 py-4 text-center">
+                                                {admin.role === 'Super Admin' ? (
+                                                    <span className="text-xs text-gray-400">N/A</span>
+                                                ) : (
+                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                                        admin.can_add_teacher 
+                                                            ? 'bg-green-100 text-green-800' 
+                                                            : 'bg-red-100 text-red-800'
+                                                    }`}>
+                                                        {admin.can_add_teacher ? 'Yes' : 'No'}
+                                                    </span>
+                                                )}
+                                            </td>
                                             <td className="px-6 py-4 text-sm text-gray-600">
                                                 {admin.updated_by && admin.updated_at ? (
                                                     <div>
@@ -183,7 +198,7 @@ export default function AdminManagement({ admins, auth }: Props) {
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-500">
+                                        <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-500">
                                             No admin accounts found. Click "+ New Admin" to add one.
                                         </td>
                                     </tr>

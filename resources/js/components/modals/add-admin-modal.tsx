@@ -24,7 +24,8 @@ export default function AddAdminModal({ open, onOpenChange }: AddAdminModalProps
         first_name: '',
         last_name: '',
         position: '',
-        password: ''
+        password: '',
+        can_add_teacher: true
     })
 
     const [generatedEmail, setGeneratedEmail] = useState('')
@@ -313,6 +314,23 @@ export default function AddAdminModal({ open, onOpenChange }: AddAdminModalProps
                         {errors.password && (
                             <p className="text-xs text-red-500 mt-1">{errors.password}</p>
                         )}
+                    </div>
+
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <label className="flex items-start gap-3 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={data.can_add_teacher}
+                                onChange={(e) => setData('can_add_teacher', e.target.checked)}
+                                className="mt-1 h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                            />
+                            <div className="flex-1">
+                                <span className="text-sm font-medium text-gray-900">Can Add Teacher</span>
+                                <p className="text-xs text-gray-600 mt-1">
+                                    Allow this admin to create and manage teacher accounts
+                                </p>
+                            </div>
+                        </label>
                     </div>
 
                     <div className="flex items-center justify-end gap-3 pt-4 border-t">

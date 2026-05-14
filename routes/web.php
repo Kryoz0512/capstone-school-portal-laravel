@@ -19,6 +19,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use Laravel\Fortify\Features;
+use Illuminate\Support\Facades\Auth;
 
 Route::get('/', function () {
     $slides = \App\Models\LoginSlide::where('is_active', true)
@@ -266,10 +267,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('admin/maintenance/login-slides/order', [App\Http\Controllers\LoginSlideController::class, 'updateOrder'])->name('admin.maintenance.login-slides.order');
     Route::post('admin/maintenance/login-slides/{slide}/toggle', [App\Http\Controllers\LoginSlideController::class, 'toggleActive'])->name('admin.maintenance.login-slides.toggle');
     
-    // Admin Permissions routes (Super Admin only)
-    Route::get('admin/maintenance/admin-permissions', [App\Http\Controllers\AdminPermissionController::class, 'index'])->name('admin.maintenance.admin-permissions');
-    Route::post('admin/maintenance/admin-permissions/{admin}/toggle', [App\Http\Controllers\AdminPermissionController::class, 'togglePermission'])->name('admin.maintenance.admin-permissions.toggle');
-    
     // Announcements routes
     Route::get('admin/maintenance/announcements', [AnnouncementController::class, 'index'])->name('admin.maintenance.announcements');
     Route::post('admin/maintenance/announcements', [AnnouncementController::class, 'store'])->name('admin.maintenance.announcements.store');
@@ -297,43 +294,6 @@ Route::post('api/check-lock-status', [App\Http\Controllers\Auth\LoginController:
     ->middleware('throttle:60,1'); // 60 requests per minute
 
 require __DIR__.'/settings.php';
-
-// Test route to check profile picture data
-Route::get('/test-profile-picture', function () {
-    // @phpstan-ignore-next-line
-    $user = auth()->user();
-    if (!$user instanceof \App\Models\User) {
-        return response()->json(['error' => 'Not authenticated']);
-    }
-    
-    $admin = \App\Models\Admin::where('user_id', $user->id)->with('profilePicture')->first();
-    
-    return response()->json([
-        'user_id' => $user->id,
-        'user_role' => $user->role,
-        'admin_id' => $admin ? $admin->id : null,
-        'has_profile_picture' => $admin && $admin->profilePicture ? true : false,
-        'profile_picture_data' => $admin && $admin->profilePicture ? [
-            'id' => $admin->profilePicture->id,
-            'profileable_id' => $admin->profilePicture->profileable_id,
-            'file_path' => $admin->profilePicture->file_path,
-            'full_url' => asset('storage/' . $admin->profilePicture->file_path),
-        ] : null,
-    ]);
-})->middleware('auth');
-
-// Test route to verify employee numbers
-Route::get('/test-employee-numbers', function () {
-    $admins = DB::table('tbl_admins')->select('id', 'first_name', 'last_name', 'employee_number')->get();
-    $teachers = DB::table('tbl_teachers')->select('id', 'name', 'employee_number')->limit(5)->get();
-    
-    return response()->json([
-        'admins' => $admins,
-        'teachers_sample' => $teachers,
-        'admin_count' => $admins->count(),
-        'teacher_count' => DB::table('tbl_teachers')->count(),
-    ]);
-})->middleware('auth');
 
 // API endpoint to search teachers by employee number
 Route::get('/api/search-teachers', function (Request $request) {

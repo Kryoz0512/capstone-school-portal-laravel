@@ -286,8 +286,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('admin/profile/picture', [AdminProfileController::class, 'deleteProfilePicture'])->name('admin.profile.picture.delete');
 });
 
-// Public API for login slides
+// API route for login slides
 Route::get('api/login-slides', [App\Http\Controllers\LoginSlideController::class, 'getActiveSlides']);
+
+// Notification routes
+Route::middleware(['auth'])->group(function () {
+    Route::get('api/notifications', [App\Http\Controllers\NotificationController::class, 'index']);
+    Route::get('api/notifications/unread-count', [App\Http\Controllers\NotificationController::class, 'getUnreadCount']);
+    Route::post('api/notifications/{id}/read', [App\Http\Controllers\NotificationController::class, 'markAsRead']);
+    Route::post('api/notifications/mark-all-read', [App\Http\Controllers\NotificationController::class, 'markAllAsRead']);
+    Route::delete('api/notifications/{id}', [App\Http\Controllers\NotificationController::class, 'destroy']);
+});
 
 // API endpoint to check if email is locked (higher rate limit for polling)
 Route::post('api/check-lock-status', [App\Http\Controllers\Auth\LoginController::class, 'checkLockStatus'])

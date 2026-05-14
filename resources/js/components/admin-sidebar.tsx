@@ -90,7 +90,7 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
 
             {/* Navigation - Scrollable */}
             <nav className="flex-1 py-4 overflow-y-auto px-3 scrollbar-hide">
-                <style jsx>{`
+                <style dangerouslySetInnerHTML={{__html: `
                     .scrollbar-hide::-webkit-scrollbar {
                         display: none;
                     }
@@ -98,7 +98,7 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                         -ms-overflow-style: none;
                         scrollbar-width: none;
                     }
-                `}</style>
+                `}} />
                 {/* Dashboard */}
                 <Link
                     href="/admin/dashboard"

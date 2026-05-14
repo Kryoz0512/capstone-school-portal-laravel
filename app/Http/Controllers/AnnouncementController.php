@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Announcement;
 use App\Models\Admin;
+use App\Models\User;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -75,6 +77,11 @@ class AnnouncementController extends Controller
             'approved_at' => $approvedAt,
         ]);
 
+        // If auto-approved (Super Admin), create notifications for all users
+        if ($isSuperAdmin) {
+            $this->createNotificationsForAllUsers($validated['title'], $validated['content']);
+        }
+
         return redirect()->back()->with('success', $isSuperAdmin 
             ? 'Announcement created and published successfully!' 
             : 'Announcement created and pending approval.');
@@ -131,6 +138,13 @@ class AnnouncementController extends Controller
             'approved_at' => now(),
             'rejection_reason' => null,
         ]);
+
+        // Create notifications for all users when announcement is approved
+        $this->createNotificationsForAllUsers(
+            $announcement->title, 
+            $announcement->content,
+            $announcement->id
+        );
 
         return redirect()->back()->with('success', 'Announcement approved and published!');
     }
@@ -197,5 +211,30 @@ class AnnouncementController extends Controller
             });
 
         return response()->json($announcements);
+    }
+
+    /**
+     * Create notifications for all users
+     */
+    private function createNotificationsForAllUsers($title, $content, $announcementId = null)
+    {
+        $users = User::all();
+        $notifications = [];
+
+        foreach ($users as $user) {
+            $notifications[] = [
+                'user_id' => $user->id,
+                'type' => 'announcement',
+                'title' => 'New Announcement',
+                'message' => $title,
+                'announcement_id' => $announcementId,
+                'is_read' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        // Bulk insert for better performance
+        Notification::insert($notifications);
     }
 }

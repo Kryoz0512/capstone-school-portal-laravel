@@ -89,7 +89,10 @@ class TeacherController extends Controller
                 ];
             });
 
-        $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
+        // $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
+
+        $admin = Auth::user()->admin;
+        //eto ung way ata
 
         return Inertia::render('admin/user-management/teacher/page', [
             'teachers' => $teachers,

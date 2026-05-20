@@ -4,7 +4,9 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Eye, Download } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { DataTablePagination, teacherTableHeaderCellClass, teacherTableHeaderClass } from '@/components/data-table-pagination'
+import { useClientPagination } from '@/hooks/use-client-pagination'
 
 type Record = {
     id: number
@@ -32,13 +34,35 @@ export default function TranscriptOfRecords({ auth }: Props) {
     const [section, setSection] = useState('All')
     const [schoolYear, setSchoolYear] = useState('2024-2025')
 
-    const records: Record[] = [
+    const allRecords: Record[] = [
         { id: 1, lrn: '123456789001', studentName: 'John Garcia', gradeLevel: '10', section: 'A', schoolYear: '2024-2025' },
         { id: 2, lrn: '123456789002', studentName: 'Maria Santos', gradeLevel: '10', section: 'A', schoolYear: '2024-2025' },
         { id: 3, lrn: '123456789003', studentName: 'Pedro Lopez', gradeLevel: '10', section: 'B', schoolYear: '2024-2025' },
         { id: 4, lrn: '123456789004', studentName: 'Rosa Martinez', gradeLevel: '9', section: 'A', schoolYear: '2024-2025' },
         { id: 5, lrn: '123456789005', studentName: 'Antonio Reyes', gradeLevel: '9', section: 'B', schoolYear: '2024-2025' }
     ]
+
+    const filteredRecords = useMemo(() => {
+        return allRecords.filter((record) => {
+            const matchesSearch = !search
+                || record.studentName.toLowerCase().includes(search.toLowerCase())
+                || record.lrn.includes(search)
+            const matchesGrade = gradeLevel === 'All' || record.gradeLevel === gradeLevel
+            const matchesSection = section === 'All' || record.section === section
+            const matchesYear = record.schoolYear === schoolYear
+            return matchesSearch && matchesGrade && matchesSection && matchesYear
+        })
+    }, [allRecords, search, gradeLevel, section, schoolYear])
+
+    const {
+        currentPage,
+        setCurrentPage,
+        entriesPerPage,
+        setEntriesPerPage,
+        totalPages,
+        paginatedItems: paginatedRecords,
+        totalItems,
+    } = useClientPagination(filteredRecords)
 
     return (
         <TeacherLayout user={auth?.user}>
@@ -106,25 +130,21 @@ export default function TranscriptOfRecords({ auth }: Props) {
                 </div>
 
                 {/* Table */}
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                    <div className="p-4 border-b border-gray-200">
-                        <p className="text-sm text-gray-600">Showing 1 to 5 of 5 entries</p>
-                    </div>
-
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
                     <div className="overflow-x-auto">
                         <table className="w-full">
-                            <thead className="bg-gray-100">
+                            <thead className={teacherTableHeaderClass}>
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Student LRN</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Student Name</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Grade Level</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Section</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">School Year</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Actions</th>
+                                    <th className={teacherTableHeaderCellClass}>Student LRN</th>
+                                    <th className={teacherTableHeaderCellClass}>Student Name</th>
+                                    <th className={teacherTableHeaderCellClass}>Grade Level</th>
+                                    <th className={teacherTableHeaderCellClass}>Section</th>
+                                    <th className={teacherTableHeaderCellClass}>School Year</th>
+                                    <th className={teacherTableHeaderCellClass}>Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                {records.map((record) => (
+                                {paginatedRecords.length > 0 ? paginatedRecords.map((record) => (
                                     <tr key={record.id} className="hover:bg-gray-50">
                                         <td className="px-6 py-4 text-sm text-gray-900">{record.lrn}</td>
                                         <td className="px-6 py-4 text-sm text-gray-900">{record.studentName}</td>
@@ -142,10 +162,26 @@ export default function TranscriptOfRecords({ auth }: Props) {
                                             </div>
                                         </td>
                                     </tr>
-                                ))}
+                                )) : (
+                                    <tr>
+                                        <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-500">
+                                            No records found matching your filters.
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>
+
+                    <DataTablePagination
+                        totalItems={totalItems}
+                        currentPage={currentPage}
+                        entriesPerPage={entriesPerPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                        onEntriesPerPageChange={setEntriesPerPage}
+                        variant="teacher"
+                    />
                 </div>
             </div>
         </TeacherLayout>

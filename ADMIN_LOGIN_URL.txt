@@ -1,0 +1,44 @@
+═══════════════════════════════════════════════════════════════
+  SNHS DigiStar - Admin Login Access URL
+═══════════════════════════════════════════════════════════════
+
+⚠️  CONFIDENTIAL - FOR AUTHORIZED STAFF ONLY
+
+Admin Login URL:
+────────────────────────────────────────────────────────────────
+/admin-access-1ff4b62444e61253ff155256e590f72b
+────────────────────────────────────────────────────────────────
+
+Full URL (Local Development):
+http://localhost/admin-access-1ff4b62444e61253ff155256e590f72b
+
+Full URL (Production - Replace with your domain):
+https://yourdomain.com/admin-access-1ff4b62444e61253ff155256e590f72b
+
+═══════════════════════════════════════════════════════════════
+
+SECURITY NOTES:
+───────────────────────────────────────────────────────────────
+• This URL is hashed and not publicly accessible
+• Do NOT share this URL with unauthorized personnel
+• Bookmark this URL in your browser for easy access
+• The URL is generated using MD5 hash of 'snhs-admin-portal-2026'
+• Staff Portal option has been removed from the public portal
+
+═══════════════════════════════════════════════════════════════
+
+CHANGES MADE:
+───────────────────────────────────────────────────────────────
+✓ Removed "Staff Portal" from the landing page dropdown
+✓ Created new admin login page with professional design
+✓ Admin login now requires a specific hashed URL
+✓ New admin login page features:
+  - Dark theme with gradient background
+  - Shield icon for security emphasis
+  - Animated floating orbs
+  - Professional form design
+  - Remember me functionality
+  - Account lockout detection
+  - Back to portal link
+
+═══════════════════════════════════════════════════════════════

@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Illuminate\Support\Carbon;
+use App\Jobs\ImportStudentsJob;
+use Illuminate\Support\Str;
 
 class StudentController extends Controller
 {
@@ -109,14 +111,14 @@ class StudentController extends Controller
         }
 
         $schoolYears = [$student->school_year];
-        
+
         $clearances = [];
         foreach ($schoolYears as $year) {
             $hasSection = $student->current_section_id !== null;
             $hasProfile = $student->profile !== null;
-            
+
             $status = ($hasSection && $hasProfile) ? 'Cleared' : 'Pending';
-            
+
             $clearances[] = [
                 'id' => $student->id,
                 'schoolYear' => $year,
@@ -178,7 +180,7 @@ class StudentController extends Controller
             $timeSlots = [];
             foreach ($rawSchedules as $schedule) {
                 $timeKey = $schedule->start_time . ' - ' . $schedule->end_time;
-                
+
                 if (!isset($timeSlots[$timeKey])) {
                     $timeSlots[$timeKey] = [
                         'time' => date('g:i A', strtotime($schedule->start_time)) . ' - ' . date('g:i A', strtotime($schedule->end_time)),
@@ -189,11 +191,11 @@ class StudentController extends Controller
                         'friday' => '',
                     ];
                 }
-                
+
                 $dayKey = strtolower($schedule->day_of_week);
-                $timeSlots[$timeKey][$dayKey] = $schedule->subject_name . "\n" . 
-                                                $schedule->teacher_name . 
-                                                ($schedule->room ? "\n" . $schedule->room : '');
+                $timeSlots[$timeKey][$dayKey] = $schedule->subject_name . "\n" .
+                    $schedule->teacher_name .
+                    ($schedule->room ? "\n" . $schedule->room : '');
             }
 
             // Convert to array
@@ -247,7 +249,7 @@ class StudentController extends Controller
                 ->where('tbl_adviser_section.class_section_id', $student->current_section_id)
                 ->select('tbl_teachers.name')
                 ->first();
-            
+
             if ($adviserRecord) {
                 $adviser = $adviserRecord->name;
             }
@@ -275,10 +277,11 @@ class StudentController extends Controller
                 ->get()
                 ->map(function ($grade) {
                     // Format grades to remove unnecessary decimals
-                    $formatGrade = function($value) {
-                        if ($value === null) return null;
-                        $formatted = (float)$value;
-                        return ($formatted == floor($formatted)) ? (int)$formatted : $formatted;
+                    $formatGrade = function ($value) {
+                        if ($value === null)
+                            return null;
+                        $formatted = (float) $value;
+                        return ($formatted == floor($formatted)) ? (int) $formatted : $formatted;
                     };
 
                     return [
@@ -310,83 +313,83 @@ class StudentController extends Controller
         ]);
     }
 
-public function notEnrolled(Request $request)
-{
-    // 1. Sanitize and Get filter parameters
-    $search = $request->input('search');
-    $gradeLevelFilter = $request->input('grade_level');
-    $genderFilter = $request->input('gender');
-    $ageFilter = $request->input('age');
+    public function notEnrolled(Request $request)
+    {
+        // 1. Sanitize and Get filter parameters
+        $search = $request->input('search');
+        $gradeLevelFilter = $request->input('grade_level');
+        $genderFilter = $request->input('gender');
+        $ageFilter = $request->input('age');
 
-    // 2. Build Student Query
-    $query = Student::with(['gradeLevel']) // 'user' removed unless you actually use user data below
-        ->whereNull('current_section_id');
+        // 2. Build Student Query
+        $query = Student::with(['gradeLevel']) // 'user' removed unless you actually use user data below
+            ->whereNull('current_section_id');
 
-    // Apply search filter (name or LRN)
-    if ($search) {
-        $query->where(function ($q) use ($search) {
-            $q->where('lrn', 'like', "%{$search}%")
-              ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"])
-              ->orWhereRaw("CONCAT(last_name, ' ', first_name) LIKE ?", ["%{$search}%"]);
-        });
+        // Apply search filter (name or LRN)
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('lrn', 'like', "%{$search}%")
+                    ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"])
+                    ->orWhereRaw("CONCAT(last_name, ' ', first_name) LIKE ?", ["%{$search}%"]);
+            });
+        }
+
+        if ($gradeLevelFilter) {
+            $query->where('current_grade_level_id', $gradeLevelFilter);
+        }
+
+        if ($genderFilter) {
+            $query->where('gender', strtolower($genderFilter));
+        }
+
+        // Optimization: Filter Age at the Database level instead of in memory
+        if ($ageFilter) {
+            $query->whereRaw("FLOOR(DATEDIFF(CURDATE(), birth_date) / 365.25) = ?", [$ageFilter]);
+        }
+
+        $students = $query->get()->map(fn($student) => [
+            'id' => $student->id,
+            'studentName' => trim("{$student->first_name} {$student->last_name}"),
+            'lrn' => $student->lrn,
+            'gender' => ucfirst($student->gender),
+            'age' => $student->birth_date ? Carbon::parse($student->birth_date)->age : null,
+            'gradeLevel' => $student->gradeLevel->name ?? '',
+            'gradeLevelId' => $student->current_grade_level_id,
+            'section' => '',
+            'studentStatus' => $student->student_status,
+        ]);
+
+        // 3. Fetch Grade Levels (Keep it simple)
+        $gradeLevels = GradeLevel::select('id', 'name')->get();
+
+        // 4. Fetch Sections (Fixed N+1 issue using withCount)
+        $sections = ClassSection::with(['gradeLevel', 'room'])
+            ->withCount('students') // Automatically adds a 'students_count' attribute
+            ->get()
+            ->map(function ($section) {
+                $capacity = $section->room->capacity ?? 0;
+                $currentStudents = $section->students_count;
+                $availableSlots = max(0, $capacity - $currentStudents);
+
+                return [
+                    'id' => $section->id,
+                    'name' => $section->section_name,
+                    'grade_level_id' => $section->grade_level_id,
+                    'room_number' => $section->room->room_number ?? 'No Room',
+                    'capacity' => $capacity,
+                    'current_students' => $currentStudents,
+                    'available_slots' => $availableSlots,
+                    'is_full' => $availableSlots <= 0,
+                ];
+            });
+
+        return Inertia::render('admin/enrollment/student-not-enrolled/page', [
+            'students' => $students,
+            'gradeLevels' => $gradeLevels,
+            'sections' => $sections,
+            'filters' => $request->only(['search', 'grade_level', 'gender', 'age']),
+        ]);
     }
-
-    if ($gradeLevelFilter) {
-        $query->where('current_grade_level_id', $gradeLevelFilter);
-    }
-
-    if ($genderFilter) {
-        $query->where('gender', strtolower($genderFilter));
-    }
-
-    // Optimization: Filter Age at the Database level instead of in memory
-    if ($ageFilter) {
-        $query->whereRaw("FLOOR(DATEDIFF(CURDATE(), birth_date) / 365.25) = ?", [$ageFilter]);
-    }
-
-    $students = $query->get()->map(fn($student) => [
-        'id' => $student->id,
-        'studentName' => trim("{$student->first_name} {$student->last_name}"),
-        'lrn' => $student->lrn,
-        'gender' => ucfirst($student->gender),
-        'age' => $student->birth_date ? Carbon::parse($student->birth_date)->age : null,
-        'gradeLevel' => $student->gradeLevel->name ?? '',
-        'gradeLevelId' => $student->current_grade_level_id,
-        'section' => '',
-        'studentStatus' => $student->student_status,
-    ]);
-
-    // 3. Fetch Grade Levels (Keep it simple)
-    $gradeLevels = GradeLevel::select('id', 'name')->get();
-
-    // 4. Fetch Sections (Fixed N+1 issue using withCount)
-    $sections = ClassSection::with(['gradeLevel', 'room'])
-        ->withCount('students') // Automatically adds a 'students_count' attribute
-        ->get()
-        ->map(function ($section) {
-            $capacity = $section->room->capacity ?? 0;
-            $currentStudents = $section->students_count;
-            $availableSlots = max(0, $capacity - $currentStudents);
-
-            return [
-                'id' => $section->id,
-                'name' => $section->section_name,
-                'grade_level_id' => $section->grade_level_id,
-                'room_number' => $section->room->room_number ?? 'No Room',
-                'capacity' => $capacity,
-                'current_students' => $currentStudents,
-                'available_slots' => $availableSlots,
-                'is_full' => $availableSlots <= 0,
-            ];
-        });
-
-    return Inertia::render('admin/enrollment/student-not-enrolled/page', [
-        'students' => $students,
-        'gradeLevels' => $gradeLevels,
-        'sections' => $sections,
-        'filters' => $request->only(['search', 'grade_level', 'gender', 'age']),
-    ]);
-}
 
     public function assignSection(Request $request, Student $student)
     {
@@ -420,6 +423,7 @@ public function notEnrolled(Request $request)
                     'lrn' => $student->lrn,
                     'gradeLevel' => $student->gradeLevel ? $student->gradeLevel->name : '',
                     'section' => $student->section ? $student->section->section_name : '',
+                    'readyToGraduate' => $student->ready_to_graduate ?? false,
                 ];
             });
 
@@ -440,15 +444,15 @@ public function notEnrolled(Request $request)
     {
         $search = $request->input('search', '');
         $perPage = $request->input('per_page', 10);
-        
+
         // Fetch students who have been assigned a section with pagination
         $students = Student::with(['gradeLevel', 'section'])
             ->whereNotNull('current_section_id')
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('first_name', 'like', "%{$search}%")
-                      ->orWhere('last_name', 'like', "%{$search}%")
-                      ->orWhere('lrn', 'like', "%{$search}%");
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhere('lrn', 'like', "%{$search}%");
                 });
             })
             ->paginate($perPage)
@@ -474,7 +478,7 @@ public function notEnrolled(Request $request)
     {
         // Get the student's section
         $section = $student->section;
-        
+
         if (!$section) {
             return redirect()->back()->withErrors(['error' => 'Student is not assigned to a section']);
         }
@@ -563,7 +567,7 @@ public function notEnrolled(Request $request)
         try {
             // Check if student with this LRN already exists
             $existingStudent = Student::where('lrn', $validated['lrn'])->first();
-            
+
             if ($existingStudent) {
                 // If student exists and is being registered for the same school year, reject
                 if ($existingStudent->school_year === $validated['school_year']) {
@@ -573,17 +577,17 @@ public function notEnrolled(Request $request)
                         'lrn' => "Student '{$studentName}' with LRN {$validated['lrn']} is already registered for school year {$validated['school_year']}."
                     ])->withInput();
                 }
-                
+
                 // If student exists and status is 'returning', validate grade level progression
                 if ($validated['student_status'] === 'returning') {
                     $currentGradeLevel = $existingStudent->gradeLevel;
                     $newGradeLevel = \App\Models\GradeLevel::find($validated['grade_level_id']);
-                    
+
                     if ($currentGradeLevel && $newGradeLevel) {
                         // Extract grade numbers (e.g., "Grade 7" -> 7)
                         $currentGradeNumber = (int) filter_var($currentGradeLevel->name, FILTER_SANITIZE_NUMBER_INT);
                         $newGradeNumber = (int) filter_var($newGradeLevel->name, FILTER_SANITIZE_NUMBER_INT);
-                        
+
                         // Validate that new grade is exactly one level higher
                         if ($newGradeNumber !== $currentGradeNumber + 1) {
                             DB::rollBack();
@@ -592,7 +596,7 @@ public function notEnrolled(Request $request)
                                 'grade_level_id' => "Student '{$studentName}' is currently in {$currentGradeLevel->name}. They can only advance to Grade " . ($currentGradeNumber + 1) . "."
                             ])->withInput();
                         }
-                        
+
                         // Check if student has already graduated (Grade 10)
                         if ($currentGradeNumber >= 10) {
                             DB::rollBack();
@@ -602,7 +606,7 @@ public function notEnrolled(Request $request)
                             ])->withInput();
                         }
                     }
-                    
+
                     // Update existing student record for new school year
                     $existingStudent->update([
                         'school_year' => $validated['school_year'],
@@ -613,11 +617,11 @@ public function notEnrolled(Request $request)
                         'has_report_card' => $validated['has_report_card'] ?? $existingStudent->has_report_card,
                         'has_good_moral' => $validated['has_good_moral'] ?? $existingStudent->has_good_moral,
                     ]);
-                    
+
                     DB::commit();
                     return redirect()->back()->with('success', 'Returning student registered successfully for the new school year');
                 }
-                
+
                 // If student exists but not returning status, reject duplicate
                 DB::rollBack();
                 $studentName = trim($existingStudent->first_name . ' ' . $existingStudent->last_name);
@@ -685,12 +689,12 @@ public function notEnrolled(Request $request)
     public function edit($id)
     {
         $student = Student::with(['gradeLevel', 'section', 'profile'])->findOrFail($id);
-        
+
         $age = null;
         if ($student->birth_date) {
             $age = \Carbon\Carbon::parse($student->birth_date)->age;
         }
-        
+
         $studentData = [
             'id' => $student->id,
             'studentName' => trim($student->first_name . ' ' . $student->last_name),
@@ -742,7 +746,7 @@ public function notEnrolled(Request $request)
                 'guardianExtensionName' => $student->profile->guardian_extension_name,
             ] : null,
         ];
-        
+
         return Inertia::render('admin/admission/view-edit-student/edit', [
             'student' => $studentData,
         ]);
@@ -759,7 +763,7 @@ public function notEnrolled(Request $request)
             'middleName' => 'nullable|string|max:255',
             'dateOfBirth' => 'required|date',
             'gender' => 'required|in:Male,Female',
-            
+
             // Profile data
             'extensionName' => 'nullable|string|max:50',
             'religion' => 'nullable|string|max:100',
@@ -985,18 +989,18 @@ public function notEnrolled(Request $request)
     public function export(Request $request)
     {
         $format = $request->input('format', 'csv'); // Default to CSV
-        
+
         try {
             // Check if ZipArchive is available for XLSX
             if ($format === 'xlsx' && !class_exists('ZipArchive')) {
                 return back()->withErrors(['export' => 'XLSX export is not available. Please use CSV format or enable the zip extension.']);
             }
-            
+
             $students = Student::with(['user', 'gradeLevel'])->get();
 
             $extension = $format === 'xlsx' ? 'xlsx' : 'csv';
             $writer = \Spatie\SimpleExcel\SimpleExcelWriter::streamDownload('students_' . date('Y-m-d_His') . '.' . $extension);
-            
+
             // Add header row
             $writer->addHeader([
                 'LRN',
@@ -1048,158 +1052,72 @@ public function notEnrolled(Request $request)
             'file' => 'required|file|max:2048',
         ]);
 
-        // Manually check file extension
         $file = $request->file('file');
         $extension = strtolower($file->getClientOriginalExtension());
-        
+        $originalName = $file->getClientOriginalName();
+
         if (!in_array($extension, ['csv', 'xlsx', 'xls'])) {
             return back()->withErrors(['file' => 'The file must be a CSV, XLSX, or XLS file.']);
         }
 
         try {
-            $imported = 0;
-            $errors = [];
-            $importedStudents = [];
+            // Generate a random unique filename to handle multi-user background updates cleanly
+            $fileName = 'import-' . Str::uuid() . '.' . $extension;
+
+            // Save to storage/app/imports/ using the full path
+            $storedPath = $file->storeAs('imports', $fileName, 'local');
             
-            // Create a temporary file with the correct extension
-            $tempPath = $file->getRealPath();
-            $newTempPath = $tempPath . '.' . $extension;
-            copy($tempPath, $newTempPath);
-
-            // Create reader based on file extension
-            if (strtolower($extension) === 'csv') {
-                $reader = \Spatie\SimpleExcel\SimpleExcelReader::create($newTempPath, 'csv');
-            } else {
-                $reader = \Spatie\SimpleExcel\SimpleExcelReader::create($newTempPath);
-            }
-            
-            Log::info('Starting import process', ['file' => $file->getClientOriginalName()]);
-            
-            $reader->getRows()->each(function (array $row) use (&$imported, &$errors, &$importedStudents) {
-                Log::info('Processing row', ['row' => $row]);
-                try {
-                    // Skip header row
-                    if (isset($row['LRN']) && $row['LRN'] === 'LRN') {
-                        return;
-                    }
-
-                    // Validate required fields
-                    if (empty($row['LRN']) || empty($row['First Name']) || empty($row['Last Name'])) {
-                        $errors[] = "Row skipped: Missing required fields (LRN: {$row['LRN']})";
-                        return;
-                    }
-
-                    // Auto-generate email from LRN
-                    $email = 'SNHS-' . $row['LRN'];
-
-                    // Check if LRN already exists
-                    $existingStudent = Student::where('lrn', $row['LRN'])->first();
-                    if ($existingStudent) {
-                        $existingName = trim($existingStudent->first_name . ' ' . $existingStudent->last_name);
-                        $errors[] = "Row skipped: Student '{$existingName}' with LRN {$row['LRN']} is already registered";
-                        return;
-                    }
-
-                    // Check if email already exists
-                    if (User::where('email', $email)->exists()) {
-                        $errors[] = "Row skipped: Email {$email} already exists";
-                        return;
-                    }
-
-                    // Find grade level
-                    $gradeLevel = \App\Models\GradeLevel::where('name', $row['Grade Level'])->first();
-                    if (!$gradeLevel) {
-                        $errors[] = "Row skipped: Grade level '{$row['Grade Level']}' not found (LRN: {$row['LRN']})";
-                        return;
-                    }
-
-                    // Create user
-                    $user = User::create([
-                        'name' => $row['First Name'] . ' ' . $row['Last Name'],
-                        'email' => $email,
-                        'password' => Hash::make($row['LRN']),
-                        'role' => 'student',
-                        'password_changed' => false, // Force password change on first login
-                    ]);
-
-                    // Create student
-                    $student = Student::create([
-                        'user_id' => $user->id,
-                        'lrn' => $row['LRN'],
-                        'first_name' => $row['First Name'],
-                        'middle_name' => $row['Middle Name'] ?? null,
-                        'last_name' => $row['Last Name'],
-                        'suffix' => $row['Suffix'] ?? null,
-                        'birth_date' => $row['Date of Birth'],
-                        'gender' => strtolower($row['Gender']),
-                        'student_status' => strtolower($row['Student Status']),
-                        'current_grade_level_id' => $gradeLevel->id,
-                        'school_year' => $row['School Year'] ?? '',
-                        'has_psa_birth_certificate' => isset($row['PSA Birth Certificate']) && strtolower($row['PSA Birth Certificate']) === 'yes',
-                        'has_sf9' => isset($row['SF9']) && strtolower($row['SF9']) === 'yes',
-                        'has_report_card' => isset($row['Report Card']) && strtolower($row['Report Card']) === 'yes',
-                        'has_good_moral' => isset($row['Good Moral']) && strtolower($row['Good Moral']) === 'yes',
-                    ]);
-
-                    // Create student profile using polymorphic relationship
-                    $student->profile()->create([
-                        'place_of_birth' => 'Bongabon, Nueva Ecija',
-                        'city_municipality' => 'Bongabon',
-                        'province_state' => 'Nueva Ecija',
-                        'country' => 'Philippines',
-                        'nationality' => 'Filipino',
-                    ]);
-
-                    // Calculate age
-                    $birthDate = \Carbon\Carbon::parse($row['Date of Birth']);
-                    $age = $birthDate->age;
-
-                    // Add to imported students list
-                    $importedStudents[] = [
-                        'name' => $row['Last Name'] . ', ' . $row['First Name'] . ($row['Middle Name'] ? ' ' . $row['Middle Name'] : ''),
-                        'lrn' => $row['LRN'],
-                        'age' => $age,
-                        'date_of_birth' => $birthDate->format('F d, Y'),
-                        'status' => ucfirst($row['Student Status']),
-                    ];
-
-                    $imported++;
-                } catch (\Exception $e) {
-                    $errors[] = "Row error: " . $e->getMessage();
+            // If storeAs returns false, try manual save
+            if (!$storedPath) {
+                $directory = storage_path('app/imports');
+                if (!file_exists($directory)) {
+                    mkdir($directory, 0755, true);
                 }
-            });
-
-            // Close the reader to release file handle
-            unset($reader);
-
-            // Clean up temporary file
-            if (file_exists($newTempPath)) {
-                @unlink($newTempPath);
+                $file->move($directory, $fileName);
+                $storedPath = 'imports/' . $fileName;
             }
 
-            Log::info('Import completed', [
-                'imported' => $imported,
-                'errors_count' => count($errors),
-                'errors' => $errors
+            // Create import job record
+            $importJob = \App\Models\ImportJob::create([
+                'user_id' => Auth::id(),
+                'filename' => $originalName,
+                'status' => 'pending',
             ]);
 
-            if ($imported > 0) {
-                return back()->with([
-                    'success' => "$imported student(s) imported successfully!",
-                    'imported_students' => $importedStudents,
-                    'import_errors' => $errors
-                ]);
-            } else {
-                // Return errors even when no students were imported
-                return back()->with([
-                    'import_errors' => $errors,
-                    'imported_students' => []
-                ]);
-            }
+            // Dispatch the job to your queue worker infrastructure
+            ImportStudentsJob::dispatch($storedPath, $extension, $originalName, $importJob->id);
+
+            return back()->with('success', 'The student file has been queued for background importing. You will find updates in the system logs or your dashboard shortly!')->with('import_job_id', $importJob->id);
+
         } catch (\Exception $e) {
-            Log::error('Import exception', ['message' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            return back()->withErrors(['import' => 'Import failed: ' . $e->getMessage()]);
+            Log::error('Import dispatch exception', ['message' => $e->getMessage()]);
+            return back()->withErrors(['import' => 'Failed to initialize background import: ' . $e->getMessage()]);
         }
+    }
+
+    public function checkImportStatus($importJobId)
+    {
+        $importJob = \App\Models\ImportJob::find($importJobId);
+
+        if (!$importJob) {
+            return response()->json(['error' => 'Import job not found'], 404);
+        }
+
+        // Only allow users to check their own import jobs
+        if ($importJob->user_id !== Auth::id()) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        return response()->json([
+            'status' => $importJob->status,
+            'imported_count' => $importJob->imported_count,
+            'error_count' => $importJob->error_count,
+            'total_rows' => $importJob->total_rows,
+            'imported_students' => $importJob->imported_students ?? [],
+            'duplicate_students' => $importJob->duplicate_students ?? [],
+            'errors' => $importJob->errors ?? [],
+            'completed_at' => $importJob->completed_at,
+        ]);
     }
 
     public function downloadTemplate()
@@ -1257,7 +1175,7 @@ public function notEnrolled(Request $request)
 
         $writer = \Spatie\SimpleExcel\SimpleExcelWriter::streamDownload('student_import_template.xlsx')
             ->noHeaderRow();
-        
+
         foreach ($rows as $row) {
             $writer->addRow($row);
         }
@@ -1268,11 +1186,11 @@ public function notEnrolled(Request $request)
     public function searchReturningStudents(Request $request)
     {
         $search = $request->input('search', '');
-        
+
         // Get students with 'returning' status who can be re-enrolled
         $students = Student::with(['gradeLevel'])
             ->where('student_status', 'returning')
-            ->where(function($query) use ($search) {
+            ->where(function ($query) use ($search) {
                 $query->where('lrn', 'like', "%{$search}%")
                     ->orWhere('first_name', 'like', "%{$search}%")
                     ->orWhere('last_name', 'like', "%{$search}%")
@@ -1280,7 +1198,7 @@ public function notEnrolled(Request $request)
             })
             ->limit(10)
             ->get()
-            ->map(function($student) {
+            ->map(function ($student) {
                 return [
                     'id' => $student->id,
                     'lrn' => $student->lrn,
@@ -1301,7 +1219,7 @@ public function notEnrolled(Request $request)
         // Get ALL students
         $allStudents = Student::with(['gradeLevel', 'section'])
             ->get()
-            ->map(function($student) {
+            ->map(function ($student) {
                 return [
                     'id' => $student->id,
                     'lrn' => $student->lrn,
@@ -1316,14 +1234,14 @@ public function notEnrolled(Request $request)
                     'has_good_moral' => $student->has_good_moral,
                 ];
             });
-        
+
         // Get current students by grade level
         $grade7Students = Student::with(['gradeLevel', 'section'])
-            ->whereHas('gradeLevel', function($query) {
+            ->whereHas('gradeLevel', function ($query) {
                 $query->where('name', 'Grade 7');
             })
             ->get()
-            ->map(function($student) {
+            ->map(function ($student) {
                 return [
                     'id' => $student->id,
                     'lrn' => $student->lrn,
@@ -1339,11 +1257,11 @@ public function notEnrolled(Request $request)
             });
 
         $grade8Students = Student::with(['gradeLevel', 'section'])
-            ->whereHas('gradeLevel', function($query) {
+            ->whereHas('gradeLevel', function ($query) {
                 $query->where('name', 'Grade 8');
             })
             ->get()
-            ->map(function($student) {
+            ->map(function ($student) {
                 return [
                     'id' => $student->id,
                     'lrn' => $student->lrn,
@@ -1359,11 +1277,11 @@ public function notEnrolled(Request $request)
             });
 
         $grade9Students = Student::with(['gradeLevel', 'section'])
-            ->whereHas('gradeLevel', function($query) {
+            ->whereHas('gradeLevel', function ($query) {
                 $query->where('name', 'Grade 9');
             })
             ->get()
-            ->map(function($student) {
+            ->map(function ($student) {
                 return [
                     'id' => $student->id,
                     'lrn' => $student->lrn,
@@ -1379,11 +1297,11 @@ public function notEnrolled(Request $request)
             });
 
         $grade10Students = Student::with(['gradeLevel', 'section'])
-            ->whereHas('gradeLevel', function($query) {
+            ->whereHas('gradeLevel', function ($query) {
                 $query->where('name', 'Grade 10');
             })
             ->get()
-            ->map(function($student) {
+            ->map(function ($student) {
                 return [
                     'id' => $student->id,
                     'lrn' => $student->lrn,
@@ -1402,7 +1320,7 @@ public function notEnrolled(Request $request)
         // Since archives store data as JSON, we need to extract it differently
         $pastStudents = Archive::where('archivable_type', 'App\\Models\\Student')
             ->get()
-            ->map(function($archive) {
+            ->map(function ($archive) {
                 $data = $archive->data;
                 return [
                     'school_year' => $data['school_year'] ?? 'Unknown',
@@ -1410,7 +1328,7 @@ public function notEnrolled(Request $request)
                 ];
             })
             ->groupBy('school_year')
-            ->map(function($group, $schoolYear) {
+            ->map(function ($group, $schoolYear) {
                 return [
                     'school_year' => $schoolYear,
                     'count' => $group->count(),
@@ -1440,7 +1358,7 @@ public function notEnrolled(Request $request)
             'section.adviserSections.teacher',
             'gradeLevel'
         ])
-        ->whereNotNull('current_section_id');
+            ->whereNotNull('current_section_id');
 
         // Apply filters
         if ($request->filled('grade_level')) {
@@ -1456,17 +1374,17 @@ public function notEnrolled(Request $request)
             $query->where(function ($q) use ($searchTerm) {
                 // Search in student name
                 $q->where(DB::raw("CONCAT(first_name, ' ', COALESCE(middle_name, ''), ' ', last_name)"), 'like', '%' . $searchTerm . '%')
-                  // Search in adviser name
-                  ->orWhereHas('section.adviserSections.teacher', function ($q) use ($searchTerm) {
-                      $q->where('name', 'like', '%' . $searchTerm . '%');
-                  });
+                    // Search in adviser name
+                    ->orWhereHas('section.adviserSections.teacher', function ($q) use ($searchTerm) {
+                        $q->where('name', 'like', '%' . $searchTerm . '%');
+                    });
             });
         }
 
         $students = $query->get()->map(function ($student) {
             $section = $student->section;
-            $adviser = $section && $section->adviserSections->isNotEmpty() 
-                ? $section->adviserSections->first()->teacher->name 
+            $adviser = $section && $section->adviserSections->isNotEmpty()
+                ? $section->adviserSections->first()->teacher->name
                 : 'Not Assigned';
 
             return [
@@ -1481,8 +1399,16 @@ public function notEnrolled(Request $request)
             ];
         });
 
-        // Get all grade levels for filter
-        $gradeLevels = \App\Models\GradeLevel::orderBy('name')->get();
+        // Get all grade levels for filter - ordered properly (7, 8, 9, 10, Rizal)
+        $gradeLevels = \App\Models\GradeLevel::orderByRaw("
+            CASE 
+                WHEN name = 'Grade 7' THEN 1
+                WHEN name = 'Grade 8' THEN 2
+                WHEN name = 'Grade 9' THEN 3
+                WHEN name = 'Grade 10' THEN 4
+                ELSE 5
+            END
+        ")->get();
 
         // Get all sections for filter
         $sections = \App\Models\ClassSection::with('gradeLevel')
@@ -1566,7 +1492,7 @@ public function notEnrolled(Request $request)
         }
 
         $profilePicture = $student->profilePicture;
-        
+
         if ($profilePicture) {
             Storage::disk('public')->delete($profilePicture->file_path);
             $profilePicture->delete();
@@ -1575,4 +1501,20 @@ public function notEnrolled(Request $request)
         return back()->with('success', 'Profile picture deleted successfully.');
     }
 
+    public function updateGraduationReadiness(Request $request, Student $student)
+    {
+        $validated = $request->validate([
+            'ready_to_graduate' => 'required|boolean',
+        ]);
+
+        try {
+            $student->update([
+                'ready_to_graduate' => $validated['ready_to_graduate'],
+            ]);
+
+            return back()->with('success', 'Graduation readiness updated successfully');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Failed to update graduation readiness: ' . $e->getMessage()]);
+        }
+    }
 }

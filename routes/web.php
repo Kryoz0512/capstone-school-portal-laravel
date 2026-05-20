@@ -65,20 +65,10 @@ Route::get('/login/teacher', function () {
     ]);
 })->name('login.teacher');
 
-Route::get('/login/staff', function () {
-    $slides = \App\Models\LoginSlide::where('is_active', true)
-        ->orderBy('order')
-        ->get()
-        ->map(function ($slide) {
-            return \Illuminate\Support\Facades\Storage::url($slide->image_path);
-        })
-        ->toArray();
-    
-    return \Inertia\Inertia::render('auth/login', [
-        'slides' => $slides,
-        'role' => 'staff'
-    ]);
-})->name('login.staff');
+// Admin login with hashed URL for security
+Route::get('/admin-access-' . md5('snhs-admin-portal-2026'), function () {
+    return \Inertia\Inertia::render('auth/admin-login');
+})->name('login.admin');
 
 // Password change route (must be before CheckPasswordChanged middleware)
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -118,6 +108,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('teacher/class-list', [TeacherController::class, 'classList'])->name('teacher.class-list');
     
     Route::get('teacher/final-report', [TeacherController::class, 'finalReport'])->name('teacher.final-report');
+    Route::put('teacher/students/{student}/graduation-readiness', [TeacherController::class, 'updateGraduationReadiness'])->name('teacher.students.graduation-readiness');
     
     Route::get('teacher/transcript-of-records', function () {
         return \Inertia\Inertia::render('teacher/transcript-of-records/page');
@@ -197,6 +188,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('admin/admission/registration', [App\Http\Controllers\StudentController::class, 'store'])->name('admin.admission.registration.store');
     Route::get('admin/admission/registration/export', [App\Http\Controllers\StudentController::class, 'export'])->name('admin.admission.registration.export');
     Route::post('admin/admission/registration/import', [App\Http\Controllers\StudentController::class, 'import'])->name('admin.admission.registration.import');
+    Route::get('admin/admission/registration/import-status/{importJobId}', [App\Http\Controllers\StudentController::class, 'checkImportStatus'])->name('admin.admission.registration.import-status');
     Route::get('admin/admission/registration/template', [App\Http\Controllers\StudentController::class, 'downloadTemplate'])->name('admin.admission.registration.template');
     Route::get('admin/admission/registration/search-returning', [App\Http\Controllers\StudentController::class, 'searchReturningStudents'])->name('admin.admission.registration.search-returning');
     
@@ -217,6 +209,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     Route::get('admin/admission/view-edit-student/{id}/edit', [StudentController::class, 'edit'])->name('admin.admission.view-edit-student.edit');
     Route::put('admin/admission/view-edit-student/{id}', [StudentController::class, 'updateProfile'])->name('admin.admission.view-edit-student.update');
+    Route::put('admin/students/{student}/graduation-readiness', [StudentController::class, 'updateGraduationReadiness'])->name('admin.students.graduation-readiness');
     
     // Admin Registrar routes
     Route::get('admin/registrar/subject-listings', [SubjectController::class, 'index'])->name('admin.registrar.subject-listings');
@@ -226,6 +219,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Admin Records routes
     Route::get('admin/records/final-reports', [GradeController::class, 'adminFinalReports'])->name('admin.records.final-reports');
+    Route::get('admin/records/student-academic-record/{student}', [GradeController::class, 'getStudentAcademicRecord'])->name('admin.records.student-academic-record');
+    Route::post('admin/records/student-academic-record/{student}/promote', [GradeController::class, 'promoteStudent'])->name('admin.records.student-academic-record.promote');
     
     Route::get('admin/records/transcript-of-records', function () {
         $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();

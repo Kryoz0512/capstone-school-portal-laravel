@@ -667,6 +667,9 @@ class DatabaseSeeder extends Seeder
                 ]);
             }
         }
+
+        // Seed student grades for Grade 7-10
+        $this->call(StudentGradesSeeder::class);
     }
 }
 

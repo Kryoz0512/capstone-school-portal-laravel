@@ -28,6 +28,7 @@ class Student extends Model
         'has_sf9',
         'has_report_card',
         'has_good_moral',
+        'ready_to_graduate',
     ];
 
     protected function casts(): array
@@ -38,6 +39,7 @@ class Student extends Model
             'has_sf9' => 'boolean',
             'has_report_card' => 'boolean',
             'has_good_moral' => 'boolean',
+            'ready_to_graduate' => 'boolean',
         ];
     }
 

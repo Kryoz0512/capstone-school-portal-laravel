@@ -4,6 +4,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button'
 import { Printer } from 'lucide-react'
 import { useState, useEffect } from 'react'
+import { DataTablePagination, teacherTableHeaderCellClass, teacherTableHeaderClass } from '@/components/data-table-pagination'
+import { useClientPagination } from '@/hooks/use-client-pagination'
 
 type Student = {
     id: number
@@ -53,6 +55,17 @@ export default function ClassList({ subjects, sections, schoolYears, students, f
     const [subject, setSubject] = useState(filters.subject_id?.toString() || '')
     const [section, setSection] = useState(filters.section_id?.toString() || '')
     const [schoolYear, setSchoolYear] = useState(filters.school_year || '')
+
+    const {
+        currentPage,
+        setCurrentPage,
+        entriesPerPage,
+        setEntriesPerPage,
+        totalPages,
+        totalItems,
+        startIndex,
+        isVisibleOnScreen,
+    } = useClientPagination(students)
 
     // Get selected section details
     const selectedSection = sections.find(s => s.id.toString() === section)
@@ -217,11 +230,8 @@ export default function ClassList({ subjects, sections, schoolYears, students, f
 
                     {/* Table */}
                     {section ? (
-                        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                            <div className="p-4 border-b border-gray-200 flex items-center justify-between no-print">
-                                <p className="text-sm text-gray-600">
-                                    Showing {students.length} student{students.length !== 1 ? 's' : ''}
-                                </p>
+                        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+                            <div className="p-4 border-b border-gray-200 flex items-center justify-end no-print">
                                 <Button variant="outline" size="sm" onClick={handlePrint}>
                                     <Printer className="w-4 h-4 mr-2" />
                                     Print
@@ -230,19 +240,22 @@ export default function ClassList({ subjects, sections, schoolYears, students, f
 
                             <div className="overflow-x-auto">
                                 <table className="w-full">
-                                    <thead className="bg-gray-100">
+                                    <thead className={teacherTableHeaderClass}>
                                         <tr>
-                                            <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">No.</th>
-                                            <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Student LRN</th>
-                                            <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Student Name</th>
-                                            <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Grade Level</th>
-                                            <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Section</th>
+                                            <th className={teacherTableHeaderCellClass}>No.</th>
+                                            <th className={teacherTableHeaderCellClass}>Student LRN</th>
+                                            <th className={teacherTableHeaderCellClass}>Student Name</th>
+                                            <th className={teacherTableHeaderCellClass}>Grade Level</th>
+                                            <th className={teacherTableHeaderCellClass}>Section</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-200">
                                         {students.length > 0 ? (
                                             students.map((student, index) => (
-                                                <tr key={student.id} className="hover:bg-gray-50">
+                                                <tr
+                                                    key={student.id}
+                                                    className={`hover:bg-gray-50 ${!isVisibleOnScreen(index) ? 'hidden print:table-row' : ''}`}
+                                                >
                                                     <td className="px-6 py-4 text-sm text-gray-900">{index + 1}</td>
                                                     <td className="px-6 py-4 text-sm text-gray-900">{student.lrn}</td>
                                                     <td className="px-6 py-4 text-sm text-gray-900">{student.studentName}</td>
@@ -260,6 +273,16 @@ export default function ClassList({ subjects, sections, schoolYears, students, f
                                     </tbody>
                                 </table>
                             </div>
+
+                            <DataTablePagination
+                                totalItems={totalItems}
+                                currentPage={currentPage}
+                                entriesPerPage={entriesPerPage}
+                                totalPages={totalPages}
+                                onPageChange={setCurrentPage}
+                                onEntriesPerPageChange={setEntriesPerPage}
+                                variant="teacher"
+                            />
 
                             {/* Print Footer */}
                             <div className="hidden print:block mt-12 pt-8 border-t border-gray-300">

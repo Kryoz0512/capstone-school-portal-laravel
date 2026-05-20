@@ -3,7 +3,7 @@ import AdminLayout from '@/layouts/admin-layout'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { Eye, Download, Search } from 'lucide-react'
+import { Eye, Download, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useState, useMemo, useEffect } from 'react'
 
 type Student = {
@@ -12,8 +12,6 @@ type Student = {
     studentName: string
     gradeLevel: string
     section: string
-    finalAverage: number | null
-    remarks: 'Passed' | 'Failed' | null
 }
 
 type GradeLevel = {
@@ -62,6 +60,13 @@ export default function FinalReports({ schoolYears, gradeLevels, sections, stude
     const [gradeLevel, setGradeLevel] = useState(filters.grade_level_id?.toString() || '')
     const [section, setSection] = useState(filters.section_id?.toString() || '')
     const [searchQuery, setSearchQuery] = useState('')
+    const [currentPage, setCurrentPage] = useState(1)
+    const [entriesPerPage, setEntriesPerPage] = useState(10)
+
+    // View student's complete academic record
+    const viewStudentRecord = (studentId: number) => {
+        router.visit(`/admin/records/student-academic-record/${studentId}`)
+    }
 
     // Update filters when selections change
     useEffect(() => {
@@ -97,12 +102,20 @@ export default function FinalReports({ schoolYears, gradeLevels, sections, stude
         )
     }, [students, searchQuery])
 
+    // Pagination calculations
+    const totalPages = Math.ceil(filteredStudents.length / entriesPerPage)
+    const startIndex = (currentPage - 1) * entriesPerPage
+    const endIndex = startIndex + entriesPerPage
+    const paginatedStudents = filteredStudents.slice(startIndex, endIndex)
+
+    // Reset to page 1 when filters or search changes
+    useEffect(() => {
+        setCurrentPage(1)
+    }, [searchQuery, section, gradeLevel, schoolYear, entriesPerPage])
+
     // Get selected details
     const selectedSection = sections.find(s => s.id.toString() === section)
     const selectedGradeLevel = gradeLevels.find(g => g.id.toString() === gradeLevel)
-
-    const passedCount = filteredStudents.filter(s => s.remarks === 'Passed').length
-    const failedCount = filteredStudents.filter(s => s.remarks === 'Failed').length
 
     return (
         <AdminLayout user={auth?.user} admin={auth?.admin}>
@@ -117,19 +130,9 @@ export default function FinalReports({ schoolYears, gradeLevels, sections, stude
                 </div>
 
                 {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <p className="text-sm text-blue-600 font-medium">Total Students</p>
-                        <p className="text-3xl font-bold text-blue-900 mt-2">{filteredStudents.length}</p>
-                    </div>
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                        <p className="text-sm text-green-600 font-medium">Passed</p>
-                        <p className="text-3xl font-bold text-green-900 mt-2">{passedCount}</p>
-                    </div>
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                        <p className="text-sm text-red-600 font-medium">Failed</p>
-                        <p className="text-3xl font-bold text-red-900 mt-2">{failedCount}</p>
-                    </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-xs">
+                    <p className="text-sm text-blue-600 font-medium">Total Students</p>
+                    <p className="text-3xl font-bold text-blue-900 mt-2">{filteredStudents.length}</p>
                 </div>
 
                 {/* Filters */}
@@ -227,60 +230,34 @@ export default function FinalReports({ schoolYears, gradeLevels, sections, stude
                 {/* Table */}
                 {section ? (
                     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
-                        <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
-                            <div>
-                                <h2 className="text-sm font-semibold text-gray-900">Student Final Reports</h2>
-                                <p className="text-sm text-gray-500 mt-1">
-                                    {selectedGradeLevel?.name} - {selectedSection?.name} | School Year: {schoolYear}
-                                </p>
-                            </div>
-                            <p className="text-sm text-gray-600">
-                                Showing {filteredStudents.length} student{filteredStudents.length !== 1 ? 's' : ''}
-                            </p>
-                        </div>
-
                         <div className="overflow-x-auto">
                             <table className="w-full">
                                 <thead className="bg-green-700">
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-sm font-medium text-white">No.</th>
-                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">LRN</th>
-                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Student Name</th>
-                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Grade Level</th>
-                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Section</th>
-                                        <th className="px-6 py-3 text-center text-sm font-medium text-gray-700">Final Average</th>
-                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Remarks</th>
-                                        <th className="px-6 py-3 text-center text-sm font-medium text-gray-700">Actions</th>
+                                        <th className="px-6 py-4 text-left text-base font-semibold text-white">No.</th>
+                                        <th className="px-6 py-4 text-left text-base font-semibold text-white">LRN</th>
+                                        <th className="px-6 py-4 text-left text-base font-semibold text-white">Student Name</th>
+                                        <th className="px-6 py-4 text-left text-base font-semibold text-white">Grade Level</th>
+                                        <th className="px-6 py-4 text-left text-base font-semibold text-white">Section</th>
+                                        <th className="px-6 py-4 text-center text-base font-semibold text-white">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
-                                    {filteredStudents.length > 0 ? (
-                                        filteredStudents.map((student, index) => (
+                                    {paginatedStudents.length > 0 ? (
+                                        paginatedStudents.map((student, index) => (
                                             <tr key={student.id} className="hover:bg-gray-50">
-                                                <td className="px-6 py-4 text-sm text-gray-900">{index + 1}</td>
+                                                <td className="px-6 py-4 text-sm text-gray-900">{startIndex + index + 1}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-900 font-medium">{student.lrn}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-900">{student.studentName}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-900">{student.gradeLevel}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-900">{student.section}</td>
-                                                <td className="px-6 py-4 text-sm font-semibold text-gray-900 text-center">
-                                                    {student.finalAverage !== null ? student.finalAverage : '-'}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    {student.remarks ? (
-                                                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                                                            student.remarks === 'Passed' 
-                                                                ? 'bg-green-100 text-green-800' 
-                                                                : 'bg-red-100 text-red-800'
-                                                        }`}>
-                                                            {student.remarks}
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-gray-400">-</span>
-                                                    )}
-                                                </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center justify-center gap-2">
-                                                        <button className="text-gray-600 hover:text-blue-600" title="View Details">
+                                                        <button 
+                                                            onClick={() => viewStudentRecord(student.id)}
+                                                            className="text-gray-600 hover:text-blue-600" 
+                                                            title="View Complete Academic Record"
+                                                        >
                                                             <Eye className="w-4 h-4" />
                                                         </button>
                                                         <button className="text-gray-600 hover:text-green-600" title="Download Report">
@@ -292,7 +269,7 @@ export default function FinalReports({ schoolYears, gradeLevels, sections, stude
                                         ))
                                     ) : (
                                         <tr>
-                                            <td colSpan={8} className="px-6 py-8 text-center text-sm text-gray-500">
+                                            <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-500">
                                                 {searchQuery 
                                                     ? 'No students found matching your search.'
                                                     : 'No students found or no final grades available for this section.'
@@ -303,6 +280,81 @@ export default function FinalReports({ schoolYears, gradeLevels, sections, stude
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* Pagination Controls */}
+                        {filteredStudents.length > 0 && (
+                            <div className="p-4 border-t border-gray-200 flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm text-gray-600">Show</span>
+                                        <Select value={entriesPerPage.toString()} onValueChange={(value) => setEntriesPerPage(Number(value))}>
+                                            <SelectTrigger className="w-20">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="10">10</SelectItem>
+                                                <SelectItem value="25">25</SelectItem>
+                                                <SelectItem value="50">50</SelectItem>
+                                                <SelectItem value="100">100</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <span className="text-sm text-gray-600">entries</span>
+                                    </div>
+                                    <p className="text-sm text-gray-600">
+                                        Showing {((currentPage - 1) * entriesPerPage) + 1} to {Math.min(currentPage * entriesPerPage, filteredStudents.length)} of {filteredStudents.length} entries
+                                    </p>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                        disabled={currentPage === 1}
+                                    >
+                                        <ChevronLeft className="w-4 h-4" />
+                                    </Button>
+                                    
+                                    <div className="flex items-center gap-1">
+                                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                                            // Show first page, last page, current page, and pages around current
+                                            if (
+                                                page === 1 ||
+                                                page === totalPages ||
+                                                (page >= currentPage - 1 && page <= currentPage + 1)
+                                            ) {
+                                                return (
+                                                    <Button
+                                                        key={page}
+                                                        variant={currentPage === page ? "default" : "outline"}
+                                                        size="sm"
+                                                        onClick={() => setCurrentPage(page)}
+                                                        className={currentPage === page ? "bg-green-600 hover:bg-green-700" : ""}
+                                                    >
+                                                        {page}
+                                                    </Button>
+                                                )
+                                            } else if (
+                                                page === currentPage - 2 ||
+                                                page === currentPage + 2
+                                            ) {
+                                                return <span key={page} className="px-2">...</span>
+                                            }
+                                            return null
+                                        })}
+                                    </div>
+
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                        disabled={currentPage === totalPages}
+                                    >
+                                        <ChevronRight className="w-4 h-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">

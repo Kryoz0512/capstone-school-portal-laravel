@@ -142,12 +142,12 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                                     Registration
                                 </span>
                             </Link>
-                            <Link href="/admin/admission/accreditation" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
+                            {/* <Link href="/admin/admission/accreditation" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
                                 <span className="flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
                                     Accreditation
                                 </span>
-                            </Link>
+                            </Link> */}
                             <Link href="/admin/admission/upload-delete-picture" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
                                 <span className="flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>

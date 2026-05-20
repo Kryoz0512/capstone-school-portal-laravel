@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react'
-import { GraduationCap, Users, BookOpen, Award, Target, Eye, Heart, Sparkles, Trophy, ChevronDown, ArrowRight, Shield, BarChart3, Calendar } from 'lucide-react'
+import { GraduationCap, BookOpen, Target, Eye, Heart, ChevronDown, ArrowRight, Shield, BarChart3, Calendar } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
 type Props = {
@@ -73,7 +73,7 @@ export default function Portal({ slides = [] }: Props) {
         },
         {
             icon: <BarChart3 className="w-6 h-6" />,
-            title: 'Performance Analytics',
+            title: 'Enhance Performance',
             desc: 'Rich dashboards and reports on student performance, attendance trends, and academic achievements.',
             color: 'from-amber-500 to-amber-600',
             bg: 'bg-amber-50',
@@ -87,14 +87,14 @@ export default function Portal({ slides = [] }: Props) {
             bg: 'bg-rose-50',
             border: 'border-rose-100',
         },
-        {
-            icon: <Trophy className="w-6 h-6" />,
-            title: 'Accreditation Support',
-            desc: 'Built-in tools and compliance features designed to support school accreditation requirements seamlessly.',
-            color: 'from-teal-500 to-teal-600',
-            bg: 'bg-teal-50',
-            border: 'border-teal-100',
-        },
+        // {
+        //     icon: <Trophy className="w-6 h-6" />,
+        //     title: 'Accreditation Support',
+        //     desc: 'Built-in tools and compliance features designed to support school accreditation requirements seamlessly.',
+        //     color: 'from-teal-500 to-teal-600',
+        //     bg: 'bg-teal-50',
+        //     border: 'border-teal-100',
+        // },
     ]
 
     return (
@@ -200,11 +200,10 @@ export default function Portal({ slides = [] }: Props) {
             `}</style>
 
             {/* ── NAVBAR ── */}
-            <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-400 ${
-                scrolled
+            <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-400 ${scrolled
                     ? 'bg-green-800/80 backdrop-blur-xl shadow-lg shadow-green-950/20'
                     : 'bg-transparent'
-            }`}>
+                }`}>
                 <div className="max-w-7xl mx-auto px-6 lg:px-8">
                     <div className="flex items-center justify-between h-20">
                         <div className="flex items-center gap-3">
@@ -216,11 +215,10 @@ export default function Portal({ slides = [] }: Props) {
                                 <button
                                     key={id}
                                     onClick={() => scrollToSection(id)}
-                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                                        activeSection === id
+                                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${activeSection === id
                                             ? 'text-white bg-white/10'
                                             : 'text-white/70 hover:text-white hover:bg-white/10'
-                                    }`}
+                                        }`}
                                 >
                                     {label}
                                 </button>
@@ -236,7 +234,7 @@ export default function Portal({ slides = [] }: Props) {
                                 Access Portal
                                 <ChevronDown className={`w-4 h-4 transition-transform ${showPortalDropdown ? 'rotate-180' : ''}`} />
                             </button>
-                            
+
                             {showPortalDropdown && (
                                 <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden z-50">
                                     <div className="p-2">
@@ -253,7 +251,7 @@ export default function Portal({ slides = [] }: Props) {
                                             </div>
                                             <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-violet-600 group-hover:translate-x-1 transition-all" />
                                         </Link>
-                                        
+
                                         <Link
                                             href="/login/teacher"
                                             className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-sky-50 transition-colors group"
@@ -266,20 +264,6 @@ export default function Portal({ slides = [] }: Props) {
                                                 <div className="text-xs text-gray-500">Manage classes & grades</div>
                                             </div>
                                             <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-sky-600 group-hover:translate-x-1 transition-all" />
-                                        </Link>
-                                        
-                                        <Link
-                                            href="/login/staff"
-                                            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-emerald-50 transition-colors group"
-                                        >
-                                            <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center text-white">
-                                                <Users className="w-5 h-5" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="font-semibold text-gray-900 text-sm">Staff Portal</div>
-                                                <div className="text-xs text-gray-500">Administrative access</div>
-                                            </div>
-                                            <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-emerald-600 group-hover:translate-x-1 transition-all" />
                                         </Link>
                                     </div>
                                 </div>
@@ -321,9 +305,9 @@ export default function Portal({ slides = [] }: Props) {
 
                     {/* Floating orbs */}
                     <div className="animate-float absolute top-1/4 right-1/5 w-64 h-64 rounded-full opacity-20 blur-2xl"
-                         style={{ background: 'radial-gradient(circle, #34d399, transparent)', animationDelay: '0s' }} />
+                        style={{ background: 'radial-gradient(circle, #34d399, transparent)', animationDelay: '0s' }} />
                     <div className="animate-float absolute bottom-1/3 left-1/6 w-48 h-48 rounded-full opacity-15 blur-2xl"
-                         style={{ background: 'radial-gradient(circle, #6ee7b7, transparent)', animationDelay: '2s' }} />
+                        style={{ background: 'radial-gradient(circle, #6ee7b7, transparent)', animationDelay: '2s' }} />
 
                     {/* Hero Content */}
                     <div className="relative z-10 flex flex-col items-center justify-center flex-1 px-6 py-32 text-center">
@@ -372,9 +356,8 @@ export default function Portal({ slides = [] }: Props) {
                                 <button
                                     key={i}
                                     onClick={() => setCurrentSlide(i)}
-                                    className={`transition-all duration-300 rounded-full ${
-                                        i === currentSlide ? 'w-8 h-2 bg-white' : 'w-2 h-2 bg-white/30 hover:bg-white/50'
-                                    }`}
+                                    className={`transition-all duration-300 rounded-full ${i === currentSlide ? 'w-8 h-2 bg-white' : 'w-2 h-2 bg-white/30 hover:bg-white/50'
+                                        }`}
                                 />
                             ))}
                         </div>
@@ -383,7 +366,7 @@ export default function Portal({ slides = [] }: Props) {
                     {/* Bottom wave */}
                     <div className="absolute bottom-0 left-0 right-0">
                         <svg viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full">
-                            <path d="M0 80L60 69.3C120 58.7 240 37.3 360 32C480 26.7 600 37.3 720 42.7C840 48 960 48 1080 42.7C1200 37.3 1320 26.7 1380 21.3L1440 16V80H1380C1320 80 1200 80 1080 80C960 80 840 80 720 80C600 80 480 80 360 80C240 80 120 80 60 80H0Z" fill="#fafaf9"/>
+                            <path d="M0 80L60 69.3C120 58.7 240 37.3 360 32C480 26.7 600 37.3 720 42.7C840 48 960 48 1080 42.7C1200 37.3 1320 26.7 1380 21.3L1440 16V80H1380C1320 80 1200 80 1080 80C960 80 840 80 720 80C600 80 480 80 360 80C240 80 120 80 60 80H0Z" fill="#fafaf9" />
                         </svg>
                     </div>
                 </section>
@@ -397,8 +380,12 @@ export default function Portal({ slides = [] }: Props) {
                                 Built for schools that believe in better
                             </h2>
                             <p className="text-gray-500 text-lg leading-relaxed">
-                                SNHS DigiStar is the all-in-one school management system designed to eliminate paperwork,
-                                connect educators with students, and give administrators complete visibility over school operations.
+                                DIGISTAR is an integrated digital platform developed
+                                specifically for the purpose of upgrading and modernizing
+                                the educational and administrative experience at Santor National High School (SNHS)
+                                to an efficient and reliable digital format. As the official student portal, 
+                                DIGISTAR provides a replacement for traditional paper processes utilizing a secure 
+                                centralized environment that supports a more efficient, reliable and sustainable campus.
                             </p>
                         </div>
 

@@ -2,8 +2,11 @@ import { Head, router } from '@inertiajs/react'
 import TeacherLayout from '@/layouts/teacher-layout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Printer } from 'lucide-react'
 import { useState, useEffect } from 'react'
+import { DataTablePagination, teacherTableHeaderCellClass, teacherTableHeaderCellCenterClass, teacherTableHeaderClass } from '@/components/data-table-pagination'
+import { useClientPagination } from '@/hooks/use-client-pagination'
 
 type Student = {
     id: number
@@ -17,6 +20,7 @@ type Student = {
     quarter4: number | null
     finalAverage: number | null
     remarks: 'Passed' | 'Failed' | null
+    readyToGraduate: boolean
 }
 
 type GradeLevel = {
@@ -68,6 +72,16 @@ export default function FinalReport({ gradeLevels, sections, subjects, schoolYea
     const [section, setSection] = useState(filters.section_id?.toString() || '')
     const [subject, setSubject] = useState(filters.subject_id?.toString() || '')
     const [schoolYear, setSchoolYear] = useState(filters.school_year || '')
+
+    const {
+        currentPage,
+        setCurrentPage,
+        entriesPerPage,
+        setEntriesPerPage,
+        totalPages,
+        totalItems,
+        isVisibleOnScreen,
+    } = useClientPagination(students)
 
     // Get selected details for print
     const selectedSection = sections.find(s => s.id.toString() === section)
@@ -255,11 +269,8 @@ export default function FinalReport({ gradeLevels, sections, subjects, schoolYea
 
                     {/* Table */}
                     {section && subject ? (
-                        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                            <div className="p-4 border-b border-gray-200 flex items-center justify-between no-print">
-                                <p className="text-sm text-gray-600">
-                                    Showing {students.length} student{students.length !== 1 ? 's' : ''}
-                                </p>
+                        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+                            <div className="p-4 border-b border-gray-200 flex items-center justify-end no-print">
                                 <Button variant="outline" size="sm" onClick={handlePrint}>
                                     <Printer className="w-4 h-4 mr-2" />
                                     Print
@@ -268,25 +279,28 @@ export default function FinalReport({ gradeLevels, sections, subjects, schoolYea
 
                             <div className="overflow-x-auto">
                                 <table className="w-full">
-                                    <thead className="bg-gray-100">
+                                    <thead className={teacherTableHeaderClass}>
                                         <tr>
-                                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">No.</th>
-                                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Student LRN</th>
-                                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Student Name</th>
-                                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Grade Level</th>
-                                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Section</th>
-                                            <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Q1</th>
-                                            <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Q2</th>
-                                            <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Q3</th>
-                                            <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Q4</th>
-                                            <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">Final</th>
-                                            <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Remarks</th>
+                                            <th className={teacherTableHeaderCellClass}>No.</th>
+                                            <th className={teacherTableHeaderCellClass}>Student LRN</th>
+                                            <th className={teacherTableHeaderCellClass}>Student Name</th>
+                                            <th className={teacherTableHeaderCellClass}>Grade Level</th>
+                                            <th className={teacherTableHeaderCellClass}>Section</th>
+                                            <th className={teacherTableHeaderCellCenterClass}>Q1</th>
+                                            <th className={teacherTableHeaderCellCenterClass}>Q2</th>
+                                            <th className={teacherTableHeaderCellCenterClass}>Q3</th>
+                                            <th className={teacherTableHeaderCellCenterClass}>Q4</th>
+                                            <th className={teacherTableHeaderCellCenterClass}>Final</th>
+                                            <th className={teacherTableHeaderCellClass}>Remarks</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-200">
                                         {students.length > 0 ? (
                                             students.map((student, index) => (
-                                                <tr key={student.id} className="hover:bg-gray-50">
+                                                <tr
+                                                    key={student.id}
+                                                    className={`hover:bg-gray-50 ${!isVisibleOnScreen(index) ? 'hidden print:table-row' : ''}`}
+                                                >
                                                     <td className="px-4 py-4 text-sm text-gray-900">{index + 1}</td>
                                                     <td className="px-4 py-4 text-sm text-gray-900">{student.lrn}</td>
                                                     <td className="px-4 py-4 text-sm text-gray-900">{student.studentName}</td>
@@ -332,6 +346,16 @@ export default function FinalReport({ gradeLevels, sections, subjects, schoolYea
                                     </tbody>
                                 </table>
                             </div>
+
+                            <DataTablePagination
+                                totalItems={totalItems}
+                                currentPage={currentPage}
+                                entriesPerPage={entriesPerPage}
+                                totalPages={totalPages}
+                                onPageChange={setCurrentPage}
+                                onEntriesPerPageChange={setEntriesPerPage}
+                                variant="teacher"
+                            />
 
                             {/* Print Footer */}
                             <div className="hidden print:block mt-12 pt-8 border-t border-gray-300">

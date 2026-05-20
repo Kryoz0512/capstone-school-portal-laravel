@@ -4,6 +4,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Pencil } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import EditGradeModal from '@/components/modals/edit-grade-modal'
+import { DataTablePagination, teacherTableHeaderCellClass, teacherTableHeaderClass } from '@/components/data-table-pagination'
+import { useClientPagination } from '@/hooks/use-client-pagination'
 
 type Student = {
     id: number
@@ -66,6 +68,16 @@ export default function GradeSheets({ gradeLevels, sections, subjects, students,
     const [schoolYear, setSchoolYear] = useState(filters.school_year || '')
     const [editModalOpen, setEditModalOpen] = useState(false)
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
+
+    const {
+        currentPage,
+        setCurrentPage,
+        entriesPerPage,
+        setEntriesPerPage,
+        totalPages,
+        paginatedItems: paginatedStudents,
+        totalItems,
+    } = useClientPagination(students)
 
     const handleEditClick = (student: Student) => {
         setSelectedStudent(student)
@@ -209,27 +221,21 @@ export default function GradeSheets({ gradeLevels, sections, subjects, students,
 
                 {/* Table */}
                 {section && subject ? (
-                    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                        <div className="p-4 border-b border-gray-200">
-                            <p className="text-sm text-gray-600">
-                                Showing {students.length} student{students.length !== 1 ? 's' : ''}
-                            </p>
-                        </div>
-
+                    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
                         <div className="overflow-x-auto">
                             <table className="w-full">
-                                <thead className="bg-gray-100">
+                                <thead className={teacherTableHeaderClass}>
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Student LRN</th>
-                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Student Name</th>
-                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Grade</th>
-                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Remarks</th>
-                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Actions</th>
+                                        <th className={teacherTableHeaderCellClass}>Student LRN</th>
+                                        <th className={teacherTableHeaderCellClass}>Student Name</th>
+                                        <th className={teacherTableHeaderCellClass}>Grade</th>
+                                        <th className={teacherTableHeaderCellClass}>Remarks</th>
+                                        <th className={`${teacherTableHeaderCellClass} text-center`}>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
-                                    {students.length > 0 ? (
-                                        students.map((student) => (
+                                    {paginatedStudents.length > 0 ? (
+                                        paginatedStudents.map((student) => (
                                             <tr key={student.id} className="hover:bg-gray-50">
                                                 <td className="px-6 py-4 text-sm text-gray-900">{student.lrn}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-900">{student.studentName}</td>
@@ -254,7 +260,7 @@ export default function GradeSheets({ gradeLevels, sections, subjects, students,
                                                 <td className="px-6 py-4">
                                                     <button 
                                                         onClick={() => handleEditClick(student)}
-                                                        className="text-gray-600 hover:text-green-600"
+                                                        className="text-gray-600 hover:text-blue-600"
                                                     >
                                                         <Pencil className="w-4 h-4" />
                                                     </button>
@@ -271,6 +277,16 @@ export default function GradeSheets({ gradeLevels, sections, subjects, students,
                                 </tbody>
                             </table>
                         </div>
+
+                        <DataTablePagination
+                            totalItems={totalItems}
+                            currentPage={currentPage}
+                            entriesPerPage={entriesPerPage}
+                            totalPages={totalPages}
+                            onPageChange={setCurrentPage}
+                            onEntriesPerPageChange={setEntriesPerPage}
+                            variant="teacher"
+                        />
                     </div>
                 ) : (
                     <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">

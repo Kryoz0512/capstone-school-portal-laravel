@@ -62,13 +62,13 @@ class StudentGradesSeeder extends Seeder
             // 5% chance: 1 quarter complete
             // 5% chance: no grades yet
             $rand = rand(1, 100);
-            if ($rand <= 60) {
+            if ($rand <= 90) {
                 $quartersCompleted = 4;
-            } elseif ($rand <= 80) {
+            } elseif ($rand <= 60) {
                 $quartersCompleted = 3;
-            } elseif ($rand <= 90) {
+            } elseif ($rand <= 60) {
                 $quartersCompleted = 2;
-            } elseif ($rand <= 95) {
+            } elseif ($rand <= 60) {
                 $quartersCompleted = 1;
             } else {
                 $quartersCompleted = 0;
@@ -85,11 +85,11 @@ class StudentGradesSeeder extends Seeder
             // 20% struggling performers (75-82, with some below 75)
             $performanceRand = rand(1, 100);
             if ($performanceRand <= 20) {
-                $gradeRange = [85, 98]; // High performer
+                $gradeRange = [91, 98]; // High performer
             } elseif ($performanceRand <= 80) {
-                $gradeRange = [78, 88]; // Average performer
+                $gradeRange = [81, 90]; // Average performer
             } else {
-                $gradeRange = [72, 82]; // Struggling performer (some may fail)
+                $gradeRange = [75, 80]; // Struggling performer (some may fail)
             }
 
             // Create grades for each subject in the schedule

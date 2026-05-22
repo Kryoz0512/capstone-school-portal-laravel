@@ -42,3 +42,13 @@ CHANGES MADE:
   - Back to portal link
 
 ═══════════════════════════════════════════════════════════════
+
+
+
+
+
+
+
+
+
+php artisan queue:work

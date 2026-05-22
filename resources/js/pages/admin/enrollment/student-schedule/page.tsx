@@ -12,6 +12,11 @@ type Student = {
     section: string
 }
 
+type GradeLevel = {
+    id: number
+    name: string
+}
+
 type PaginationLink = {
     url: string | null
     label: string
@@ -39,25 +44,32 @@ type Props = {
         total: number
         links: PaginationLink[]
     }
+    gradeLevels: GradeLevel[]
     filters?: {
         search?: string
+        grade_level?: number
     }
 }
 
-export default function StudentSchedule({ auth, students, filters }: Props) {
+export default function StudentSchedule({ auth, students, gradeLevels, filters }: Props) {
     const [searchTerm, setSearchTerm] = useState(filters?.search || '')
+    const [gradeLevel, setGradeLevel] = useState(filters?.grade_level?.toString() || '')
     const [perPage, setPerPage] = useState(10)
 
     useEffect(() => {
         const timer = setTimeout(() => {
             router.get('/admin/enrollment/student-schedule', 
-                { search: searchTerm, per_page: perPage },
+                { 
+                    search: searchTerm, 
+                    grade_level: gradeLevel || undefined,
+                    per_page: perPage 
+                },
                 { preserveState: true, replace: true }
             )
         }, 300)
 
         return () => clearTimeout(timer)
-    }, [searchTerm, perPage])
+    }, [searchTerm, gradeLevel, perPage])
 
     const handleStudentClick = (studentId: number) => {
         router.visit(`/admin/enrollment/student-schedule/${studentId}`)
@@ -73,6 +85,13 @@ export default function StudentSchedule({ auth, students, filters }: Props) {
         setPerPage(newPerPage)
     }
 
+    const handleClearFilters = () => {
+        setSearchTerm('')
+        setGradeLevel('')
+    }
+
+    const hasActiveFilters = searchTerm || gradeLevel
+
     return (
         <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title="Student Schedule" />
@@ -85,20 +104,50 @@ export default function StudentSchedule({ auth, students, filters }: Props) {
                     </p>
                 </div>
 
-                {/* Search */}
+                {/* Search & Filter */}
                 <div className="bg-white rounded-lg border border-gray-200 p-6">
-                    <h2 className="text-sm font-semibold text-gray-900 mb-4">Search</h2>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Student Name or LRN
-                        </label>
-                        <Input
-                            type="text"
-                            placeholder="Search student..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="max-w-md"
-                        />
+                    <h2 className="text-sm font-semibold text-gray-900 mb-4">Search & Filter</h2>
+                    <div className="flex flex-col sm:flex-row gap-4 items-end">
+                        <div className="flex-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Student Name or LRN
+                            </label>
+                            <Input
+                                type="text"
+                                placeholder="Search student..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="w-full sm:w-56">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Grade Level
+                            </label>
+                            <select
+                                value={gradeLevel}
+                                onChange={(e) => setGradeLevel(e.target.value)}
+                                className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            >
+                                <option value="">All Grade Levels</option>
+                                {gradeLevels.map((level) => (
+                                    <option key={level.id} value={level.id.toString()}>
+                                        {level.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {hasActiveFilters && (
+                            <div className="shrink-0">
+                                <button
+                                    onClick={handleClearFilters}
+                                    className="h-10 px-4 text-sm text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                                >
+                                    Clear Filters
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -131,7 +180,7 @@ export default function StudentSchedule({ auth, students, filters }: Props) {
                                 ) : (
                                     <tr>
                                         <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500">
-                                            {searchTerm 
+                                            {searchTerm || gradeLevel
                                                 ? 'No students match your search.'
                                                 : 'No enrolled students found.'
                                             }

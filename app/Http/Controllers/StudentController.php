@@ -443,6 +443,7 @@ class StudentController extends Controller
     public function scheduleIndex(Request $request)
     {
         $search = $request->input('search', '');
+        $gradeLevelFilter = $request->input('grade_level');
         $perPage = $request->input('per_page', 10);
 
         // Fetch students who have been assigned a section with pagination
@@ -455,6 +456,9 @@ class StudentController extends Controller
                         ->orWhere('lrn', 'like', "%{$search}%");
                 });
             })
+            ->when($gradeLevelFilter, function ($query, $gradeLevelFilter) {
+                $query->where('current_grade_level_id', $gradeLevelFilter);
+            })
             ->paginate($perPage)
             ->through(function ($student) {
                 return [
@@ -466,10 +470,15 @@ class StudentController extends Controller
                 ];
             });
 
+        // Fetch grade levels for filter dropdown
+        $gradeLevels = GradeLevel::select('id', 'name')->get();
+
         return Inertia::render('admin/enrollment/student-schedule/page', [
             'students' => $students,
+            'gradeLevels' => $gradeLevels,
             'filters' => [
                 'search' => $search,
+                'grade_level' => $gradeLevelFilter,
             ],
         ]);
     }
@@ -521,7 +530,7 @@ class StudentController extends Controller
         // Base validation rules
         $rules = [
             'student_status' => 'required|in:new,transferee,returning',
-            'lrn' => 'required|numeric|size:12',
+            'lrn' => 'required|string|digits:12',
             'school_year' => 'required|string',
             'gender' => 'required|in:male,female',
             'birth_date' => 'required|date|before_or_equal:-10 years',
@@ -633,7 +642,7 @@ class StudentController extends Controller
             // Create user account for the student (new student only)
             $user = User::create([
                 'name' => trim($validated['first_name'] . ' ' . $validated['last_name']),
-                'email' => strtolower($validated['lrn']) . '@student.snhs.edu.ph',
+                'email' => 'SNHS-' . $validated['lrn'],
                 'password' => Hash::make($validated['lrn']), // Default password is LRN
                 'role' => 'student',
                 'password_changed' => false, // Force password change on first login

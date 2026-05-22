@@ -44,8 +44,8 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
     const [gradeLevel, setGradeLevel] = useState('')
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [showImportedModal, setShowImportedModal] = useState(false)
-    const [importedStudents, setImportedStudents] = useState<Array<{lrn: string, name: string}>>([])
-    const [duplicateStudents, setDuplicateStudents] = useState<Array<{lrn: string, name: string}>>([])
+    const [importedStudents, setImportedStudents] = useState<Array<{ lrn: string, name: string }>>([])
+    const [duplicateStudents, setDuplicateStudents] = useState<Array<{ lrn: string, name: string }>>([])
     const [importErrors, setImportErrors] = useState<string[]>([])
     const [importStats, setImportStats] = useState({ imported: 0, duplicates: 0, errors: 0 })
     const [startYear, setStartYear] = useState('')
@@ -54,7 +54,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
     const [searchResults, setSearchResults] = useState<any[]>([])
     const [isSearching, setIsSearching] = useState(false)
     const [selectedStudent, setSelectedStudent] = useState<any>(null)
-    
+
     const page = usePage<any>()
     const flash = page.props.flash || {}
 
@@ -83,12 +83,12 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
         setSelectedStudent(student)
         setSearchQuery(student.name)
         setSearchResults([])
-        
+
         // Get next grade level
         const currentGradeNumber = parseInt(student.current_grade_level.replace('Grade ', ''))
         const nextGradeNumber = currentGradeNumber + 1
         const nextGradeLevel = gradeLevels.find(g => g.name === `Grade ${nextGradeNumber}`)
-        
+
         // Pre-fill form with student data
         setData({
             ...data,
@@ -112,13 +112,13 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
     useEffect(() => {
         console.log('Flash data:', flash)
         console.log('Import job ID from flash:', flash.import_job_id)
-        
+
         // Start polling if we have an import job ID
         if (flash.import_job_id) {
             console.log('Starting poll for import job:', flash.import_job_id)
             pollImportStatus(flash.import_job_id)
         }
-        
+
         // Show modal if there are imported students OR errors (legacy support)
         if ((flash.imported_students && flash.imported_students.length > 0) || (flash.import_errors && flash.import_errors.length > 0)) {
             setImportedStudents(flash.imported_students || [])
@@ -199,7 +199,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
             console.log('Uploading file:', file.name)
             const formData = new FormData()
             formData.append('file', file)
-            
+
             router.post('/admin/admission/registration/import', formData, {
                 onSuccess: () => {
                     console.log('Import request submitted successfully')
@@ -222,12 +222,12 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
             try {
                 const response = await fetch(`/admin/admission/registration/import-status/${importJobId}`)
                 const data = await response.json()
-                
+
                 console.log('Import status:', data)
-                
+
                 if (data.status === 'completed' || data.status === 'failed') {
                     clearInterval(interval)
-                    
+
                     // Set the data for the modal
                     setImportedStudents(data.imported_students || [])
                     setDuplicateStudents(data.duplicate_students || [])
@@ -417,7 +417,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                             {searchResults.map((student) => {
                                                 const currentGradeNumber = parseInt(student.current_grade_level.replace('Grade ', ''))
                                                 const nextGrade = `Grade ${currentGradeNumber + 1}`
-                                                
+
                                                 return (
                                                     <button
                                                         key={student.id}
@@ -507,357 +507,351 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                     </div>
                                 )}
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-900 mb-2">
-                                    Student LRN <span className="text-red-500">*</span>
-                                </label>
-                                <Input 
-                                    type="text" 
-                                    placeholder="Enter 12-digit LRN"
-                                    value={data.lrn}
-                                    onChange={(e) => setData('lrn', e.target.value)}
-                                    onInput={(e) => {
-                                        const target = e.target as HTMLInputElement;
-                                        target.value = target.value.replace(/[^0-9]/g, '');
-                                    }}
-                                    maxLength={12}
-                                    className="h-11"
-                                />
-                                {errors.lrn && <p className="text-xs text-red-500 mt-2">{errors.lrn}</p>}
-                            </div>
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-900 mb-2">
-                                    School Year <span className="text-red-500">*</span>
-                                </label>
-                                <div className="flex items-center gap-3">
-                                    <Input 
-                                        type="text" 
-                                        placeholder="Start year"
-                                        value={startYear}
-                                        onChange={(e) => setStartYear(e.target.value)}
-                                        onInput={(e) => {
-                                            const target = e.target as HTMLInputElement;
-                                            target.value = target.value.replace(/[^0-9]/g, '');
-                                        }}
-                                        maxLength={4}
-                                        className="h-11 text-center"
-                                    />
-                                    <span className="text-gray-500 font-semibold">-</span>
-                                    <Input 
-                                        type="text" 
-                                        placeholder="End year"
-                                        value={endYear}
-                                        onChange={(e) => setEndYear(e.target.value)}
-                                        onInput={(e) => {
-                                            const target = e.target as HTMLInputElement;
-                                            target.value = target.value.replace(/[^0-9]/g, '');
-                                        }}
-                                        maxLength={4}
-                                        className="h-11 text-center"
-                                    />
-                                </div>
-                                <p className="text-xs text-gray-500 mt-1">Enter 4-digit years (e.g., 2026 - 2027)</p>
-                                {errors.school_year && <p className="text-xs text-red-500 mt-2">{errors.school_year}</p>}
-                            </div>
-                        </div>
-
-                        <div className="border-t border-gray-200 pt-6">
-                            <h3 className="text-base font-semibold text-gray-900 mb-4">Personal Information</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                                        Last Name <span className="text-red-500">*</span>
-                                    </label>
-                                    <Input 
-                                        type="text" 
-                                        placeholder="Enter last name"
-                                        value={data.last_name}
-                                        onChange={(e) => setData('last_name', e.target.value)}
-                                        className="h-11"
-                                    />
-                                    {errors.last_name && <p className="text-xs text-red-500 mt-2">{errors.last_name}</p>}
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                                        First Name <span className="text-red-500">*</span>
-                                    </label>
-                                    <Input 
-                                        type="text" 
-                                        placeholder="Enter first name"
-                                        value={data.first_name}
-                                        onChange={(e) => setData('first_name', e.target.value)}
-                                        className="h-11"
-                                    />
-                                    {errors.first_name && <p className="text-xs text-red-500 mt-2">{errors.first_name}</p>}
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                                        Middle Name
-                                    </label>
-                                    <Input 
-                                        type="text" 
-                                        placeholder="Enter middle name (optional)"
-                                        value={data.middle_name}
-                                        onChange={(e) => setData('middle_name', e.target.value)}
-                                        className="h-11"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                                        Suffix
-                                    </label>
-                                    <Select value={data.suffix || undefined} onValueChange={(value) => setData('suffix', value)}>
-                                        <SelectTrigger className="h-11">
-                                            <SelectValue placeholder="None" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="Jr.">Jr.</SelectItem>
-                                            <SelectItem value="Sr.">Sr.</SelectItem>
-                                            <SelectItem value="II">II</SelectItem>
-                                            <SelectItem value="III">III</SelectItem>
-                                            <SelectItem value="IV">IV</SelectItem>
-                                            <SelectItem value="V">V</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-900 mb-2">
-                                    Gender <span className="text-red-500">*</span>
-                                </label>
-                                <Select value={data.gender} onValueChange={(value) => setData('gender', value)}>
-                                    <SelectTrigger className="h-11">
-                                        <SelectValue placeholder="Select gender" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="male">Male</SelectItem>
-                                        <SelectItem value="female">Female</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                {errors.gender && <p className="text-xs text-red-500 mt-2">{errors.gender}</p>}
-                            </div>
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-900 mb-2">
-                                    Date of Birth <span className="text-red-500">*</span>
-                                </label>
-                                <Input 
-                                    type="date"
-                                    value={data.birth_date}
-                                    onChange={(e) => setData('birth_date', e.target.value)}
-                                    className="h-11"
-                                />
-                                {errors.birth_date && <p className="text-xs text-red-500 mt-2">{errors.birth_date}</p>}
-                            </div>
-                        </div>
-
-                        <div className="border-t border-gray-200 pt-6">
-                            <div className="flex items-center gap-2 mb-4">
-                                <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                                    <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                </div>
-                                <div>
-                                    <h3 className="text-base font-semibold text-gray-900">
-                                        Student Documents
-                                    </h3>
-                                    <p className="text-xs text-gray-600">Check the documents that have been submitted (can be submitted as follow-up)</p>
-                                </div>
-                            </div>
-
-                            <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-xl p-4 mb-4">
-                                <div className="flex items-start gap-3">
-                                    <div className="flex-shrink-0 w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center mt-0.5">
-                                        <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-900 mb-2">
+                                            Student LRN <span className="text-red-500">*</span>
+                                        </label>
+                                        <Input
+                                            type="text"
+                                            placeholder="Enter 12-digit LRN"
+                                            value={data.lrn}
+                                            onChange={(e) => {
+                                                const cleaned = e.target.value.replace(/[^0-9]/g, '')
+                                                setData('lrn', cleaned)
+                                            }}
+                                            maxLength={12}
+                                            className="h-11"
+                                        />
+                                        {errors.lrn && <p className="text-xs text-red-500 mt-2">{errors.lrn}</p>}
                                     </div>
-                                    <div className="flex-1">
-                                        <p className="text-sm font-semibold text-amber-900 mb-1">Document Requirements</p>
-                                        <div className="text-xs text-amber-800 space-y-1">
-                                            {activeTab === 'new' && (
-                                                <>
-                                                    <p>• <strong>Form 138 (SF9)</strong> is required</p>
-                                                    <p>• Other documents can be submitted as follow-up</p>
-                                                </>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-900 mb-2">
+                                            School Year <span className="text-red-500">*</span>
+                                        </label>
+                                        <div className="flex items-center gap-3">
+                                            <Input
+                                                type="text"
+                                                placeholder="Start year"
+                                                value={startYear}
+                                                onChange={(e) => setStartYear(e.target.value)}
+                                                onInput={(e) => {
+                                                    const target = e.target as HTMLInputElement;
+                                                    target.value = target.value.replace(/[^0-9]/g, '');
+                                                }}
+                                                maxLength={4}
+                                                className="h-11 text-center"
+                                            />
+                                            <span className="text-gray-500 font-semibold">-</span>
+                                            <Input
+                                                type="text"
+                                                placeholder="End year"
+                                                value={endYear}
+                                                onChange={(e) => setEndYear(e.target.value)}
+                                                onInput={(e) => {
+                                                    const target = e.target as HTMLInputElement;
+                                                    target.value = target.value.replace(/[^0-9]/g, '');
+                                                }}
+                                                maxLength={4}
+                                                className="h-11 text-center"
+                                            />
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-1">Enter 4-digit years (e.g., 2026 - 2027)</p>
+                                        {errors.school_year && <p className="text-xs text-red-500 mt-2">{errors.school_year}</p>}
+                                    </div>
+                                </div>
+
+                                <div className="border-t border-gray-200 pt-6">
+                                    <h3 className="text-base font-semibold text-gray-900 mb-4">Personal Information</h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-900 mb-2">
+                                                Last Name <span className="text-red-500">*</span>
+                                            </label>
+                                            <Input
+                                                type="text"
+                                                placeholder="Enter last name"
+                                                value={data.last_name}
+                                                onChange={(e) => setData('last_name', e.target.value)}
+                                                className="h-11"
+                                            />
+                                            {errors.last_name && <p className="text-xs text-red-500 mt-2">{errors.last_name}</p>}
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-900 mb-2">
+                                                First Name <span className="text-red-500">*</span>
+                                            </label>
+                                            <Input
+                                                type="text"
+                                                placeholder="Enter first name"
+                                                value={data.first_name}
+                                                onChange={(e) => setData('first_name', e.target.value)}
+                                                className="h-11"
+                                            />
+                                            {errors.first_name && <p className="text-xs text-red-500 mt-2">{errors.first_name}</p>}
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-900 mb-2">
+                                                Middle Name
+                                            </label>
+                                            <Input
+                                                type="text"
+                                                placeholder="Enter middle name (optional)"
+                                                value={data.middle_name}
+                                                onChange={(e) => setData('middle_name', e.target.value)}
+                                                className="h-11"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-semibold text-gray-900 mb-2">
+                                                Suffix
+                                            </label>
+                                            <Select value={data.suffix || undefined} onValueChange={(value) => setData('suffix', value)}>
+                                                <SelectTrigger className="h-11">
+                                                    <SelectValue placeholder="None" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Jr.">Jr.</SelectItem>
+                                                    <SelectItem value="Sr.">Sr.</SelectItem>
+                                                    <SelectItem value="II">II</SelectItem>
+                                                    <SelectItem value="III">III</SelectItem>
+                                                    <SelectItem value="IV">IV</SelectItem>
+                                                    <SelectItem value="V">V</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-900 mb-2">
+                                            Gender <span className="text-red-500">*</span>
+                                        </label>
+                                        <Select value={data.gender} onValueChange={(value) => setData('gender', value)}>
+                                            <SelectTrigger className="h-11">
+                                                <SelectValue placeholder="Select gender" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="male">Male</SelectItem>
+                                                <SelectItem value="female">Female</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        {errors.gender && <p className="text-xs text-red-500 mt-2">{errors.gender}</p>}
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-900 mb-2">
+                                            Date of Birth <span className="text-red-500">*</span>
+                                        </label>
+                                        <Input
+                                            type="date"
+                                            value={data.birth_date}
+                                            onChange={(e) => setData('birth_date', e.target.value)}
+                                            className="h-11"
+                                        />
+                                        {errors.birth_date && <p className="text-xs text-red-500 mt-2">{errors.birth_date}</p>}
+                                    </div>
+                                </div>
+
+                                <div className="border-t border-gray-200 pt-6">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                                            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-base font-semibold text-gray-900">
+                                                Student Documents
+                                            </h3>
+                                            <p className="text-xs text-gray-600">Check the documents that have been submitted (can be submitted as follow-up)</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-xl p-4 mb-4">
+                                        <div className="flex items-start gap-3">
+                                            <div className="flex-shrink-0 w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center mt-0.5">
+                                                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="text-sm font-semibold text-amber-900 mb-1">Document Requirements</p>
+                                                <div className="text-xs text-amber-800 space-y-1">
+                                                    {activeTab === 'new' && (
+                                                        <>
+                                                            <p>• <strong>Form 138 (SF9)</strong> is required</p>
+                                                            <p>• Other documents can be submitted as follow-up</p>
+                                                        </>
+                                                    )}
+                                                    {activeTab === 'transferee' && (
+                                                        <>
+                                                            <p>• <strong>Form 138 (SF9)</strong> is required</p>
+                                                            <p>• <strong>Good Moral Certificate</strong> is required for transferees</p>
+                                                            <p>• Other documents can be submitted as follow-up</p>
+                                                        </>
+                                                    )}
+                                                    {activeTab === 'old' && (
+                                                        <>
+                                                            <p>• <strong>Form 138 (SF9)</strong> is required</p>
+                                                            <p>• <strong>PSA Birth Certificate</strong> is required</p>
+                                                            <p>• <strong>Good Moral Certificate</strong> is required</p>
+                                                            <p>• Other documents can be submitted as follow-up</p>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        {/* PSA Birth Certificate - Required for Returning Students */}
+                                        <div className={`bg-white border-2 rounded-xl p-4 transition-colors ${activeTab === 'old'
+                                                ? 'border-red-300 bg-gradient-to-br from-red-50 to-pink-50'
+                                                : 'border-gray-200 hover:border-gray-300'
+                                            }`}>
+                                            <div className="flex items-start gap-3">
+                                                <input
+                                                    type="checkbox"
+                                                    id="psa_birth_certificate"
+                                                    checked={data.has_psa_birth_certificate}
+                                                    onChange={(e) => setData('has_psa_birth_certificate', e.target.checked)}
+                                                    className={`mt-1 h-5 w-5 rounded border-gray-300 cursor-pointer ${activeTab === 'old' ? 'text-red-600 focus:ring-red-500' : 'text-gray-600 focus:ring-gray-500'
+                                                        }`}
+                                                />
+                                                <label htmlFor="psa_birth_certificate" className="flex-1 cursor-pointer">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className="text-sm font-semibold text-gray-900">PSA Birth Certificate</span>
+                                                        {activeTab === 'old' && (
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                                Required
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-xs text-gray-600">
+                                                        {activeTab === 'old'
+                                                            ? 'Original or certified true copy from PSA'
+                                                            : 'Original or certified true copy from PSA (can be submitted as follow-up)'}
+                                                    </p>
+                                                </label>
+                                            </div>
+                                            {errors.has_psa_birth_certificate && (
+                                                <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_psa_birth_certificate}</p>
                                             )}
-                                            {activeTab === 'transferee' && (
-                                                <>
-                                                    <p>• <strong>Form 138 (SF9)</strong> is required</p>
-                                                    <p>• <strong>Good Moral Certificate</strong> is required for transferees</p>
-                                                    <p>• Other documents can be submitted as follow-up</p>
-                                                </>
+                                        </div>
+
+                                        {/* Academic Records Section */}
+                                        <div className={`bg-white border-2 rounded-xl p-4 transition-colors ${'border-red-300 bg-gradient-to-br from-red-50 to-pink-50'
+                                            }`}>
+                                            <div className="flex items-start gap-3">
+                                                <input
+                                                    type="checkbox"
+                                                    id="sf9"
+                                                    checked={data.has_sf9}
+                                                    onChange={(e) => setData('has_sf9', e.target.checked)}
+                                                    className="mt-1 h-5 w-5 rounded border-gray-300 text-red-600 focus:ring-red-500 cursor-pointer"
+                                                />
+                                                <label htmlFor="sf9" className="flex-1 cursor-pointer">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className="text-sm font-semibold text-gray-900">Form 138 (SF9)</span>
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                            Required
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-xs text-gray-600">Learner's Permanent Academic Record</p>
+                                                </label>
+                                            </div>
+                                            {errors.has_sf9 && (
+                                                <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_sf9}</p>
                                             )}
-                                            {activeTab === 'old' && (
-                                                <>
-                                                    <p>• <strong>Form 138 (SF9)</strong> is required</p>
-                                                    <p>• <strong>PSA Birth Certificate</strong> is required</p>
-                                                    <p>• <strong>Good Moral Certificate</strong> is required</p>
-                                                    <p>• Other documents can be submitted as follow-up</p>
-                                                </>
+                                        </div>
+
+                                        {/* Report Card - Optional */}
+                                        <div className="bg-white border-2 border-gray-200 hover:border-gray-300 rounded-xl p-4 transition-colors">
+                                            <div className="flex items-start gap-3">
+                                                <input
+                                                    type="checkbox"
+                                                    id="report_card"
+                                                    checked={data.has_report_card}
+                                                    onChange={(e) => setData('has_report_card', e.target.checked)}
+                                                    className="mt-1 h-5 w-5 rounded border-gray-300 text-gray-600 focus:ring-gray-500 cursor-pointer"
+                                                />
+                                                <label htmlFor="report_card" className="flex-1 cursor-pointer">
+                                                    <span className="text-sm font-medium text-gray-900">Report Card</span>
+                                                    <p className="text-xs text-gray-600 mt-0.5">Latest report card from previous school (can be submitted as follow-up)</p>
+                                                </label>
+                                            </div>
+                                            {errors.has_report_card && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_report_card}</p>}
+                                        </div>
+
+                                        {/* Good Moral Certificate - Required for Transferees and Returning Students */}
+                                        <div className={`bg-white border-2 rounded-xl p-4 transition-colors ${activeTab === 'transferee' || activeTab === 'old'
+                                                ? 'border-purple-300 bg-gradient-to-br from-purple-50 to-pink-50'
+                                                : 'border-gray-200 hover:border-gray-300'
+                                            }`}>
+                                            <div className="flex items-start gap-3">
+                                                <input
+                                                    type="checkbox"
+                                                    id="good_moral"
+                                                    checked={data.has_good_moral}
+                                                    onChange={(e) => setData('has_good_moral', e.target.checked)}
+                                                    className={`mt-1 h-5 w-5 rounded border-gray-300 cursor-pointer ${activeTab === 'transferee' || activeTab === 'old'
+                                                            ? 'text-purple-600 focus:ring-purple-500'
+                                                            : 'text-gray-600 focus:ring-gray-500'
+                                                        }`}
+                                                />
+                                                <label htmlFor="good_moral" className="flex-1 cursor-pointer">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className="text-sm font-semibold text-gray-900">Good Moral Certificate</span>
+                                                        {(activeTab === 'transferee' || activeTab === 'old') && (
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                                                Required
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-xs text-gray-600">
+                                                        {(activeTab === 'transferee' || activeTab === 'old')
+                                                            ? 'Certificate of Good Moral Character from previous school'
+                                                            : 'Certificate of Good Moral Character from previous school (can be submitted as follow-up)'}
+                                                    </p>
+                                                </label>
+                                            </div>
+                                            {errors.has_good_moral && (
+                                                <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_good_moral}</p>
                                             )}
                                         </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div className="space-y-4">
-                                {/* PSA Birth Certificate - Required for Returning Students */}
-                                <div className={`bg-white border-2 rounded-xl p-4 transition-colors ${
-                                    activeTab === 'old' 
-                                        ? 'border-red-300 bg-gradient-to-br from-red-50 to-pink-50' 
-                                        : 'border-gray-200 hover:border-gray-300'
-                                }`}>
-                                    <div className="flex items-start gap-3">
-                                        <input
-                                            type="checkbox"
-                                            id="psa_birth_certificate"
-                                            checked={data.has_psa_birth_certificate}
-                                            onChange={(e) => setData('has_psa_birth_certificate', e.target.checked)}
-                                            className={`mt-1 h-5 w-5 rounded border-gray-300 cursor-pointer ${
-                                                activeTab === 'old' ? 'text-red-600 focus:ring-red-500' : 'text-gray-600 focus:ring-gray-500'
-                                            }`}
-                                        />
-                                        <label htmlFor="psa_birth_certificate" className="flex-1 cursor-pointer">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-sm font-semibold text-gray-900">PSA Birth Certificate</span>
-                                                {activeTab === 'old' && (
-                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                                        Required
-                                                    </span>
-                                                )}
+                                <div className="flex gap-3 pt-6 border-t border-gray-200">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={handleCancel}
+                                        className="h-11 px-6"
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        type="submit"
+                                        className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white h-11 px-8 shadow-md"
+                                        disabled={processing}
+                                    >
+                                        {processing ? (
+                                            <div className="flex items-center gap-2">
+                                                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                <span>Registering...</span>
                                             </div>
-                                            <p className="text-xs text-gray-600">
-                                                {activeTab === 'old' 
-                                                    ? 'Original or certified true copy from PSA' 
-                                                    : 'Original or certified true copy from PSA (can be submitted as follow-up)'}
-                                            </p>
-                                        </label>
-                                    </div>
-                                    {errors.has_psa_birth_certificate && (
-                                        <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_psa_birth_certificate}</p>
-                                    )}
+                                        ) : (
+                                            'Register Student'
+                                        )}
+                                    </Button>
                                 </div>
-
-                                {/* Academic Records Section */}
-                                <div className={`bg-white border-2 rounded-xl p-4 transition-colors ${
-                                    'border-red-300 bg-gradient-to-br from-red-50 to-pink-50'
-                                }`}>
-                                    <div className="flex items-start gap-3">
-                                        <input
-                                            type="checkbox"
-                                            id="sf9"
-                                            checked={data.has_sf9}
-                                            onChange={(e) => setData('has_sf9', e.target.checked)}
-                                            className="mt-1 h-5 w-5 rounded border-gray-300 text-red-600 focus:ring-red-500 cursor-pointer"
-                                        />
-                                        <label htmlFor="sf9" className="flex-1 cursor-pointer">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-sm font-semibold text-gray-900">Form 138 (SF9)</span>
-                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                                    Required
-                                                </span>
-                                            </div>
-                                            <p className="text-xs text-gray-600">Learner's Permanent Academic Record</p>
-                                        </label>
-                                    </div>
-                                    {errors.has_sf9 && (
-                                        <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_sf9}</p>
-                                    )}
-                                </div>
-
-                                {/* Report Card - Optional */}
-                                <div className="bg-white border-2 border-gray-200 hover:border-gray-300 rounded-xl p-4 transition-colors">
-                                    <div className="flex items-start gap-3">
-                                        <input
-                                            type="checkbox"
-                                            id="report_card"
-                                            checked={data.has_report_card}
-                                            onChange={(e) => setData('has_report_card', e.target.checked)}
-                                            className="mt-1 h-5 w-5 rounded border-gray-300 text-gray-600 focus:ring-gray-500 cursor-pointer"
-                                        />
-                                        <label htmlFor="report_card" className="flex-1 cursor-pointer">
-                                            <span className="text-sm font-medium text-gray-900">Report Card</span>
-                                            <p className="text-xs text-gray-600 mt-0.5">Latest report card from previous school (can be submitted as follow-up)</p>
-                                        </label>
-                                    </div>
-                                    {errors.has_report_card && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_report_card}</p>}
-                                </div>
-
-                                {/* Good Moral Certificate - Required for Transferees and Returning Students */}
-                                <div className={`bg-white border-2 rounded-xl p-4 transition-colors ${
-                                    activeTab === 'transferee' || activeTab === 'old'
-                                        ? 'border-purple-300 bg-gradient-to-br from-purple-50 to-pink-50' 
-                                        : 'border-gray-200 hover:border-gray-300'
-                                }`}>
-                                    <div className="flex items-start gap-3">
-                                        <input
-                                            type="checkbox"
-                                            id="good_moral"
-                                            checked={data.has_good_moral}
-                                            onChange={(e) => setData('has_good_moral', e.target.checked)}
-                                            className={`mt-1 h-5 w-5 rounded border-gray-300 cursor-pointer ${
-                                                activeTab === 'transferee' || activeTab === 'old' 
-                                                    ? 'text-purple-600 focus:ring-purple-500' 
-                                                    : 'text-gray-600 focus:ring-gray-500'
-                                            }`}
-                                        />
-                                        <label htmlFor="good_moral" className="flex-1 cursor-pointer">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-sm font-semibold text-gray-900">Good Moral Certificate</span>
-                                                {(activeTab === 'transferee' || activeTab === 'old') && (
-                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                                        Required
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <p className="text-xs text-gray-600">
-                                                {(activeTab === 'transferee' || activeTab === 'old')
-                                                    ? 'Certificate of Good Moral Character from previous school'
-                                                    : 'Certificate of Good Moral Character from previous school (can be submitted as follow-up)'}
-                                            </p>
-                                        </label>
-                                    </div>
-                                    {errors.has_good_moral && (
-                                        <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_good_moral}</p>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-3 pt-6 border-t border-gray-200">
-                            <Button 
-                                type="button" 
-                                variant="outline" 
-                                onClick={handleCancel}
-                                className="h-11 px-6"
-                            >
-                                Cancel
-                            </Button>
-                            <Button 
-                                type="submit" 
-                                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white h-11 px-8 shadow-md"
-                                disabled={processing}
-                            >
-                                {processing ? (
-                                    <div className="flex items-center gap-2">
-                                        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        <span>Registering...</span>
-                                    </div>
-                                ) : (
-                                    'Register Student'
-                                )}
-                            </Button>
-                        </div>
-                    </form>
-                </Tabs>
+                            </form>
+                        </Tabs>
                     </div>
                 </div>
             </div>
@@ -869,10 +863,10 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                         <div className="flex items-start">
                             <div className="flex-1">
                                 <DialogTitle className="text-2xl font-bold text-gray-900 mb-1">
-                                    {importStats.imported === 0 && importStats.errors > 0 
-                                        ? 'Import Failed' 
+                                    {importStats.imported === 0 && importStats.errors > 0
+                                        ? 'Import Failed'
                                         : importStats.duplicates > 0 || importStats.errors > 0
-                                            ? 'Import Completed with Warnings' 
+                                            ? 'Import Completed with Warnings'
                                             : 'Import Successful!'}
                                 </DialogTitle>
                                 <DialogDescription className="text-base text-gray-600">
@@ -1016,8 +1010,8 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                 </>
                             )}
                         </div>
-                        <Button 
-                            onClick={() => setShowImportedModal(false)} 
+                        <Button
+                            onClick={() => setShowImportedModal(false)}
                             className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-md px-6"
                         >
                             Close

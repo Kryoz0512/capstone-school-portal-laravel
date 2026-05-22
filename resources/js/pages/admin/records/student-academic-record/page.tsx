@@ -302,7 +302,7 @@ export default function StudentAcademicRecord({ student, academic_record, grade_
                                             onCheckedChange={(checked) => {
                                                 if (checked) handlePromote()
                                             }}
-                                            className="h-5 w-5 mt-0.5"
+                                            className="h-5 w-5 mt-0.5 cursor-pointer hover:bg-green-700"
                                         />
                                         <div>
                                             <Label

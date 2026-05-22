@@ -110,29 +110,60 @@ class StudentController extends Controller
             return redirect()->route('login')->withErrors(['error' => 'Student profile not found.']);
         }
 
-        $schoolYears = [$student->school_year];
+        $subjectClearances = [];
+        $schoolYear = $student->school_year;
 
-        $clearances = [];
-        foreach ($schoolYears as $year) {
-            $hasSection = $student->current_section_id !== null;
-            $hasProfile = $student->profile !== null;
+        if ($student->current_section_id) {
+            // Get all scheduled subjects for the student's section with teacher info
+            $scheduledSubjects = DB::table('tbl_schedules')
+                ->join('tbl_subjects', 'tbl_schedules.subject_id', '=', 'tbl_subjects.id')
+                ->join('tbl_teachers', 'tbl_schedules.teacher_id', '=', 'tbl_teachers.id')
+                ->where('tbl_schedules.class_section_id', $student->current_section_id)
+                ->select(
+                    'tbl_subjects.id as subject_id',
+                    'tbl_subjects.name as subject_name',
+                    'tbl_subjects.code as subject_code',
+                    'tbl_teachers.id as teacher_id',
+                    'tbl_teachers.name as teacher_name',
+                )
+                ->distinct()
+                ->get();
 
-            $status = ($hasSection && $hasProfile) ? 'Cleared' : 'Pending';
+            // Get all clearances for this student in the current section/year
+            $clearances = \App\Models\Clearance::where('student_id', $student->id)
+                ->where('class_section_id', $student->current_section_id)
+                ->where('school_year', $schoolYear)
+                ->get()
+                ->keyBy('subject_id');
 
-            $clearances[] = [
-                'id' => $student->id,
-                'schoolYear' => $year,
-                'studentLRN' => $student->lrn,
-                'studentName' => trim($student->first_name . ' ' . $student->last_name),
-                'clearanceStatus' => $status,
-            ];
+            $subjectClearances = $scheduledSubjects->map(function ($subject) use ($clearances) {
+                $clearance = $clearances->get($subject->subject_id);
+                return [
+                    'subject_id' => $subject->subject_id,
+                    'subject_name' => $subject->subject_name,
+                    'subject_code' => $subject->subject_code,
+                    'teacher_name' => $subject->teacher_name,
+                    'status' => $clearance?->status ?? 'pending',
+                ];
+            })->values()->toArray();
         }
 
+        $totalSubjects = count($subjectClearances);
+        $clearedCount = collect($subjectClearances)->where('status', 'cleared')->count();
+        $overallStatus = ($totalSubjects > 0 && $clearedCount >= $totalSubjects) ? 'Cleared' : 'Pending';
+
         return Inertia::render('student/clearance/page', [
-            'clearances' => $clearances,
+            'clearanceInfo' => [
+                'schoolYear' => $schoolYear,
+                'studentLRN' => $student->lrn,
+                'studentName' => trim($student->first_name . ' ' . $student->last_name),
+                'overallStatus' => $overallStatus,
+                'clearedSubjects' => $clearedCount,
+                'totalSubjects' => $totalSubjects,
+            ],
+            'subjectClearances' => $subjectClearances,
         ]);
     }
-
     public function schedule(Request $request)
     {
         $user = Auth::user();
@@ -1075,7 +1106,7 @@ class StudentController extends Controller
 
             // Save to storage/app/imports/ using the full path
             $storedPath = $file->storeAs('imports', $fileName, 'local');
-            
+
             // If storeAs returns false, try manual save
             if (!$storedPath) {
                 $directory = storage_path('app/imports');

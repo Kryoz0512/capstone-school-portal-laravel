@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, Download } from 'lucide-react'
+import { ArrowLeft, Download, ShieldCheck, ShieldAlert } from 'lucide-react'
 import { useState, useMemo } from 'react'
 
 type SubjectGrade = {
@@ -32,6 +32,10 @@ type GradeLevelRecord = {
     is_promotable_level?: boolean
     can_promote?: boolean
     next_grade_level?: string | null
+    // new clearance fields
+    clearance_total?: number
+    clearance_cleared?: number
+    all_cleared?: boolean
 }
 
 type GradeLevel = {
@@ -83,7 +87,6 @@ export default function StudentAcademicRecord({ student, academic_record, grade_
 
     const handleGraduationToggle = (checked: boolean) => {
         setReadyToGraduate(checked)
-
         router.put(`/admin/students/${student.id}/graduation-readiness`, {
             ready_to_graduate: checked,
         }, {
@@ -98,21 +101,36 @@ export default function StudentAcademicRecord({ student, academic_record, grade_
         })
     }
 
+    // Derive a human-readable reason why promotion is blocked
+    const getBlockReason = (record: GradeLevelRecord): string => {
+        if (!record.all_grades_complete) {
+            return 'Complete all quarterly and final grades for every subject to enable promotion.'
+        }
+        if (record.remarks === 'Failed') {
+            return 'Student must pass this grade level before promotion.'
+        }
+        if (!record.all_cleared) {
+            const cleared  = record.clearance_cleared ?? 0
+            const total    = record.clearance_total ?? 0
+            return `Student clearance is incomplete — ${cleared} of ${total} subject${total !== 1 ? 's' : ''} cleared by teachers. All subjects must be cleared before promotion.`
+        }
+        return 'Promotion is not available for this grade level.'
+    }
+
     return (
         <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title={`Academic Record - ${student.name}`} />
 
             <div className="space-y-6">
+                {/* Back + Download */}
                 <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Link
-                            href="/admin/records/final-reports"
-                            className="inline-flex items-center text-gray-600 hover:text-gray-900"
-                        >
-                            <ArrowLeft className="w-5 h-5 mr-2" />
-                            Back to Final Reports
-                        </Link>
-                    </div>
+                    <Link
+                        href="/admin/records/final-reports"
+                        className="inline-flex items-center text-gray-600 hover:text-gray-900"
+                    >
+                        <ArrowLeft className="w-5 h-5 mr-2" />
+                        Back to Final Reports
+                    </Link>
                     <Button className="bg-green-600 hover:bg-green-700">
                         <Download className="w-4 h-4 mr-2" />
                         Download Report
@@ -121,11 +139,10 @@ export default function StudentAcademicRecord({ student, academic_record, grade_
 
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Student Academic Record</h1>
-                    <p className="text-sm text-gray-500 mt-1">
-                        Complete academic history across all grade levels
-                    </p>
+                    <p className="text-sm text-gray-500 mt-1">Complete academic history across all grade levels</p>
                 </div>
 
+                {/* Student Info */}
                 <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
                     <div className="px-6 py-4 border-b border-gray-200 bg-green-700">
                         <h2 className="text-lg font-semibold text-white">Student Information</h2>
@@ -179,6 +196,7 @@ export default function StudentAcademicRecord({ student, academic_record, grade_
                     </div>
                 </div>
 
+                {/* Grade Level Selector */}
                 <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
                     <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
                         <h2 className="text-base font-semibold text-gray-900">Select Grade Level</h2>
@@ -205,8 +223,10 @@ export default function StudentAcademicRecord({ student, academic_record, grade_
                     </div>
                 </div>
 
+                {/* Grade Record */}
                 {currentRecord ? (
                     <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                        {/* Record Header */}
                         <div className="px-6 py-4 border-b border-gray-200 bg-green-700 flex items-center justify-between">
                             <h2 className="text-lg font-semibold text-white">{currentRecord.grade_level}</h2>
                             {currentRecord.has_data && currentRecord.final_average && (
@@ -225,6 +245,7 @@ export default function StudentAcademicRecord({ student, academic_record, grade_
                             )}
                         </div>
 
+                        {/* No data state */}
                         {!currentRecord.has_data ? (
                             <div className="p-12 text-center">
                                 <div className="max-w-md mx-auto">
@@ -286,8 +307,27 @@ export default function StudentAcademicRecord({ student, academic_record, grade_
                             </div>
                         )}
 
+                        {/* Promotion footer — only for promotable levels with data */}
                         {currentRecord.has_data && currentRecord.is_promotable_level && (
-                            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+                            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 space-y-3">
+
+                                {/* Clearance status pill — always visible for current level */}
+                                {currentRecord.is_current_level && (
+                                    <div className="flex items-center gap-2">
+                                        {currentRecord.all_cleared ? (
+                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                                                <ShieldCheck className="w-3.5 h-3.5" />
+                                                All subjects cleared by teachers ({currentRecord.clearance_cleared}/{currentRecord.clearance_total})
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+                                                <ShieldAlert className="w-3.5 h-3.5" />
+                                                Clearance pending — {currentRecord.clearance_cleared ?? 0} of {currentRecord.clearance_total ?? 0} subjects cleared
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
+
                                 {currentRecord.is_completed ? (
                                     <div className="flex items-center gap-2">
                                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -302,7 +342,7 @@ export default function StudentAcademicRecord({ student, academic_record, grade_
                                             onCheckedChange={(checked) => {
                                                 if (checked) handlePromote()
                                             }}
-                                            className="h-5 w-5 mt-0.5 cursor-pointer hover:bg-green-700"
+                                            className="h-5 w-5 mt-0.5 cursor-pointer"
                                         />
                                         <div>
                                             <Label
@@ -312,17 +352,13 @@ export default function StudentAcademicRecord({ student, academic_record, grade_
                                                 Promote to {currentRecord.next_grade_level}
                                             </Label>
                                             <p className="text-xs text-gray-500 mt-1">
-                                                All subjects have complete grades and the student passed. Checking this will move the student to {currentRecord.next_grade_level} and clear their section (re-assign in Enrollment).
+                                                All subjects have complete grades, the student passed, and all teacher clearances are confirmed. Checking this will move the student to {currentRecord.next_grade_level} and clear their section (re-assign in Enrollment).
                                             </p>
                                         </div>
                                     </div>
                                 ) : currentRecord.is_current_level ? (
                                     <p className="text-sm text-gray-600">
-                                        {!currentRecord.all_grades_complete
-                                            ? 'Complete all quarterly and final grades for every subject to enable promotion.'
-                                            : currentRecord.remarks === 'Failed'
-                                                ? 'Student must pass this grade level before promotion.'
-                                                : 'Promotion is not available for this grade level.'}
+                                        {getBlockReason(currentRecord)}
                                     </p>
                                 ) : null}
                             </div>

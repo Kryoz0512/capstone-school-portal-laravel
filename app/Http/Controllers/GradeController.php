@@ -31,16 +31,16 @@ class GradeController extends Controller
             ->toArray();
 
         // Generate school years from 2018 to current year + 1
-        $currentYear = (int)date('Y');
+        $currentYear = (int) date('Y');
         $generatedYears = [];
-        
+
         for ($year = 2018; $year <= $currentYear + 1; $year++) {
             $generatedYears[] = $year . '-' . ($year + 1);
         }
 
         // Merge and get unique values
         $allYears = array_unique(array_merge($generatedYears, $dbSchoolYears));
-        
+
         // Sort in descending order
         rsort($allYears);
 
@@ -84,24 +84,24 @@ class GradeController extends Controller
         });
 
         // Get sections based on teacher's schedules
-        $sections = ClassSection::whereIn('id', function($query) use ($teacher) {
+        $sections = ClassSection::whereIn('id', function ($query) use ($teacher) {
             $query->select('class_section_id')
                 ->from('tbl_schedules')
                 ->where('teacher_id', $teacher->id)
                 ->distinct();
         })
-        ->when($gradeLevelId, function($query) use ($gradeLevelId) {
-            $query->where('grade_level_id', $gradeLevelId);
-        })
-        ->with('gradeLevel')
-        ->get()
-        ->map(function ($section) {
-            return [
-                'id' => $section->id,
-                'name' => $section->section_name,
-                'grade_level_id' => $section->grade_level_id,
-            ];
-        });
+            ->when($gradeLevelId, function ($query) use ($gradeLevelId) {
+                $query->where('grade_level_id', $gradeLevelId);
+            })
+            ->with('gradeLevel')
+            ->get()
+            ->map(function ($section) {
+                return [
+                    'id' => $section->id,
+                    'name' => $section->section_name,
+                    'grade_level_id' => $section->grade_level_id,
+                ];
+            });
 
         // Get subjects that teacher teaches (unique by name)
         $subjects = DB::table('tbl_teacher_subjects')
@@ -118,11 +118,11 @@ class GradeController extends Controller
         $students = [];
         if ($sectionId && $subjectId) {
             $quarterColumn = 'quarter_' . $quarter;
-            
+
             $studentRecords = Student::where('current_section_id', $sectionId)
                 ->where('school_year', $schoolYear)
                 ->get();
-            
+
             // Fetch all grades in one query to avoid N+1
             $studentIds = $studentRecords->pluck('id');
             $gradeRecords = Grade::where('class_section_id', $sectionId)
@@ -131,7 +131,7 @@ class GradeController extends Controller
                 ->where('teacher_id', $teacher->id)
                 ->whereIn('student_id', $studentIds)
                 ->get();
-            
+
             // Check for duplicate records (should not happen with unique constraint)
             $duplicateCheck = $gradeRecords->groupBy('student_id');
             foreach ($duplicateCheck as $studentId => $records) {
@@ -147,30 +147,30 @@ class GradeController extends Controller
                     ]);
                 }
             }
-            
+
             // Use keyBy to get one record per student (most recent if duplicates exist)
             $gradeRecords = $gradeRecords->keyBy('student_id');
-            
+
             $students = $studentRecords->map(function ($student) use ($gradeRecords, $quarterColumn) {
                 $gradeRecord = $gradeRecords->get($student->id);
                 $grade = $gradeRecord ? $gradeRecord->$quarterColumn : null;
-                
+
                 // Format grade to remove unnecessary decimals
                 $formattedGrade = null;
                 if ($grade !== null) {
-                    $formattedGrade = (float)$grade;
+                    $formattedGrade = (float) $grade;
                     // Remove .00 if it's a whole number
                     if ($formattedGrade == floor($formattedGrade)) {
-                        $formattedGrade = (int)$formattedGrade;
+                        $formattedGrade = (int) $formattedGrade;
                     }
                 }
-                
+
                 // Only show remarks if this specific quarter has a grade
                 $remarks = null;
                 if ($grade !== null) {
                     $remarks = $formattedGrade >= 75 ? 'Passed' : 'Failed';
                 }
-                
+
                 return [
                     'id' => $student->id,
                     'lrn' => $student->lrn,
@@ -221,7 +221,7 @@ class GradeController extends Controller
         ]);
 
         $quarterColumn = 'quarter_' . $validated['quarter'];
-        
+
         // First, get or create the grade record
         $grade = Grade::firstOrCreate([
             'student_id' => $validated['student_id'],
@@ -230,10 +230,10 @@ class GradeController extends Controller
             'school_year' => $validated['school_year'],
             'teacher_id' => $teacher->id,
         ]);
-        
+
         // Update the specific quarter grade
-        $grade->$quarterColumn = (string)$validated['grade'];
-        
+        $grade->$quarterColumn = (string) $validated['grade'];
+
         // Recalculate final grade and remarks based on all available quarters
         $quarters = [
             $grade->quarter_1,
@@ -241,24 +241,24 @@ class GradeController extends Controller
             $grade->quarter_3,
             $grade->quarter_4
         ];
-        
-        $availableQuarters = array_filter($quarters, function($q) {
+
+        $availableQuarters = array_filter($quarters, function ($q) {
             return $q !== null;
         });
-        
+
         if (count($availableQuarters) > 0) {
             $sum = array_sum($availableQuarters);
             $count = count($availableQuarters);
             $finalGradeValue = $sum / $count;
-            $grade->final_grade = (string)$finalGradeValue;
+            $grade->final_grade = (string) $finalGradeValue;
             $grade->remarks = $finalGradeValue >= 75 ? 'Passed' : 'Failed';
         } else {
-            $currentGrade = (float)$validated['grade'];
+            $currentGrade = (float) $validated['grade'];
             $grade->remarks = $currentGrade >= 75 ? 'Passed' : 'Failed';
         }
-        
+
         $saved = $grade->save();
-        
+
         Log::info('Grade Save Result', [
             'saved' => $saved,
             'grade_id' => $grade->id,
@@ -278,31 +278,31 @@ class GradeController extends Controller
         ]);
 
         $quarterColumn = 'quarter_' . $validated['quarter'];
-        $grade->$quarterColumn = (string)$validated['grade'];
-        
+        $grade->$quarterColumn = (string) $validated['grade'];
+
         $quarters = [
             $grade->quarter_1,
             $grade->quarter_2,
             $grade->quarter_3,
             $grade->quarter_4
         ];
-        
-        $availableQuarters = array_filter($quarters, function($q) {
+
+        $availableQuarters = array_filter($quarters, function ($q) {
             return $q !== null;
         });
-        
+
         if (count($availableQuarters) > 0) {
             $sum = array_sum($availableQuarters);
             $count = count($availableQuarters);
             $finalGradeValue = $sum / $count;
-            $grade->final_grade = (string)$finalGradeValue;
+            $grade->final_grade = (string) $finalGradeValue;
             $grade->remarks = $finalGradeValue >= 75 ? 'Passed' : 'Failed';
         } else {
             // Set remarks based on current quarter grade if no quarters available yet
-            $currentGrade = (float)$validated['grade'];
+            $currentGrade = (float) $validated['grade'];
             $grade->remarks = $currentGrade >= 75 ? 'Passed' : 'Failed';
         }
-        
+
         $grade->save();
 
         return back()->with('success', 'Grade updated successfully.');
@@ -343,19 +343,19 @@ class GradeController extends Controller
         });
 
         // Get sections based on selected grade level
-        $sections = ClassSection::when($gradeLevelId, function($query) use ($gradeLevelId) {
+        $sections = ClassSection::when($gradeLevelId, function ($query) use ($gradeLevelId) {
             $query->where('grade_level_id', $gradeLevelId);
         })
-        ->with('gradeLevel')
-        ->get()
-        ->map(function ($section) {
-            return [
-                'id' => $section->id,
-                'name' => $section->section_name,
-                'grade_level_id' => $section->grade_level_id,
-                'grade_level_name' => $section->gradeLevel->name,
-            ];
-        });
+            ->with('gradeLevel')
+            ->get()
+            ->map(function ($section) {
+                return [
+                    'id' => $section->id,
+                    'name' => $section->section_name,
+                    'grade_level_id' => $section->grade_level_id,
+                    'grade_level_name' => $section->gradeLevel->name,
+                ];
+            });
 
         // Get students with their final grades
         $students = [];
@@ -377,7 +377,7 @@ class GradeController extends Controller
                 $studentGrades = $gradeRecords->get($student->id, collect());
 
                 // Calculate overall final average from all subjects
-                $finalGrades = $studentGrades->pluck('final_grade')->filter(function($grade) {
+                $finalGrades = $studentGrades->pluck('final_grade')->filter(function ($grade) {
                     return $grade !== null;
                 });
 
@@ -477,23 +477,20 @@ class GradeController extends Controller
     {
         $student = Student::with(['gradeLevel', 'section'])->findOrFail($studentId);
 
-        // Get all grade levels ordered properly
         $gradeLevels = GradeLevel::orderByRaw("
-            CASE 
-                WHEN name = 'Grade 7' THEN 1
-                WHEN name = 'Grade 8' THEN 2
-                WHEN name = 'Grade 9' THEN 3
-                WHEN name = 'Grade 10' THEN 4
-                ELSE 5
-            END
-        ")->get();
+        CASE 
+            WHEN name = 'Grade 7' THEN 1
+            WHEN name = 'Grade 8' THEN 2
+            WHEN name = 'Grade 9' THEN 3
+            WHEN name = 'Grade 10' THEN 4
+            ELSE 5
+        END
+    ")->get();
 
-        // All subjects per grade level (from subject listings / registrar catalog)
         $catalogSubjectsByGradeLevel = Subject::orderBy('name')
             ->get()
             ->groupBy('grade_level_id');
 
-        // Get all grades for this student across all grade levels
         $allGrades = Grade::where('student_id', $studentId)
             ->with(['subject', 'teacher', 'classSection.gradeLevel'])
             ->get()
@@ -504,8 +501,12 @@ class GradeController extends Controller
         $currentLevelName = $student->gradeLevel->name ?? '';
         $currentLevelOrder = $this->getGradeLevelOrder($currentLevelName);
 
-        // Build academic record for each grade level
-        $academicRecord = $gradeLevels->map(function ($gradeLevel) use ($allGrades, $catalogSubjectsByGradeLevel, $student, $currentLevelName, $currentLevelOrder) {
+        // Pre-fetch clearances for this student across all sections
+        $allClearances = \App\Models\Clearance::where('student_id', $studentId)
+            ->where('status', 'cleared')
+            ->get();
+
+        $academicRecord = $gradeLevels->map(function ($gradeLevel) use ($allGrades, $catalogSubjectsByGradeLevel, $student, $currentLevelName, $currentLevelOrder, $allClearances) {
             $gradeLevelName = $gradeLevel->name;
             $gradesForLevel = $allGrades->get($gradeLevelName, collect());
             $gradesBySubjectId = $gradesForLevel->keyBy('subject_id');
@@ -537,11 +538,10 @@ class GradeController extends Controller
                     ->keyBy('subject_id');
             }
 
-            // Merge catalog subjects with any graded subjects not in the catalog
             $subjectIdsFromGrades = $gradesBySubjectId->keys()->diff($catalogSubjects->pluck('id'));
             $extraSubjects = $gradesForLevel
-                ->filter(fn ($grade) => $subjectIdsFromGrades->contains($grade->subject_id))
-                ->map(fn ($grade) => $grade->subject)
+                ->filter(fn($grade) => $subjectIdsFromGrades->contains($grade->subject_id))
+                ->map(fn($grade) => $grade->subject)
                 ->filter()
                 ->unique('id');
 
@@ -554,9 +554,7 @@ class GradeController extends Controller
                 return [
                     'subject_code' => $subject->code ?? null,
                     'subject_name' => $subject->name ?? 'N/A',
-                    'teacher_name' => $grade?->teacher?->name
-                        ?? $schedule?->teacher?->name
-                        ?? '-',
+                    'teacher_name' => $grade?->teacher?->name ?? $schedule?->teacher?->name ?? '-',
                     'quarter_1' => $grade?->quarter_1,
                     'quarter_2' => $grade?->quarter_2,
                     'quarter_3' => $grade?->quarter_3,
@@ -566,8 +564,7 @@ class GradeController extends Controller
                 ];
             })->values();
 
-            $finalGrades = $gradesForLevel->pluck('final_grade')->filter(fn ($g) => $g !== null);
-
+            $finalGrades = $gradesForLevel->pluck('final_grade')->filter(fn($g) => $g !== null);
             $finalAverage = null;
             $remarks = null;
 
@@ -583,10 +580,31 @@ class GradeController extends Controller
             $isPromotableLevel = in_array($gradeLevelName, self::PROMOTABLE_GRADE_LEVELS, true);
             $nextGradeLevel = self::NEXT_GRADE_LEVEL[$gradeLevelName] ?? null;
 
+            // --- Clearance check ---
+            // Count total scheduled subjects for this section
+            $totalSubjects = 0;
+            $clearedCount = 0;
+            $allCleared = false;
+
+            if ($sectionId) {
+                $totalSubjects = DB::table('tbl_schedules')
+                    ->where('class_section_id', $sectionId)
+                    ->distinct('subject_id')
+                    ->count('subject_id');
+
+                $clearedCount = $allClearances
+                    ->where('class_section_id', $sectionId)
+                    ->count();
+
+                $allCleared = $totalSubjects > 0 && $clearedCount >= $totalSubjects;
+            }
+            // ----------------------
+
             $canPromote = $isCurrentLevel
                 && $isPromotableLevel
                 && $allGradesComplete
-                && $remarks === 'Passed';
+                && $remarks === 'Passed'
+                && $allCleared;          // <-- new requirement
 
             return [
                 'grade_level' => $gradeLevelName,
@@ -601,6 +619,10 @@ class GradeController extends Controller
                 'is_promotable_level' => $isPromotableLevel,
                 'can_promote' => $canPromote,
                 'next_grade_level' => $nextGradeLevel,
+                // Pass these so the frontend can show a specific reason
+                'clearance_total' => $totalSubjects,
+                'clearance_cleared' => $clearedCount,
+                'all_cleared' => $allCleared,
             ];
         });
 
@@ -616,12 +638,7 @@ class GradeController extends Controller
                 'is_grade_10' => $currentLevelName === 'Grade 10',
             ],
             'academic_record' => $academicRecord,
-            'grade_levels' => $gradeLevels->map(function($level) {
-                return [
-                    'id' => $level->id,
-                    'name' => $level->name,
-                ];
-            }),
+            'grade_levels' => $gradeLevels->map(fn($l) => ['id' => $l->id, 'name' => $l->name]),
         ]);
     }
 
@@ -649,7 +666,7 @@ class GradeController extends Controller
         // Re-validate grades for current level
         $catalogSubjects = Subject::where('grade_level_id', $student->current_grade_level_id)->get();
         $gradesForLevel = Grade::where('student_id', $studentId)
-            ->whereHas('classSection', fn ($q) => $q->where('grade_level_id', $student->current_grade_level_id))
+            ->whereHas('classSection', fn($q) => $q->where('grade_level_id', $student->current_grade_level_id))
             ->get()
             ->keyBy('subject_id');
 
@@ -671,7 +688,7 @@ class GradeController extends Controller
             ]);
         }
 
-        $finalGrades = $gradesForLevel->pluck('final_grade')->filter(fn ($g) => $g !== null);
+        $finalGrades = $gradesForLevel->pluck('final_grade')->filter(fn($g) => $g !== null);
         $finalAverage = round($finalGrades->avg(), 2);
 
         if ($finalAverage < 75) {

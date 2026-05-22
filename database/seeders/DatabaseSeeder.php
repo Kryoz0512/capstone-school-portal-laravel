@@ -17,7 +17,7 @@ class DatabaseSeeder extends Seeder
     {
         // Create Super Admin (Principal) account
         $email = 'SNHS-BAYUDANG-MICAH';
-        
+
         if (!User::where('email', $email)->exists()) {
             // Create super admin user account
             $superAdminUser = User::create([
@@ -40,7 +40,7 @@ class DatabaseSeeder extends Seeder
                 'updated_by' => $superAdminUser->id,
             ]);
         }
-        
+
         if (DB::table('tbl_grade_levels')->count() === 0) {
             DB::table('tbl_grade_levels')->insert([
                 [
@@ -145,34 +145,65 @@ class DatabaseSeeder extends Seeder
         if (DB::table('tbl_teachers')->count() === 0) {
             $subjects = ['English', 'Filipino', 'Mathematics', 'Science', 'Araling Panlipunan', 'MAPEH', 'TLE'];
             $positions = ['Teacher I', 'Teacher II', 'Teacher III'];
-            
+
             // Filipino names for teachers
             $firstNames = [
-                'Maria', 'Juan', 'Ana', 'Carlos', 'Rosa', 'Pedro', 'Elena', 'Miguel',
-                'Carmen', 'Luis', 'Isabel', 'Rafael', 'Teresa', 'Jose', 'Luz', 'Manuel',
-                'Sofia', 'Fernando', 'Gabriela', 'Antonio', 'Cristina', 'Ricardo'
+                'Maria',
+                'Juan',
+                'Ana',
+                'Carlos',
+                'Rosa',
+                'Pedro',
+                'Elena',
+                'Miguel',
+                'Carmen',
+                'Luis',
+                'Isabel',
+                'Rafael',
+                'Teresa',
+                'Jose',
+                'Luz',
+                'Manuel',
+                'Sofia',
+                'Fernando',
+                'Gabriela',
+                'Antonio',
+                'Cristina',
+                'Ricardo'
             ];
             $lastNames = [
-                'Santos', 'Reyes', 'Cruz', 'Bautista', 'Garcia', 'Mendoza', 'Torres',
-                'Flores', 'Rivera', 'Gonzales', 'Ramos', 'Dela Cruz', 'Aquino', 'Villanueva'
+                'Santos',
+                'Reyes',
+                'Cruz',
+                'Bautista',
+                'Garcia',
+                'Mendoza',
+                'Torres',
+                'Flores',
+                'Rivera',
+                'Gonzales',
+                'Ramos',
+                'Dela Cruz',
+                'Aquino',
+                'Villanueva'
             ];
-            
+
             // Start teacher employee numbers at 1000001 to avoid conflicts with admins
             $employeeNumber = 1000001;
             $nameIndex = 0;
-            
+
             // Create 2 teachers for each subject
             foreach ($subjects as $subject) {
                 for ($i = 0; $i < 2; $i++) {
                     $firstName = $firstNames[$nameIndex % count($firstNames)];
                     $lastName = $lastNames[$nameIndex % count($lastNames)];
                     $position = $positions[array_rand($positions)];
-                    
+
                     // Generate email in format: SNHS-LASTNAME-FIRSTNAME
                     $firstNameUpper = strtoupper(str_replace(' ', '', $firstName));
                     $lastNameUpper = strtoupper(str_replace(' ', '', $lastName));
                     $email = 'SNHS-' . $lastNameUpper . '-' . $firstNameUpper;
-                    
+
                     // If email exists, add a number
                     $emailSuffix = '';
                     $counter = 1;
@@ -180,7 +211,7 @@ class DatabaseSeeder extends Seeder
                         $emailSuffix = $counter;
                         $counter++;
                     }
-                    
+
                     // Create user
                     $user = User::create([
                         'name' => $firstName . ' ' . $lastName,
@@ -201,7 +232,7 @@ class DatabaseSeeder extends Seeder
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
-                    
+
                     $employeeNumber++;
                     $nameIndex++;
                 }
@@ -244,7 +275,7 @@ class DatabaseSeeder extends Seeder
         if (DB::table('tbl_class_sections')->count() === 0) {
             $gradeLevels = DB::table('tbl_grade_levels')->get();
             $rooms = DB::table('tbl_room')->get();
-            
+
             // Philippine national heroes for section names - one per section
             $heroNames = [
                 // Grade 7 sections
@@ -271,7 +302,7 @@ class DatabaseSeeder extends Seeder
 
             $sectionIndex = 0;
             $roomIndex = 0;
-            
+
             foreach ($gradeLevels as $gradeLevel) {
                 // Create 4 sections per grade level
                 for ($i = 0; $i < 4; $i++) {
@@ -292,14 +323,14 @@ class DatabaseSeeder extends Seeder
         if (DB::table('tbl_teacher_subjects')->count() === 0) {
             // Get all teachers with their specializations
             $teachers = DB::table('tbl_teachers')->get();
-            
+
             // For each teacher, assign them to all subjects matching their specialization across all grade levels
             foreach ($teachers as $teacher) {
                 // Find all subjects that match the teacher's subject specialization
                 $matchingSubjects = DB::table('tbl_subjects')
                     ->where('name', $teacher->subject)
                     ->get();
-                
+
                 // Assign teacher to each matching subject (one for each grade level)
                 foreach ($matchingSubjects as $subject) {
                     DB::table('tbl_teacher_subjects')->insert([
@@ -315,11 +346,11 @@ class DatabaseSeeder extends Seeder
             $sections = DB::table('tbl_class_sections')->get();
             $teachers = DB::table('tbl_teachers')->get();
             $currentSchoolYear = '2026-2027';
-            
+
             foreach ($sections as $index => $section) {
                 // Assign teachers in round-robin fashion
                 $teacher = $teachers[$index % $teachers->count()];
-                
+
                 DB::table('tbl_adviser_section')->insert([
                     'teacher_id' => $teacher->id,
                     'class_section_id' => $section->id,
@@ -346,7 +377,7 @@ class DatabaseSeeder extends Seeder
     {
         $sections = DB::table('tbl_class_sections')->get();
         $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-        
+
         // Time slots (8 AM to 5 PM, 1-hour slots)
         $timeSlots = [
             ['08:00:00', '09:00:00'],
@@ -358,18 +389,18 @@ class DatabaseSeeder extends Seeder
             ['15:00:00', '16:00:00'],
             ['16:00:00', '17:00:00'],
         ];
-        
+
         // Track teacher schedules to avoid conflicts
         $teacherSchedules = [];
-        
+
         foreach ($sections as $section) {
             // Get subjects for this section's grade level
             $subjects = DB::table('tbl_subjects')
                 ->where('grade_level_id', $section->grade_level_id)
                 ->get();
-            
+
             $slotIndex = 0;
-            
+
             foreach ($subjects as $subject) {
                 // Get a teacher for this subject
                 $teacher = DB::table('tbl_teachers')
@@ -377,20 +408,21 @@ class DatabaseSeeder extends Seeder
                     ->where('tbl_teacher_subjects.subject_id', $subject->id)
                     ->select('tbl_teachers.*')
                     ->first();
-                
-                if (!$teacher) continue;
-                
+
+                if (!$teacher)
+                    continue;
+
                 // Find an available time slot for this teacher
                 $scheduled = false;
                 $attempts = 0;
-                
+
                 while (!$scheduled && $attempts < 100) {
                     $day = $days[$slotIndex % count($days)];
                     $timeSlot = $timeSlots[floor($slotIndex / count($days)) % count($timeSlots)];
-                    
+
                     // Check if teacher has conflict
                     $conflictKey = $teacher->id . '_' . $day . '_' . $timeSlot[0];
-                    
+
                     if (!isset($teacherSchedules[$conflictKey])) {
                         // No conflict, schedule it
                         DB::table('tbl_schedules')->insert([
@@ -404,12 +436,12 @@ class DatabaseSeeder extends Seeder
                             'created_at' => now(),
                             'updated_at' => now(),
                         ]);
-                        
+
                         // Mark this slot as used by this teacher
                         $teacherSchedules[$conflictKey] = true;
                         $scheduled = true;
                     }
-                    
+
                     $slotIndex++;
                     $attempts++;
                 }
@@ -428,13 +460,13 @@ class DatabaseSeeder extends Seeder
 
         $gradeLevels = DB::table('tbl_grade_levels')->get();
         $sections = DB::table('tbl_class_sections')->get();
-        
+
         if ($gradeLevels->isEmpty() || $sections->isEmpty()) {
             return;
         }
 
         $currentSchoolYear = '2026-2027';
-        
+
         // Filipino names
         $filipinoFirstNamesMale = ['Jose', 'Juan', 'Pedro', 'Antonio', 'Miguel', 'Carlos', 'Rafael', 'Luis', 'Manuel', 'Fernando'];
         $filipinoFirstNamesFemale = ['Maria', 'Ana', 'Rosa', 'Carmen', 'Isabel', 'Teresa', 'Luz', 'Elena', 'Sofia', 'Gabriela'];
@@ -443,31 +475,31 @@ class DatabaseSeeder extends Seeder
         $suffixes = [null, null, null, 'Jr.'];
         $statuses = ['new', 'transferee', 'returning'];
         $usedLRNs = [];
-        
+
         // Helper to generate unique LRN
-        $generateUniqueLRN = function() use (&$usedLRNs) {
+        $generateUniqueLRN = function () use (&$usedLRNs) {
             do {
                 $lrn = '2024' . str_pad(rand(10000000, 99999999), 8, '0', STR_PAD_LEFT);
             } while (in_array($lrn, $usedLRNs));
             $usedLRNs[] = $lrn;
             return $lrn;
         };
-        
+
         // PART 1: Create students ASSIGNED to sections (10 per section for speed)
         foreach ($sections as $section) {
             $studentsToCreate = 10; // Reduced from 40-47 to 10 for faster seeding
-            
+
             for ($i = 0; $i < $studentsToCreate; $i++) {
                 $gender = ['male', 'female'][rand(0, 1)];
-                $firstName = $gender === 'male' 
+                $firstName = $gender === 'male'
                     ? $filipinoFirstNamesMale[array_rand($filipinoFirstNamesMale)]
                     : $filipinoFirstNamesFemale[array_rand($filipinoFirstNamesFemale)];
-                
+
                 $lastName = $filipinoLastNames[array_rand($filipinoLastNames)];
                 $middleName = $middleNames[array_rand($middleNames)];
                 $suffix = $suffixes[array_rand($suffixes)];
                 $lrn = $generateUniqueLRN();
-                
+
                 // Create user account
                 $userId = DB::table('users')->insertGetId([
                     'name' => trim($firstName . ' ' . $lastName),
@@ -478,19 +510,19 @@ class DatabaseSeeder extends Seeder
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
-                
+
                 // Determine student status
                 $studentStatus = $statuses[array_rand($statuses)];
-                
+
                 // Generate documents based on student status
                 // SF9 (Form 138) is REQUIRED for all students
                 // Other documents vary by status
-                
+
                 $hasSf9 = true; // ALWAYS REQUIRED
                 $hasReportCard = rand(0, 1); // Optional - can be submitted as follow-up
                 $hasGoodMoral = false;
                 $hasPsaBirth = rand(0, 1); // Optional for new/transferee, required for returning
-                
+
                 if ($studentStatus === 'transferee') {
                     // Transferees: SF9 (required) + Good Moral (required)
                     $hasGoodMoral = true; // Always required for transferees
@@ -500,7 +532,7 @@ class DatabaseSeeder extends Seeder
                     $hasGoodMoral = true; // Required for returning
                 }
                 // For 'new' students: only SF9 is required, others are optional
-                
+
                 // Create student record
                 $studentId = DB::table('tbl_students')->insertGetId([
                     'user_id' => $userId,
@@ -522,7 +554,7 @@ class DatabaseSeeder extends Seeder
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
-                
+
                 // Create student profile
                 DB::table('tbl_student_profiles')->insert([
                     'profileable_id' => $studentId,
@@ -559,22 +591,22 @@ class DatabaseSeeder extends Seeder
                 ]);
             }
         }
-        
+
         // PART 2: Create students NOT ASSIGNED to sections (5 per grade level)
         foreach ($gradeLevels as $gradeLevel) {
             $unassignedToCreate = 5; // Reduced from 20-30 to 5 for faster seeding
-            
+
             for ($i = 0; $i < $unassignedToCreate; $i++) {
                 $gender = ['male', 'female'][rand(0, 1)];
-                $firstName = $gender === 'male' 
+                $firstName = $gender === 'male'
                     ? $filipinoFirstNamesMale[array_rand($filipinoFirstNamesMale)]
                     : $filipinoFirstNamesFemale[array_rand($filipinoFirstNamesFemale)];
-                
+
                 $lastName = $filipinoLastNames[array_rand($filipinoLastNames)];
                 $middleName = $middleNames[array_rand($middleNames)];
                 $suffix = $suffixes[array_rand($suffixes)];
                 $lrn = $generateUniqueLRN();
-                
+
                 // Create user account
                 $userId = DB::table('users')->insertGetId([
                     'name' => trim($firstName . ' ' . $lastName),
@@ -585,20 +617,20 @@ class DatabaseSeeder extends Seeder
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
-                
+
                 // Determine student status
                 $studentStatus = $statuses[array_rand($statuses)];
-                
+
                 // Generate documents based on student status
                 // New students: At least 1 document (SF9 or Report Card)
                 // Transferees: At least 2 documents (SF9/Report Card + Good Moral)
                 // Returning: SF9 (required) + PSA Birth Cert (required) + Good Moral (required)
-                
+
                 $hasSf9 = true; // ALWAYS REQUIRED
                 $hasReportCard = rand(0, 1); // Optional - can be submitted as follow-up
                 $hasGoodMoral = false;
                 $hasPsaBirth = rand(0, 1); // Optional for new/transferee, required for returning
-                
+
                 if ($studentStatus === 'transferee') {
                     // Transferees: SF9 (required) + Good Moral (required)
                     $hasGoodMoral = true; // Always required for transferees
@@ -608,7 +640,7 @@ class DatabaseSeeder extends Seeder
                     $hasGoodMoral = true; // Required for returning
                 }
                 // For 'new' students: only SF9 is required, others are optional
-                
+
                 // Create student record WITHOUT section assignment
                 $studentId = DB::table('tbl_students')->insertGetId([
                     'user_id' => $userId,
@@ -630,7 +662,7 @@ class DatabaseSeeder extends Seeder
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
-                
+
                 // Create student profile
                 DB::table('tbl_student_profiles')->insert([
                     'profileable_id' => $studentId,
@@ -670,6 +702,8 @@ class DatabaseSeeder extends Seeder
 
         // Seed student grades for Grade 7-10
         $this->call(StudentGradesSeeder::class);
+        // Seed clearance records (most cleared, 1-2 pending per student)
+        $this->call(ClearanceSeeder::class);
     }
 }
 

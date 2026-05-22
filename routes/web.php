@@ -128,6 +128,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('teacher/profile-settings/picture', [TeacherController::class, 'uploadProfilePicture'])->name('teacher.profile-settings.picture.upload');
     Route::delete('teacher/profile-settings/picture', [TeacherController::class, 'deleteProfilePicture'])->name('teacher.profile-settings.picture.delete');
 
+    Route::get('teacher/student-clearance', [TeacherController::class, 'studentClearance'])->name('teacher.student-clearance');
+
+
+    Route::post('teacher/student-clearance/toggle', [\App\Http\Controllers\ClearanceController::class, 'toggle'])->name('teacher.student-clearance.toggle');
+
+
+
+
+
+
+
+
     // Admin routes
     Route::get('admin/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
     

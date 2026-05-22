@@ -21,9 +21,9 @@ class TeacherController extends Controller
     public function dashboard()
     {
         $user = Auth::user();
-        
+
         $teacher = Teacher::where('user_id', $user->id)->first();
-        
+
         if (!$teacher) {
             return redirect()->route('login')->withErrors(['error' => 'Teacher profile not found.']);
         }
@@ -32,7 +32,7 @@ class TeacherController extends Controller
             ->distinct('class_section_id')
             ->count('class_section_id');
 
-        $totalStudents = Student::whereIn('current_section_id', function($query) use ($teacher) {
+        $totalStudents = Student::whereIn('current_section_id', function ($query) use ($teacher) {
             $query->select('class_section_id')
                 ->from('tbl_schedules')
                 ->where('teacher_id', $teacher->id)
@@ -106,7 +106,7 @@ class TeacherController extends Controller
     {
         // Check if current admin has permission to add teachers
         $currentAdmin = \App\Models\Admin::where('user_id', Auth::id())->first();
-        
+
         if ($currentAdmin && !$currentAdmin->can_add_teacher) {
             return back()->withErrors(['error' => 'You do not have permission to add teachers. Please contact the Super Admin.']);
         }
@@ -191,7 +191,7 @@ class TeacherController extends Controller
 
         try {
             $fullName = $validated['firstName'] . ' ' . $validated['lastName'];
-            
+
             // Track changes
             $changes = [];
             if ($teacher->name !== $fullName) {
@@ -219,7 +219,7 @@ class TeacherController extends Controller
             }
 
             $teacher->user->update($userData);
-            
+
             $teacher->update([
                 'name' => $fullName,
                 'employee_number' => $validated['employeeNumber'],
@@ -291,7 +291,7 @@ class TeacherController extends Controller
         $teacherId = $request->input('teacher_id');
 
         $query = Teacher::where('employee_number', $employeeNumber);
-        
+
         if ($teacherId) {
             $query->where('id', '!=', $teacherId);
         }
@@ -408,17 +408,17 @@ class TeacherController extends Controller
     private function getFinalReportFilters(Request $request, Teacher $teacher): array
     {
         $gradeLevelId = $request->input('grade_level_id');
-        $sectionId    = $request->input('section_id');
-        $subjectId    = $request->input('subject_id');
-        $schoolYear   = $request->input('school_year') ?? Student::orderBy('school_year', 'desc')->value('school_year') ?? date('Y') . '-' . (date('Y') + 1);
+        $sectionId = $request->input('section_id');
+        $subjectId = $request->input('subject_id');
+        $schoolYear = $request->input('school_year') ?? Student::orderBy('school_year', 'desc')->value('school_year') ?? date('Y') . '-' . (date('Y') + 1);
 
         return [
             'gradeLevels' => $this->getGradeLevels(),
-            'sections'    => $this->getTeacherSections($teacher, $gradeLevelId),
-            'subjects'    => $this->getTeacherSubjects($teacher),
+            'sections' => $this->getTeacherSections($teacher, $gradeLevelId),
+            'subjects' => $this->getTeacherSubjects($teacher),
             'schoolYears' => $this->getSchoolYears(),
-            'students'    => $this->getFinalReportStudents($sectionId, $subjectId, $schoolYear, $teacher),
-            'filters'     => compact('gradeLevelId', 'sectionId', 'subjectId', 'schoolYear'),
+            'students' => $this->getFinalReportStudents($sectionId, $subjectId, $schoolYear, $teacher),
+            'filters' => compact('gradeLevelId', 'sectionId', 'subjectId', 'schoolYear'),
         ];
     }
 
@@ -470,16 +470,16 @@ class TeacherController extends Controller
             ->toArray();
 
         // Generate school years from 2018 to current year + 1
-        $currentYear = (int)date('Y');
+        $currentYear = (int) date('Y');
         $generatedYears = [];
-        
+
         for ($year = 2018; $year <= $currentYear + 1; $year++) {
             $generatedYears[] = $year . '-' . ($year + 1);
         }
 
         // Merge and get unique values
         $allYears = array_unique(array_merge($generatedYears, $dbSchoolYears));
-        
+
         // Sort in descending order
         rsort($allYears);
 
@@ -523,26 +523,27 @@ class TeacherController extends Controller
     private function mapStudentWithGrade($student, $gradeRecords): array
     {
         $gradeRecord = $gradeRecords->get($student->id);
-        
+
         // Format grade helper
-        $formatGrade = function($grade) {
-            if ($grade === null) return null;
-            $formatted = (float)$grade;
-            return $formatted == floor($formatted) ? (int)$formatted : $formatted;
+        $formatGrade = function ($grade) {
+            if ($grade === null)
+                return null;
+            $formatted = (float) $grade;
+            return $formatted == floor($formatted) ? (int) $formatted : $formatted;
         };
 
         return [
-            'id'           => $student->id,
-            'lrn'          => $student->lrn,
-            'studentName'  => trim($student->first_name . ' ' . $student->last_name),
-            'gradeLevel'   => $student->gradeLevel?->name ?? 'N/A',
-            'section'      => $student->section?->section_name ?? 'N/A',
-            'quarter1'     => $formatGrade($gradeRecord?->quarter_1),
-            'quarter2'     => $formatGrade($gradeRecord?->quarter_2),
-            'quarter3'     => $formatGrade($gradeRecord?->quarter_3),
-            'quarter4'     => $formatGrade($gradeRecord?->quarter_4),
+            'id' => $student->id,
+            'lrn' => $student->lrn,
+            'studentName' => trim($student->first_name . ' ' . $student->last_name),
+            'gradeLevel' => $student->gradeLevel?->name ?? 'N/A',
+            'section' => $student->section?->section_name ?? 'N/A',
+            'quarter1' => $formatGrade($gradeRecord?->quarter_1),
+            'quarter2' => $formatGrade($gradeRecord?->quarter_2),
+            'quarter3' => $formatGrade($gradeRecord?->quarter_3),
+            'quarter4' => $formatGrade($gradeRecord?->quarter_4),
             'finalAverage' => $formatGrade($gradeRecord?->final_grade),
-            'remarks'      => $gradeRecord?->remarks,
+            'remarks' => $gradeRecord?->remarks,
             'readyToGraduate' => $student->ready_to_graduate ?? false,
         ];
     }
@@ -598,7 +599,7 @@ class TeacherController extends Controller
         $timeSlots = [];
         foreach ($schedules as $schedule) {
             $timeKey = $schedule->start_time . ' - ' . $schedule->end_time;
-            
+
             if (!isset($timeSlots[$timeKey])) {
                 $timeSlots[$timeKey] = [
                     'time' => date('g:i A', strtotime($schedule->start_time)) . ' - ' . date('g:i A', strtotime($schedule->end_time)),
@@ -609,12 +610,12 @@ class TeacherController extends Controller
                     'friday' => '',
                 ];
             }
-            
+
             $dayKey = strtolower($schedule->day_of_week);
-            $timeSlots[$timeKey][$dayKey] = $schedule->subject_name . ' ' . 
-                                            $schedule->grade_level_name . '-' . 
-                                            $schedule->section_name . 
-                                            ($schedule->room ? "\n" . $schedule->room : '');
+            $timeSlots[$timeKey][$dayKey] = $schedule->subject_name . ' ' .
+                $schedule->grade_level_name . '-' .
+                $schedule->section_name .
+                ($schedule->room ? "\n" . $schedule->room : '');
         }
 
         // Convert to array and sort by time
@@ -652,10 +653,10 @@ class TeacherController extends Controller
             )
             ->distinct()
             ->get()
-            ->map(function($class) {
+            ->map(function ($class) {
                 // Count students in this section
                 $studentCount = Student::where('current_section_id', $class->section_id)->count();
-                
+
                 return [
                     'gradeLevel' => $class->grade_level,
                     'section' => $class->section,
@@ -815,7 +816,7 @@ class TeacherController extends Controller
         }
 
         $profilePicture = $teacher->profilePicture;
-        
+
         if ($profilePicture) {
             Storage::disk('public')->delete($profilePicture->file_path);
             $profilePicture->delete();
@@ -846,5 +847,83 @@ class TeacherController extends Controller
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Failed to update graduation readiness: ' . $e->getMessage()]);
         }
+    }
+
+    public function studentClearance(Request $request)
+    {
+        $user = Auth::user();
+        $teacher = Teacher::where('user_id', $user->id)->first();
+
+        if (!$teacher) {
+            return redirect()->route('login')->withErrors(['error' => 'Teacher profile not found.']);
+        }
+
+        $subjectId = $request->input('subject_id');
+        $sectionId = $request->input('section_id');
+        $schoolYear = $request->input('school_year')
+            ?? Student::orderBy('school_year', 'desc')->value('school_year')
+            ?? date('Y') . '-' . (date('Y') + 1);
+
+        $subjects = DB::table('tbl_teacher_subjects')
+            ->join('tbl_subjects', 'tbl_teacher_subjects.subject_id', '=', 'tbl_subjects.id')
+            ->join('tbl_schedules', function ($join) use ($teacher) {
+                $join->on('tbl_schedules.subject_id', '=', 'tbl_subjects.id')
+                    ->where('tbl_schedules.teacher_id', $teacher->id);
+            })
+            ->join('tbl_class_sections', 'tbl_schedules.class_section_id', '=', 'tbl_class_sections.id')
+            ->join('tbl_grade_levels', 'tbl_class_sections.grade_level_id', '=', 'tbl_grade_levels.id')
+            ->where('tbl_teacher_subjects.teacher_id', $teacher->id)
+            ->select(
+                'tbl_subjects.id',
+                'tbl_subjects.name as subject_name',
+                'tbl_subjects.code as subject_code',
+                'tbl_grade_levels.name as grade_level',
+                'tbl_class_sections.section_name as section',
+                'tbl_class_sections.id as section_id'
+            )
+            ->distinct()
+            ->get();
+
+        $students = [];
+        if ($subjectId && $sectionId) {
+            // Load clearances for this subject+section+year keyed by student_id
+            $clearances = \App\Models\Clearance::where('subject_id', $subjectId)
+                ->where('class_section_id', $sectionId)
+                ->where('school_year', $schoolYear)
+                ->get()
+                ->keyBy('student_id');
+
+            $students = Student::where('current_section_id', $sectionId)
+                ->where('school_year', $schoolYear)
+                ->with(['gradeLevel', 'section', 'profilePicture'])
+                ->get()
+                ->map(function ($student) use ($clearances) {
+                    $clearance = $clearances->get($student->id);
+                    return [
+                        'id' => $student->id,
+                        'student_id' => $student->lrn,
+                        'firstName' => $student->first_name,
+                        'lastName' => $student->last_name,
+                        'middleName' => $student->middle_name ?? null,
+                        'grade_level' => $student->gradeLevel?->name ?? 'N/A',
+                        'section' => $student->section?->section_name ?? 'N/A',
+                        'clearance_status' => $clearance?->status ?? 'pending',
+                        'profile_picture' => $student->profilePicture
+                            ? asset('storage/' . $student->profilePicture->file_path)
+                            : null,
+                    ];
+                })
+                ->values();
+        }
+
+        return Inertia::render('teacher/student-clearance/page', [
+            'subjects' => $subjects,
+            'students' => $students,
+            'filters' => [
+                'subject_id' => $subjectId,
+                'section_id' => $sectionId,
+                'school_year' => $schoolYear,
+            ],
+        ]);
     }
 }

@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useState, useRef, useEffect } from 'react'
 import { store } from '@/routes/admin/admission/registration'
-import { Download, Upload, FileSpreadsheet, CheckCircle2 } from 'lucide-react'
+import { Download, Upload, FileSpreadsheet, CheckCircle2, Calendar } from 'lucide-react'
 
 type GradeLevel = {
     id: number
@@ -38,14 +38,201 @@ type Props = {
     gradeLevels: GradeLevel[]
 }
 
+// ─── DatePicker Component ────────────────────────────────────────────────────
+function DatePicker({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+    const [open, setOpen] = useState(false)
+    const [viewDate, setViewDate] = useState(() => {
+        if (value && value.length === 10) {
+            const [mm, dd, yyyy] = value.split('/')
+            return new Date(+yyyy, +mm - 1, 1)
+        }
+        return new Date()
+    })
+    const ref = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+        }
+        document.addEventListener('mousedown', handler)
+        return () => document.removeEventListener('mousedown', handler)
+    }, [])
+
+    const selectedDate = (() => {
+        if (value && value.length === 10) {
+            const [mm, dd, yyyy] = value.split('/')
+            return new Date(+yyyy, +mm - 1, +dd)
+        }
+        return null
+    })()
+
+    const year = viewDate.getFullYear()
+    const month = viewDate.getMonth()
+
+    const monthNames = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December',
+    ]
+
+    const firstDay = new Date(year, month, 1).getDay()
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+    const daysInPrev = new Date(year, month, 0).getDate()
+
+    const cells: { day: number; type: 'prev' | 'current' | 'next' }[] = []
+    for (let i = firstDay - 1; i >= 0; i--)
+        cells.push({ day: daysInPrev - i, type: 'prev' })
+    for (let d = 1; d <= daysInMonth; d++)
+        cells.push({ day: d, type: 'current' })
+    const remaining = 42 - cells.length
+    for (let d = 1; d <= remaining; d++)
+        cells.push({ day: d, type: 'next' })
+
+    const today = new Date()
+
+    const selectDay = (day: number) => {
+        const mm = String(month + 1).padStart(2, '0')
+        const dd = String(day).padStart(2, '0')
+        onChange(`${mm}/${dd}/${year}`)
+        setOpen(false)
+    }
+
+    const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let val = e.target.value.replace(/[^0-9]/g, '')
+        if (val.length >= 3) val = val.slice(0, 2) + '/' + val.slice(2)
+        if (val.length >= 6) val = val.slice(0, 5) + '/' + val.slice(5, 9)
+        onChange(val)
+
+        if (val.length === 10) {
+            const [mm, dd, yyyy] = val.split('/')
+            const d = new Date(+yyyy, +mm - 1, 1)
+            if (!isNaN(d.getTime())) setViewDate(d)
+        }
+    }
+
+    return (
+        <div className="relative" ref={ref}>
+            <div className="relative">
+                <Input
+                    type="text"
+                    placeholder="MM/DD/YYYY"
+                    value={value}
+                    onChange={handleTextChange}
+                    onFocus={() => setOpen(true)}
+                    maxLength={10}
+                    className="h-11 pr-10"
+                />
+                <button
+                    type="button"
+                    onClick={() => setOpen(o => !o)}
+                    className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-gray-600"
+                >
+                    <Calendar className="w-4 h-4" />
+                </button>
+            </div>
+
+            {open && (
+                <div className="absolute z-50 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg p-3 w-72">
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-3">
+                        <button
+                            type="button"
+                            onClick={() => setViewDate(new Date(year, month - 1, 1))}
+                            className="p-1 rounded hover:bg-gray-100 text-gray-600"
+                        >
+                            ↑
+                        </button>
+                        <span className="text-sm font-semibold text-gray-800">
+                            {monthNames[month]} {year} ▾
+                        </span>
+                        <button
+                            type="button"
+                            onClick={() => setViewDate(new Date(year, month + 1, 1))}
+                            className="p-1 rounded hover:bg-gray-100 text-gray-600"
+                        >
+                            ↓
+                        </button>
+                    </div>
+
+                    {/* Day headers */}
+                    <div className="grid grid-cols-7 mb-1">
+                        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
+                            <div key={d} className="text-center text-xs font-medium text-gray-400 py-1">{d}</div>
+                        ))}
+                    </div>
+
+                    {/* Days grid */}
+                    <div className="grid grid-cols-7">
+                        {cells.map((cell, i) => {
+                            const isSelected =
+                                cell.type === 'current' &&
+                                selectedDate &&
+                                selectedDate.getFullYear() === year &&
+                                selectedDate.getMonth() === month &&
+                                selectedDate.getDate() === cell.day
+
+                            const isToday =
+                                cell.type === 'current' &&
+                                today.getFullYear() === year &&
+                                today.getMonth() === month &&
+                                today.getDate() === cell.day
+
+                            return (
+                                <button
+                                    key={i}
+                                    type="button"
+                                    disabled={cell.type !== 'current'}
+                                    onClick={() => cell.type === 'current' && selectDay(cell.day)}
+                                    className={`
+                                        text-center text-sm py-1.5 rounded-full mx-auto w-8 h-8 flex items-center justify-center transition-colors
+                                        ${cell.type !== 'current' ? 'text-gray-300 cursor-default' : 'cursor-pointer hover:bg-blue-50'}
+                                        ${isSelected ? 'bg-blue-600 text-white hover:bg-blue-700 font-semibold' : ''}
+                                        ${isToday && !isSelected ? 'border border-blue-400 text-blue-600 font-semibold' : ''}
+                                    `}
+                                >
+                                    {cell.day}
+                                </button>
+                            )
+                        })}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="flex justify-between mt-3 pt-3 border-t border-gray-100">
+                        <button
+                            type="button"
+                            onClick={() => { onChange(''); setOpen(false) }}
+                            className="text-sm text-blue-600 hover:underline"
+                        >
+                            Clear
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const t = new Date()
+                                const mm = String(t.getMonth() + 1).padStart(2, '0')
+                                const dd = String(t.getDate()).padStart(2, '0')
+                                onChange(`${mm}/${dd}/${t.getFullYear()}`)
+                                setOpen(false)
+                            }}
+                            className="text-sm text-blue-600 hover:underline"
+                        >
+                            Today
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
+
+// ─── Main Component ──────────────────────────────────────────────────────────
 export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
     const [activeTab, setActiveTab] = useState('new')
     const [studentStatus, setStudentStatus] = useState('')
     const [gradeLevel, setGradeLevel] = useState('')
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [showImportedModal, setShowImportedModal] = useState(false)
-    const [importedStudents, setImportedStudents] = useState<Array<{ lrn: string, name: string }>>([])
-    const [duplicateStudents, setDuplicateStudents] = useState<Array<{ lrn: string, name: string }>>([])
+    const [importedStudents, setImportedStudents] = useState<Array<{ lrn: string; name: string }>>([])
+    const [duplicateStudents, setDuplicateStudents] = useState<Array<{ lrn: string; name: string }>>([])
     const [importErrors, setImportErrors] = useState<string[]>([])
     const [importStats, setImportStats] = useState({ imported: 0, duplicates: 0, errors: 0 })
     const [startYear, setStartYear] = useState('')
@@ -65,7 +252,6 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
             setSearchResults([])
             return
         }
-
         setIsSearching(true)
         try {
             const response = await fetch(`/admin/admission/registration/search-returning?search=${encodeURIComponent(query)}`)
@@ -84,23 +270,28 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
         setSearchQuery(student.name)
         setSearchResults([])
 
-        // Get next grade level
         const currentGradeNumber = parseInt(student.current_grade_level.replace('Grade ', ''))
         const nextGradeNumber = currentGradeNumber + 1
         const nextGradeLevel = gradeLevels.find(g => g.name === `Grade ${nextGradeNumber}`)
 
-        // Pre-fill form with student data
+        // Convert YYYY-MM-DD → MM/DD/YYYY for display in DatePicker
+        let displayDate = ''
+        if (student.birth_date) {
+            const [y, m, d] = student.birth_date.split('-')
+            displayDate = `${m}/${d}/${y}`
+        }
+
         setData({
             ...data,
             lrn: student.lrn,
             grade_level_id: nextGradeLevel ? nextGradeLevel.id.toString() : '',
-            birth_date: student.birth_date || '',
+            birth_date: displayDate,
             gender: student.gender || '',
             student_status: 'returning',
         })
     }
 
-    // Update school_year when start or end year changes
+    // Auto-fill school year
     useEffect(() => {
         if (startYear && endYear) {
             setData('school_year', `${startYear}-${endYear}`)
@@ -109,6 +300,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
         }
     }, [startYear, endYear])
 
+    // Handle import flash data
     useEffect(() => {
         const imported = flash.imported_students || []
         const duplicates = flash.duplicate_students || []
@@ -136,7 +328,14 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
             })
             setShowImportedModal(true)
         }
-    }, [flash.imported_students, flash.duplicate_students, flash.import_row_errors, flash.imported_count, flash.duplicate_count, flash.error_count])
+    }, [
+        flash.imported_students,
+        flash.duplicate_students,
+        flash.import_row_errors,
+        flash.imported_count,
+        flash.duplicate_count,
+        flash.error_count,
+    ])
 
     const { data, setData, post, processing, errors, reset } = useForm({
         student_status: '',
@@ -155,7 +354,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
         has_good_moral: false,
     })
 
-    // Update student_status based on active tab
+    // Sync student_status with active tab
     useEffect(() => {
         if (activeTab === 'new') {
             setData('student_status', 'new')
@@ -169,21 +368,28 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
         }
     }, [activeTab])
 
-    // Determine if grade level dropdown should be shown
     const showGradeLevelDropdown = activeTab === 'transferee' || activeTab === 'old'
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
+
+        // Convert MM/DD/YYYY → YYYY-MM-DD before sending to Laravel
+        let isoDate = data.birth_date
+        if (data.birth_date && data.birth_date.length === 10) {
+            const [mm, dd, yyyy] = data.birth_date.split('/')
+            isoDate = `${yyyy}-${mm}-${dd}`
+        }
+
         post(store.url(), {
+            data: { ...data, birth_date: isoDate },
             onSuccess: () => {
                 reset()
                 setStudentStatus('')
                 setGradeLevel('')
                 setStartYear('')
                 setEndYear('')
-                // Reset to new tab after successful submission
                 setActiveTab('new')
-            }
+            },
         })
     }
 
@@ -196,10 +402,6 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
         setActiveTab('new')
     }
 
-    const handleExport = () => {
-        window.location.href = '/admin/admission/registration/export'
-    }
-
     const handleImportClick = () => {
         fileInputRef.current?.click()
     }
@@ -207,54 +409,17 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (file) {
-            console.log('Uploading file:', file.name)
             const formData = new FormData()
             formData.append('file', file)
-
             router.post('/admin/admission/registration/import', formData, {
                 onSuccess: () => {
-                    console.log('Import request submitted successfully')
-                    if (fileInputRef.current) {
-                        fileInputRef.current.value = ''
-                    }
+                    if (fileInputRef.current) fileInputRef.current.value = ''
                 },
-                onError: (errors) => {
-                    console.log('Import errors:', errors)
-                    if (fileInputRef.current) {
-                        fileInputRef.current.value = ''
-                    }
-                }
+                onError: () => {
+                    if (fileInputRef.current) fileInputRef.current.value = ''
+                },
             })
         }
-    }
-
-    const pollImportStatus = (importJobId: number) => {
-        const interval = setInterval(async () => {
-            try {
-                const response = await fetch(`/admin/admission/registration/import-status/${importJobId}`)
-                const data = await response.json()
-
-                console.log('Import status:', data)
-
-                if (data.status === 'completed' || data.status === 'failed') {
-                    clearInterval(interval)
-
-                    // Set the data for the modal
-                    setImportedStudents(data.imported_students || [])
-                    setDuplicateStudents(data.duplicate_students || [])
-                    setImportErrors(data.errors || [])
-                    setImportStats({
-                        imported: data.imported_count || 0,
-                        duplicates: (data.duplicate_students || []).length,
-                        errors: data.error_count || 0
-                    })
-                    setShowImportedModal(true)
-                }
-            } catch (error) {
-                console.error('Error polling import status:', error)
-                clearInterval(interval)
-            }
-        }, 2000) // Poll every 2 seconds
     }
 
     const handleDownloadTemplate = () => {
@@ -266,29 +431,18 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
             <Head title="Student Registration" />
 
             <div className="space-y-6">
+                {/* Page Header */}
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">Student Registration</h1>
-                        <p className="text-sm text-gray-500 mt-1">
-                            Register new students with their information
-                        </p>
+                        <p className="text-sm text-gray-500 mt-1">Register new students with their information</p>
                     </div>
                     <div className="flex items-center gap-2">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={handleDownloadTemplate}
-                            className="flex items-center gap-2"
-                        >
+                        <Button type="button" variant="outline" onClick={handleDownloadTemplate} className="flex items-center gap-2">
                             <FileSpreadsheet className="w-4 h-4" />
                             Download Template
                         </Button>
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={handleImportClick}
-                            className="flex items-center gap-2"
-                        >
+                        <Button type="button" variant="outline" onClick={handleImportClick} className="flex items-center gap-2">
                             <Upload className="w-4 h-4" />
                             Import Students
                         </Button>
@@ -309,7 +463,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                     </div>
                 </div>
 
-                {/* Show success message */}
+                {/* Flash success */}
                 {flash.success && (
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                         <p className="text-sm text-green-800">{flash.success}</p>
@@ -324,6 +478,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                     className="hidden"
                 />
 
+                {/* Registration Card */}
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                     <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-gray-200 px-6 py-5">
                         <h2 className="text-xl font-bold text-gray-900">Register Student</h2>
@@ -359,6 +514,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                 </TabsTrigger>
                             </TabsList>
 
+                            {/* ── New Student Banner ── */}
                             <TabsContent value="new">
                                 <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-lg p-4 mb-6 shadow-sm">
                                     <div className="flex items-start gap-3">
@@ -377,6 +533,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                 </div>
                             </TabsContent>
 
+                            {/* ── Old / Returning Student Banner + Search ── */}
                             <TabsContent value="old">
                                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 rounded-lg p-4 mb-6 shadow-sm">
                                     <div className="flex items-start gap-3">
@@ -394,7 +551,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                     </div>
                                 </div>
 
-                                {/* Search Bar for Returning Students */}
+                                {/* Search */}
                                 <div className="mb-6">
                                     <label className="block text-sm font-semibold text-gray-900 mb-2">
                                         Search Returning Student <span className="text-red-500">*</span>
@@ -415,20 +572,18 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                         {isSearching && (
                                             <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
                                                 <svg className="animate-spin h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24">
-                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                                 </svg>
                                             </div>
                                         )}
                                     </div>
 
-                                    {/* Search Results Dropdown */}
                                     {searchResults.length > 0 && (
                                         <div className="mt-2 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
                                             {searchResults.map((student) => {
                                                 const currentGradeNumber = parseInt(student.current_grade_level.replace('Grade ', ''))
                                                 const nextGrade = `Grade ${currentGradeNumber + 1}`
-
                                                 return (
                                                     <button
                                                         key={student.id}
@@ -478,6 +633,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                 </div>
                             </TabsContent>
 
+                            {/* ── Transferee Banner ── */}
                             <TabsContent value="transferee">
                                 <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-l-4 border-purple-500 rounded-lg p-4 mb-6 shadow-sm">
                                     <div className="flex items-start gap-3">
@@ -496,7 +652,10 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                 </div>
                             </TabsContent>
 
+                            {/* ── Shared Form (all tabs) ── */}
                             <form onSubmit={handleSubmit} className="space-y-6">
+
+                                {/* Grade Level (only for old/transferee) */}
                                 {showGradeLevelDropdown && (
                                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                                         <label className="block text-sm font-semibold text-gray-900 mb-3">
@@ -518,6 +677,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                     </div>
                                 )}
 
+                                {/* LRN + School Year */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-900 mb-2">
@@ -527,10 +687,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                             type="text"
                                             placeholder="Enter 12-digit LRN"
                                             value={data.lrn}
-                                            onChange={(e) => {
-                                                const cleaned = e.target.value.replace(/[^0-9]/g, '')
-                                                setData('lrn', cleaned)
-                                            }}
+                                            onChange={(e) => setData('lrn', e.target.value.replace(/[^0-9]/g, ''))}
                                             maxLength={12}
                                             className="h-11"
                                         />
@@ -545,10 +702,12 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                                 type="text"
                                                 placeholder="Start year"
                                                 value={startYear}
-                                                onChange={(e) => setStartYear(e.target.value)}
-                                                onInput={(e) => {
-                                                    const target = e.target as HTMLInputElement;
-                                                    target.value = target.value.replace(/[^0-9]/g, '');
+                                                onChange={(e) => {
+                                                    const val = e.target.value.replace(/[^0-9]/g, '')
+                                                    setStartYear(val)
+                                                    if (val.length === 4) {
+                                                        setEndYear(String(parseInt(val) + 1))
+                                                    }
                                                 }}
                                                 maxLength={4}
                                                 className="h-11 text-center"
@@ -558,20 +717,18 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                                 type="text"
                                                 placeholder="End year"
                                                 value={endYear}
-                                                onChange={(e) => setEndYear(e.target.value)}
-                                                onInput={(e) => {
-                                                    const target = e.target as HTMLInputElement;
-                                                    target.value = target.value.replace(/[^0-9]/g, '');
-                                                }}
+                                                onChange={(e) => setEndYear(e.target.value.replace(/[^0-9]/g, ''))}
                                                 maxLength={4}
                                                 className="h-11 text-center"
+                                                disabled
                                             />
                                         </div>
-                                        <p className="text-xs text-gray-500 mt-1">Enter 4-digit years (e.g., 2026 - 2027)</p>
+                                        <p className="text-xs text-gray-500 mt-1">Enter 4-digit start year (e.g., 2026 → auto-fills 2027)</p>
                                         {errors.school_year && <p className="text-xs text-red-500 mt-2">{errors.school_year}</p>}
                                     </div>
                                 </div>
 
+                                {/* Personal Information */}
                                 <div className="border-t border-gray-200 pt-6">
                                     <h3 className="text-base font-semibold text-gray-900 mb-4">Personal Information</h3>
                                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -602,9 +759,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                             {errors.first_name && <p className="text-xs text-red-500 mt-2">{errors.first_name}</p>}
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-semibold text-gray-900 mb-2">
-                                                Middle Name
-                                            </label>
+                                            <label className="block text-sm font-semibold text-gray-900 mb-2">Middle Name</label>
                                             <Input
                                                 type="text"
                                                 placeholder="Enter middle name (optional)"
@@ -614,9 +769,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-semibold text-gray-900 mb-2">
-                                                Suffix
-                                            </label>
+                                            <label className="block text-sm font-semibold text-gray-900 mb-2">Suffix</label>
                                             <Select value={data.suffix || undefined} onValueChange={(value) => setData('suffix', value)}>
                                                 <SelectTrigger className="h-11">
                                                     <SelectValue placeholder="None" />
@@ -634,6 +787,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                     </div>
                                 </div>
 
+                                {/* Gender + Date of Birth */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-900 mb-2">
@@ -654,16 +808,15 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                         <label className="block text-sm font-semibold text-gray-900 mb-2">
                                             Date of Birth <span className="text-red-500">*</span>
                                         </label>
-                                        <Input
-                                            type="date"
+                                        <DatePicker
                                             value={data.birth_date}
-                                            onChange={(e) => setData('birth_date', e.target.value)}
-                                            className="h-11"
+                                            onChange={(val) => setData('birth_date', val)}
                                         />
                                         {errors.birth_date && <p className="text-xs text-red-500 mt-2">{errors.birth_date}</p>}
                                     </div>
                                 </div>
 
+                                {/* Documents */}
                                 <div className="border-t border-gray-200 pt-6">
                                     <div className="flex items-center gap-2 mb-4">
                                         <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -672,13 +825,12 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                             </svg>
                                         </div>
                                         <div>
-                                            <h3 className="text-base font-semibold text-gray-900">
-                                                Student Documents
-                                            </h3>
+                                            <h3 className="text-base font-semibold text-gray-900">Student Documents</h3>
                                             <p className="text-xs text-gray-600">Check the documents that have been submitted (can be submitted as follow-up)</p>
                                         </div>
                                     </div>
 
+                                    {/* Requirements notice */}
                                     <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-xl p-4 mb-4">
                                         <div className="flex items-start gap-3">
                                             <div className="flex-shrink-0 w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center mt-0.5">
@@ -718,27 +870,21 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                     </div>
 
                                     <div className="space-y-4">
-                                        {/* PSA Birth Certificate - Required for Returning Students */}
-                                        <div className={`bg-white border-2 rounded-xl p-4 transition-colors ${activeTab === 'old'
-                                            ? 'border-red-300 bg-gradient-to-br from-red-50 to-pink-50'
-                                            : 'border-gray-200 hover:border-gray-300'
-                                            }`}>
+                                        {/* PSA Birth Certificate */}
+                                        <div className={`bg-white border-2 rounded-xl p-4 transition-colors ${activeTab === 'old' ? 'border-red-300 bg-gradient-to-br from-red-50 to-pink-50' : 'border-gray-200 hover:border-gray-300'}`}>
                                             <div className="flex items-start gap-3">
                                                 <input
                                                     type="checkbox"
                                                     id="psa_birth_certificate"
                                                     checked={data.has_psa_birth_certificate}
                                                     onChange={(e) => setData('has_psa_birth_certificate', e.target.checked)}
-                                                    className={`mt-1 h-5 w-5 rounded border-gray-300 cursor-pointer ${activeTab === 'old' ? 'text-red-600 focus:ring-red-500' : 'text-gray-600 focus:ring-gray-500'
-                                                        }`}
+                                                    className={`mt-1 h-5 w-5 rounded border-gray-300 cursor-pointer ${activeTab === 'old' ? 'text-red-600 focus:ring-red-500' : 'text-gray-600 focus:ring-gray-500'}`}
                                                 />
                                                 <label htmlFor="psa_birth_certificate" className="flex-1 cursor-pointer">
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <span className="text-sm font-semibold text-gray-900">PSA Birth Certificate</span>
                                                         {activeTab === 'old' && (
-                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                                                Required
-                                                            </span>
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Required</span>
                                                         )}
                                                     </div>
                                                     <p className="text-xs text-gray-600">
@@ -748,13 +894,10 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                                     </p>
                                                 </label>
                                             </div>
-                                            {errors.has_psa_birth_certificate && (
-                                                <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_psa_birth_certificate}</p>
-                                            )}
+                                            {errors.has_psa_birth_certificate && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_psa_birth_certificate}</p>}
                                         </div>
 
-                                        {/* Academic Records Section */}
-                                        {/* Form 138 (SF9) - ASAP follow-up, not strictly required */}
+                                        {/* Form 138 (SF9) */}
                                         <div className="bg-white border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl p-4 transition-colors">
                                             <div className="flex items-start gap-3">
                                                 <input
@@ -767,19 +910,15 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                                 <label htmlFor="sf9" className="flex-1 cursor-pointer">
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <span className="text-sm font-semibold text-gray-900">Form 138 (SF9)</span>
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                                                            Optional But Submit ASAP
-                                                        </span>
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Optional But Submit ASAP</span>
                                                     </div>
                                                     <p className="text-xs text-gray-600">Learner's Permanent Academic Record — not required at enrollment but must be submitted as soon as possible</p>
                                                 </label>
                                             </div>
-                                            {errors.has_sf9 && (
-                                                <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_sf9}</p>
-                                            )}
+                                            {errors.has_sf9 && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_sf9}</p>}
                                         </div>
 
-                                        {/* Form 137 (Report Card) - Required for all students */}
+                                        {/* Form 137 (Report Card) */}
                                         <div className="bg-white border-2 border-red-300 bg-gradient-to-br from-red-50 to-pink-50 rounded-xl p-4 transition-colors">
                                             <div className="flex items-start gap-3">
                                                 <input
@@ -792,41 +931,29 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                                 <label htmlFor="report_card" className="flex-1 cursor-pointer">
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <span className="text-sm font-semibold text-gray-900">Form 137 (Report Card)</span>
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                                            Required
-                                                        </span>
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Required</span>
                                                     </div>
                                                     <p className="text-xs text-gray-600">Official learner's permanent academic record / report card</p>
                                                 </label>
                                             </div>
-                                            {errors.has_report_card && (
-                                                <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_report_card}</p>
-                                            )}
+                                            {errors.has_report_card && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_report_card}</p>}
                                         </div>
 
-                                        {/* Good Moral Certificate - Required for Transferees and Returning Students */}
-                                        <div className={`bg-white border-2 rounded-xl p-4 transition-colors ${activeTab === 'transferee' || activeTab === 'old'
-                                            ? 'border-purple-300 bg-gradient-to-br from-purple-50 to-pink-50'
-                                            : 'border-gray-200 hover:border-gray-300'
-                                            }`}>
+                                        {/* Good Moral Certificate */}
+                                        <div className={`bg-white border-2 rounded-xl p-4 transition-colors ${activeTab === 'transferee' || activeTab === 'old' ? 'border-purple-300 bg-gradient-to-br from-purple-50 to-pink-50' : 'border-gray-200 hover:border-gray-300'}`}>
                                             <div className="flex items-start gap-3">
                                                 <input
                                                     type="checkbox"
                                                     id="good_moral"
                                                     checked={data.has_good_moral}
                                                     onChange={(e) => setData('has_good_moral', e.target.checked)}
-                                                    className={`mt-1 h-5 w-5 rounded border-gray-300 cursor-pointer ${activeTab === 'transferee' || activeTab === 'old'
-                                                        ? 'text-purple-600 focus:ring-purple-500'
-                                                        : 'text-gray-600 focus:ring-gray-500'
-                                                        }`}
+                                                    className={`mt-1 h-5 w-5 rounded border-gray-300 cursor-pointer ${activeTab === 'transferee' || activeTab === 'old' ? 'text-purple-600 focus:ring-purple-500' : 'text-gray-600 focus:ring-gray-500'}`}
                                                 />
                                                 <label htmlFor="good_moral" className="flex-1 cursor-pointer">
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <span className="text-sm font-semibold text-gray-900">Good Moral Certificate</span>
                                                         {(activeTab === 'transferee' || activeTab === 'old') && (
-                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                                                Required
-                                                            </span>
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Required</span>
                                                         )}
                                                     </div>
                                                     <p className="text-xs text-gray-600">
@@ -836,20 +963,14 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                                     </p>
                                                 </label>
                                             </div>
-                                            {errors.has_good_moral && (
-                                                <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_good_moral}</p>
-                                            )}
+                                            {errors.has_good_moral && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_good_moral}</p>}
                                         </div>
                                     </div>
                                 </div>
 
+                                {/* Form Actions */}
                                 <div className="flex gap-3 pt-6 border-t border-gray-200">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        onClick={handleCancel}
-                                        className="h-11 px-6"
-                                    >
+                                    <Button type="button" variant="outline" onClick={handleCancel} className="h-11 px-6">
                                         Cancel
                                     </Button>
                                     <Button
@@ -860,8 +981,8 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                         {processing ? (
                                             <div className="flex items-center gap-2">
                                                 <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                                 </svg>
                                                 <span>Registering...</span>
                                             </div>
@@ -876,7 +997,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                 </div>
             </div>
 
-            {/* Imported Students Modal */}
+            {/* ── Import Results Modal ── */}
             <Dialog open={showImportedModal} onOpenChange={setShowImportedModal}>
                 <DialogContent showCloseButton={false} className="!max-w-[85vw] w-[85vw] max-h-[85vh] overflow-hidden flex flex-col">
                     <DialogHeader className="border-b pb-4 flex-shrink-0">
@@ -904,7 +1025,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                     </DialogHeader>
 
                     <div className="flex-1 overflow-y-auto py-4">
-                        {/* Show successfully imported students */}
+                        {/* Imported */}
                         {importedStudents.length > 0 && (
                             <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-300 rounded-xl p-4 mb-6 shadow-sm">
                                 <div className="flex items-start gap-3">
@@ -935,7 +1056,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                             </div>
                         )}
 
-                        {/* Show duplicate students */}
+                        {/* Duplicates */}
                         {duplicateStudents.length > 0 && (
                             <div className="bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-300 rounded-xl p-4 mb-6 shadow-sm">
                                 <div className="flex items-start gap-3">
@@ -966,7 +1087,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                             </div>
                         )}
 
-                        {/* Show other errors if any */}
+                        {/* Errors */}
                         {importErrors.length > 0 && (
                             <div className="bg-gradient-to-r from-red-50 to-red-100 border border-red-300 rounded-xl p-4 mb-6 shadow-sm">
                                 <div className="flex items-start gap-3">
@@ -976,9 +1097,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                         </svg>
                                     </div>
                                     <div className="flex-1">
-                                        <p className="text-sm font-semibold text-red-900 mb-2">
-                                            Import Errors ({importErrors.length}):
-                                        </p>
+                                        <p className="text-sm font-semibold text-red-900 mb-2">Import Errors ({importErrors.length}):</p>
                                         <div className="space-y-2 max-h-60 overflow-y-auto">
                                             {importErrors.map((error, index) => (
                                                 <p key={index} className="text-sm text-red-800 pl-3 py-2 border-l-2 border-red-400 bg-red-50 rounded-r">
@@ -1013,21 +1132,13 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                     <div className="border-t pt-4 flex items-center justify-between flex-shrink-0">
                         <div className="text-sm text-gray-600">
                             {importStats.imported > 0 && (
-                                <>
-                                    <span className="font-semibold text-green-700">{importStats.imported}</span> imported
-                                </>
+                                <><span className="font-semibold text-green-700">{importStats.imported}</span> imported</>
                             )}
                             {importStats.duplicates > 0 && (
-                                <>
-                                    {importStats.imported > 0 && <span className="mx-2">•</span>}
-                                    <span className="font-semibold text-yellow-700">{importStats.duplicates}</span> duplicate{importStats.duplicates !== 1 ? 's' : ''}
-                                </>
+                                <>{importStats.imported > 0 && <span className="mx-2">•</span>}<span className="font-semibold text-yellow-700">{importStats.duplicates}</span> duplicate{importStats.duplicates !== 1 ? 's' : ''}</>
                             )}
                             {importStats.errors > 0 && (
-                                <>
-                                    {(importStats.imported > 0 || importStats.duplicates > 0) && <span className="mx-2">•</span>}
-                                    <span className="font-semibold text-red-700">{importStats.errors}</span> error{importStats.errors !== 1 ? 's' : ''}
-                                </>
+                                <>{(importStats.imported > 0 || importStats.duplicates > 0) && <span className="mx-2">•</span>}<span className="font-semibold text-red-700">{importStats.errors}</span> error{importStats.errors !== 1 ? 's' : ''}</>
                             )}
                         </div>
                         <Button

@@ -1066,15 +1066,15 @@ class StudentController extends Controller
                     $student->middle_name ?? '',
                     $student->last_name,
                     $student->suffix ?? '',
-                    $student->birth_date ? \Carbon\Carbon::parse($student->birth_date)->format('Y-m-d') : '',
+                    $student->birth_date ? \Carbon\Carbon::parse($student->birth_date)->format('m/d/Y') : '',
                     $student->gender,
                     $student->student_status,
                     $student->gradeLevel->name ?? '',
                     $student->school_year ?? '',
-                    $student->has_psa_birth_certificate ? 'Yes' : 'No',
-                    $student->has_sf9 ? 'Yes' : 'No',
-                    $student->has_report_card ? 'Yes' : 'No',
-                    $student->has_good_moral ? 'Yes' : 'No',
+                    $student->has_psa_birth_certificate ? 'Submitted' : 'Not Submitted',
+                    $student->has_sf9 ? 'Submitted' : 'Not Submitted',
+                    $student->has_report_card ? 'Submitted' : 'Not Submitted',
+                    $student->has_good_moral ? 'Submitted' : 'Not Submitted',
                 ]);
             }
 
@@ -1132,10 +1132,10 @@ class StudentController extends Controller
                 $studentStatus = isset($values[7]) ? strtolower(trim((string) $values[7])) : null;
                 $gradeLevelName = isset($values[8]) ? trim((string) $values[8]) : null;
                 $schoolYear = isset($values[9]) ? trim((string) $values[9]) : null;
-                $hasPsa = isset($values[10]) ? strtolower(trim((string) $values[10])) === 'yes' : false;
-                $hasSf9 = isset($values[11]) ? strtolower(trim((string) $values[11])) === 'yes' : false;
-                $hasReportCard = isset($values[12]) ? strtolower(trim((string) $values[12])) === 'yes' : false;
-                $hasGoodMoral = isset($values[13]) ? strtolower(trim((string) $values[13])) === 'yes' : false;
+                $hasPsa = isset($values[10]) ? strtolower(trim((string) $values[10])) === 'submitted' : false;
+                $hasSf9 = isset($values[11]) ? strtolower(trim((string) $values[11])) === 'submitted' : false;
+                $hasReportCard = isset($values[12]) ? strtolower(trim((string) $values[12])) === 'submitted' : false;
+                $hasGoodMoral = isset($values[13]) ? strtolower(trim((string) $values[13])) === 'submitted' : false;
 
                 // Safely parse birth date whether it's a string or DateTimeImmutable
                 $birthDate = null;
@@ -1144,7 +1144,13 @@ class StudentController extends Controller
                         if ($birthDateRaw instanceof \DateTimeInterface) {
                             $birthDate = \Carbon\Carbon::instance($birthDateRaw)->format('Y-m-d');
                         } else {
-                            $birthDate = \Carbon\Carbon::parse((string) $birthDateRaw)->format('Y-m-d');
+                            $dateStr = (string) $birthDateRaw;
+                            // Handle MM/DD/YYYY format
+                            if (preg_match('/^\d{2}\/\d{2}\/\d{4}$/', $dateStr)) {
+                                $birthDate = \Carbon\Carbon::createFromFormat('m/d/Y', $dateStr)->format('Y-m-d');
+                            } else {
+                                $birthDate = \Carbon\Carbon::parse($dateStr)->format('Y-m-d');
+                            }
                         }
                     } catch (\Exception $e) {
                         $birthDate = null;
@@ -1349,15 +1355,15 @@ class StudentController extends Controller
                 'Dela',
                 'Cruz',
                 'Jr.',
-                '2010-01-15',
+                '01/15/2010',
                 'male',
                 'new',
                 'Grade 7',
                 '2026-2027',
-                'Yes',
-                'No',
-                'Yes',
-                'No',
+                'Submitted',
+                'Not Submitted',
+                'Submitted',
+                'Not Submitted',
             ],
             [
                 '123456789013',
@@ -1365,15 +1371,15 @@ class StudentController extends Controller
                 'Santos',
                 'Garcia',
                 '',
-                '2009-03-22',
+                '03/22/2009',
                 'female',
                 'transferee',
                 'Grade 8',
                 '2026-2027',
-                'Yes',
-                'No',
-                'Yes',
-                'Yes',
+                'Submitted',
+                'Not Submitted',
+                'Submitted',
+                'Submitted',
             ],
         ];
 

@@ -691,23 +691,25 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                                 <div className="text-xs text-amber-800 space-y-1">
                                                     {activeTab === 'new' && (
                                                         <>
-                                                            <p>• <strong>Form 138 (SF9)</strong> is required</p>
+                                                            <p>• <strong>Form 137 (Report Card)</strong> is required</p>
+                                                            <p>• <strong>Form 138 (SF9)</strong> — please submit as soon as possible</p>
                                                             <p>• Other documents can be submitted as follow-up</p>
                                                         </>
                                                     )}
                                                     {activeTab === 'transferee' && (
                                                         <>
-                                                            <p>• <strong>Form 138 (SF9)</strong> is required</p>
+                                                            <p>• <strong>Form 137 (Report Card)</strong> is required</p>
                                                             <p>• <strong>Good Moral Certificate</strong> is required for transferees</p>
+                                                            <p>• <strong>Form 138 (SF9)</strong> — please submit as soon as possible</p>
                                                             <p>• Other documents can be submitted as follow-up</p>
                                                         </>
                                                     )}
                                                     {activeTab === 'old' && (
                                                         <>
-                                                            <p>• <strong>Form 138 (SF9)</strong> is required</p>
+                                                            <p>• <strong>Form 137 (Report Card)</strong> is required</p>
                                                             <p>• <strong>PSA Birth Certificate</strong> is required</p>
                                                             <p>• <strong>Good Moral Certificate</strong> is required</p>
-                                                            <p>• Other documents can be submitted as follow-up</p>
+                                                            <p>• <strong>Form 138 (SF9)</strong> — please submit as soon as possible</p>
                                                         </>
                                                     )}
                                                 </div>
@@ -752,24 +754,24 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                         </div>
 
                                         {/* Academic Records Section */}
-                                        <div className={`bg-white border-2 rounded-xl p-4 transition-colors ${'border-red-300 bg-gradient-to-br from-red-50 to-pink-50'
-                                            }`}>
+                                        {/* Form 138 (SF9) - ASAP follow-up, not strictly required */}
+                                        <div className="bg-white border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl p-4 transition-colors">
                                             <div className="flex items-start gap-3">
                                                 <input
                                                     type="checkbox"
                                                     id="sf9"
                                                     checked={data.has_sf9}
                                                     onChange={(e) => setData('has_sf9', e.target.checked)}
-                                                    className="mt-1 h-5 w-5 rounded border-gray-300 text-red-600 focus:ring-red-500 cursor-pointer"
+                                                    className="mt-1 h-5 w-5 rounded border-gray-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
                                                 />
                                                 <label htmlFor="sf9" className="flex-1 cursor-pointer">
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <span className="text-sm font-semibold text-gray-900">Form 138 (SF9)</span>
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                                            Required
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                                                            Optional But Submit ASAP
                                                         </span>
                                                     </div>
-                                                    <p className="text-xs text-gray-600">Learner's Permanent Academic Record</p>
+                                                    <p className="text-xs text-gray-600">Learner's Permanent Academic Record — not required at enrollment but must be submitted as soon as possible</p>
                                                 </label>
                                             </div>
                                             {errors.has_sf9 && (
@@ -777,22 +779,29 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                             )}
                                         </div>
 
-                                        {/* Report Card - Optional */}
-                                        <div className="bg-white border-2 border-gray-200 hover:border-gray-300 rounded-xl p-4 transition-colors">
+                                        {/* Form 137 (Report Card) - Required for all students */}
+                                        <div className="bg-white border-2 border-red-300 bg-gradient-to-br from-red-50 to-pink-50 rounded-xl p-4 transition-colors">
                                             <div className="flex items-start gap-3">
                                                 <input
                                                     type="checkbox"
                                                     id="report_card"
                                                     checked={data.has_report_card}
                                                     onChange={(e) => setData('has_report_card', e.target.checked)}
-                                                    className="mt-1 h-5 w-5 rounded border-gray-300 text-gray-600 focus:ring-gray-500 cursor-pointer"
+                                                    className="mt-1 h-5 w-5 rounded border-gray-300 text-red-600 focus:ring-red-500 cursor-pointer"
                                                 />
                                                 <label htmlFor="report_card" className="flex-1 cursor-pointer">
-                                                    <span className="text-sm font-medium text-gray-900">Report Card</span>
-                                                    <p className="text-xs text-gray-600 mt-0.5">Latest report card from previous school (can be submitted as follow-up)</p>
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className="text-sm font-semibold text-gray-900">Form 137 (Report Card)</span>
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                                            Required
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-xs text-gray-600">Official learner's permanent academic record / report card</p>
                                                 </label>
                                             </div>
-                                            {errors.has_report_card && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_report_card}</p>}
+                                            {errors.has_report_card && (
+                                                <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_report_card}</p>
+                                            )}
                                         </div>
 
                                         {/* Good Moral Certificate - Required for Transferees and Returning Students */}

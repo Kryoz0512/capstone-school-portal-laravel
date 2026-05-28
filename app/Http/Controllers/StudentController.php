@@ -571,14 +571,14 @@ class StudentController extends Controller
             'suffix' => 'nullable|string|max:10',
             'grade_level_id' => 'nullable|exists:tbl_grade_levels,id',
             'has_psa_birth_certificate' => 'nullable|boolean',
-            'has_sf9' => 'required|accepted', // SF9 is now required for all students
-            'has_report_card' => 'nullable|boolean',
+            'has_sf9' => 'nullable|boolean',
+            'has_report_card' => 'required|accepted',
             'has_good_moral' => 'nullable|boolean',
         ];
 
         $messages = [
-            'has_sf9.required' => 'Form 138 (SF9) is required when enrolling.',
-            'has_sf9.accepted' => 'Form 138 (SF9) must be submitted.',
+            'has_report_card.required' => 'Form 137 (Report Card) is required when enrolling.',
+            'has_report_card.accepted' => 'Form 137 (Report Card) must be submitted.',
         ];
 
         // Conditional validation based on student status
@@ -1158,6 +1158,12 @@ class StudentController extends Controller
                     continue;
                 }
 
+                if (!$hasReportCard) {
+                    $errors[] = "Row {$rowNum}: Form 137 (Report Card) is required.";
+                    $errorCount++;
+                    continue;
+                }
+
                 if (strlen($lrn) !== 12 || !ctype_digit($lrn)) {
                     $errors[] = "Row {$rowNum}: LRN '{$lrn}' must be exactly 12 digits.";
                     $errorCount++;
@@ -1221,7 +1227,7 @@ class StudentController extends Controller
                         }
 
                         // Exists but not marked as returning — treat as duplicate
-                       $duplicateStudents[] = ['name' => trim($firstName . ' ' . $lastName), 'lrn' => $lrn];
+                        $duplicateStudents[] = ['name' => trim($firstName . ' ' . $lastName), 'lrn' => $lrn];
                         $duplicateCount++;
                         DB::rollBack();
                         continue;
@@ -1334,7 +1340,7 @@ class StudentController extends Controller
                 'School Year',
                 'PSA Birth Certificate',
                 'SF9',
-                'Report Card',
+                'Form 137',
                 'Good Moral',
             ],
             [
@@ -1349,8 +1355,8 @@ class StudentController extends Controller
                 'Grade 7',
                 '2026-2027',
                 'Yes',
-                'Yes',
                 'No',
+                'Yes',
                 'No',
             ],
             [
@@ -1365,8 +1371,8 @@ class StudentController extends Controller
                 'Grade 8',
                 '2026-2027',
                 'Yes',
-                'Yes',
                 'No',
+                'Yes',
                 'Yes',
             ],
         ];

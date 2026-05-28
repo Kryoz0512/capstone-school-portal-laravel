@@ -57,6 +57,15 @@ export default function ReportCard({ grades, schoolYears, studentInfo, filters, 
         }
     }, [schoolYear])
 
+    const finalAverage = grades.length > 0
+        ? (() => {
+            const gradesWithFinal = grades.filter(g => g.finalGrade !== null)
+            if (gradesWithFinal.length === 0) return null
+            const avg = gradesWithFinal.reduce((sum, g) => sum + (g.finalGrade as number), 0) / gradesWithFinal.length
+            return Math.round(avg * 100) / 100
+        })()
+        : null
+
     return (
         <StudentLayout user={auth?.user}>
             <Head title="Report Card" />
@@ -95,7 +104,7 @@ export default function ReportCard({ grades, schoolYears, studentInfo, filters, 
 
                 {/* Filter */}
                 <div className="bg-white rounded-lg border border-gray-200 p-6">
-                    <div className="max-w-xs">
+                    <div className="max-w-sm">
                         <label className="block text-sm font-medium text-gray-700 mb-2">Filter by School Year</label>
                         <Select value={schoolYear} onValueChange={setSchoolYear}>
                             <SelectTrigger>
@@ -117,7 +126,7 @@ export default function ReportCard({ grades, schoolYears, studentInfo, filters, 
                     {grades.length > 0 ? (
                         <div className="overflow-x-auto">
                             <table className="w-full">
-                                <thead className="bg-green-700 text-white">
+                                <thead className="bg-gradient-to-r from-purple-900 via-purple-800 to-purple-900 text-white">
                                     <tr>
                                         <th className="px-6 py-3 text-left text-sm font-medium">Subject</th>
                                         <th className="px-6 py-3 text-left text-sm font-medium">Teacher</th>
@@ -151,6 +160,27 @@ export default function ReportCard({ grades, schoolYears, studentInfo, filters, 
                                         </tr>
                                     ))}
                                 </tbody>
+                                {finalAverage !== null && (
+                                    <tfoot>
+                                        <tr className="bg-gray-50 border-t-2 border-gray-300">
+                                            <td colSpan={5} className="px-6 py-4 text-sm text-gray-500 font-medium">
+                                                General Average
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${finalAverage >= 75
+                                                        ? 'bg-green-100 text-green-800'
+                                                        : 'bg-red-100 text-red-800'
+                                                    }`}>
+                                                    {finalAverage >= 75 ? 'Passed' : 'Failed'}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-center text-base font-bold text-gray-900">
+                                                {finalAverage.toFixed(2)}
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                )}
+
                             </table>
                         </div>
                     ) : (

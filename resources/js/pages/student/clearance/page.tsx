@@ -73,14 +73,14 @@ export default function StudentClearance({ clearanceInfo, subjectClearances, aut
 
                 {/* Overall Status Card */}
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                    <div className={`px-6 py-4 border-b ${isFullyCleared ? 'bg-green-700' : 'bg-blue-700'}`}>
+                    <div className="px-6 py-4 border-b bg-gradient-to-r from-purple-900 via-purple-800 to-purple-900">
                         <div className="flex items-center justify-between">
                             <h2 className="text-lg font-semibold text-white">
                                 School Year {clearanceInfo.schoolYear}
                             </h2>
                             <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${isFullyCleared
-                                    ? 'bg-green-100 text-green-800'
-                                    : 'bg-yellow-100 text-yellow-800'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-yellow-100 text-yellow-800'
                                 }`}>
                                 {isFullyCleared
                                     ? <><ShieldCheck className="w-3.5 h-3.5" /> Fully Cleared</>
@@ -117,7 +117,11 @@ export default function StudentClearance({ clearanceInfo, subjectClearances, aut
                             </div>
                             <div className="w-full bg-gray-100 rounded-full h-2.5">
                                 <div
-                                    className={`h-2.5 rounded-full transition-all duration-500 ${isFullyCleared ? 'bg-green-500' : 'bg-blue-500'
+                                    className={`h-2.5 rounded-full transition-all duration-500 ${progressPct === 100
+                                        ? 'bg-green-500'
+                                        : progressPct >= 50
+                                            ? 'bg-orange-400'
+                                            : 'bg-red-500'
                                         }`}
                                     style={{ width: `${progressPct}%` }}
                                 />
@@ -140,24 +144,18 @@ export default function StudentClearance({ clearanceInfo, subjectClearances, aut
                 {/* Per-subject clearance table */}
                 {subjectClearances.length > 0 ? (
                     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                            <h2 className="text-base font-semibold text-gray-900">Subject Clearance Details</h2>
-                            <p className="text-sm text-gray-500 mt-0.5">
-                                Per-subject status as recorded by each teacher
-                            </p>
-                        </div>
 
                         <div className="overflow-x-auto">
                             <table className="w-full">
                                 <thead>
-                                    <tr className="bg-gray-50 border-b border-gray-200">
-                                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                    <tr className="bg-gradient-to-r from-purple-900 via-purple-800 to-purple-900">
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                                             Subject
                                         </th>
-                                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                        <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                                             Teacher
                                         </th>
-                                        <th className="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                                        <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">
                                             Clearance Status
                                         </th>
                                     </tr>
@@ -170,27 +168,17 @@ export default function StudentClearance({ clearanceInfo, subjectClearances, aut
                                                 }`}
                                         >
                                             <td className="px-6 py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
-                                                        <BookOpen className="w-4 h-4 text-blue-600" />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm font-semibold text-gray-900">
-                                                            {item.subject_name}
-                                                        </p>
-                                                        {item.subject_code && (
-                                                            <p className="text-xs text-gray-400 mt-0.5">{item.subject_code}</p>
-                                                        )}
-                                                    </div>
+                                                <div>
+                                                    <p className="text-sm font-semibold text-gray-900">
+                                                        {item.subject_name}
+                                                    </p>
+                                                    {item.subject_code && (
+                                                        <p className="text-xs text-gray-400 mt-0.5">{item.subject_code}</p>
+                                                    )}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="w-7 h-7 bg-gray-100 rounded-full flex items-center justify-center shrink-0">
-                                                        <User className="w-3.5 h-3.5 text-gray-500" />
-                                                    </div>
-                                                    <span className="text-sm text-gray-700">{item.teacher_name}</span>
-                                                </div>
+                                                <span className="text-sm text-gray-700">{item.teacher_name}</span>
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 {getStatusBadge(item.status)}

@@ -298,12 +298,12 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                                     Final Reports
                                 </span>
                             </Link>
-                            <Link href="/admin/records/transcript-of-records" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
+                            {/* <Link href="/admin/records/transcript-of-records" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
                                 <span className="flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
                                     Transcript Of Records
                                 </span>
-                            </Link>
+                            </Link> */}
                         </div>
                     )}
                 </div>

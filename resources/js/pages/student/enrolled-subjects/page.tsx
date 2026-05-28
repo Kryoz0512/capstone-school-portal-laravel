@@ -2,7 +2,7 @@ import { Head, router } from '@inertiajs/react'
 import StudentLayout from '@/layouts/student-layout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
-import { Search } from 'lucide-react'
+import { Search, BookOpen } from 'lucide-react'
 import { useState } from 'react'
 
 type Subject = {
@@ -58,67 +58,94 @@ export default function EnrolledSubjects({ subjects, schoolYears, filters, auth 
             <Head title="Enrolled Subjects" />
 
             <div className="space-y-6">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Enrolled Subjects</h1>
-                    <p className="text-sm text-gray-500 mt-1">Your registered courses by school year</p>
-                </div>
 
-                {/* Filters */}
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
-                    <h2 className="text-sm font-semibold text-gray-900 mb-4">Filters</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">School Year</label>
-                            <Select value={filters.school_year} onValueChange={handleSchoolYearChange}>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {schoolYears.map((year) => (
-                                        <SelectItem key={year.value} value={year.value}>
-                                            {year.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Search Subject</label>
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                <Input
-                                    placeholder="Search by name or code..."
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    className="pl-10"
-                                />
-                            </div>
-                        </div>
+                {/* Page Header */}
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900">Enrolled Subjects</h1>
+                        <p className="text-sm text-gray-500 mt-1">
+                            Your registered courses for school year {filters.school_year}
+                        </p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-2xl font-bold text-purple-800">{subjects.length}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Total Subjects</p>
                     </div>
                 </div>
 
-                {/* Subject Summary */}
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Subject Summary</h2>
-                    {filteredSubjects.length > 0 ? (
+                {/* Filters Row */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="w-full sm:w-56">
+                        <Select value={filters.school_year} onValueChange={handleSchoolYearChange}>
+                            <SelectTrigger className="bg-white border-gray-200">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {schoolYears.map((year) => (
+                                    <SelectItem key={year.value} value={year.value}>
+                                        {year.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Input
+                            placeholder="Search by subject name, code, or instructor..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            className="pl-10 bg-white border-gray-200"
+                        />
+                    </div>
+                </div>
+
+                {/* Table */}
+                {filteredSubjects.length > 0 ? (
+                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Subject Code</th>
-                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Subject Name</th>
-                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Instructor</th>
-                                        <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Status</th>
+                                <thead>
+                                    <tr className="bg-gradient-to-r from-purple-900 via-purple-800 to-purple-900">
+                                        <th className="px-6 py-3.5 text-left text-xs font-semibold text-white uppercase tracking-wider w-8">
+                                            #
+                                        </th>
+                                        <th className="px-6 py-3.5 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                                            Subject Code
+                                        </th>
+                                        <th className="px-6 py-3.5 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                                            Subject Name
+                                        </th>
+                                        <th className="px-6 py-3.5 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                                            Instructor
+                                        </th>
+                                        <th className="px-6 py-3.5 text-center text-xs font-semibold text-white uppercase tracking-wider">
+                                            Status
+                                        </th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-200">
-                                    {filteredSubjects.map((subject) => (
-                                        <tr key={subject.id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 text-sm text-gray-900">{subject.subjectCode}</td>
-                                            <td className="px-6 py-4 text-sm text-gray-900">{subject.subjectName}</td>
-                                            <td className="px-6 py-4 text-sm text-gray-900">{subject.instructor}</td>
-                                            <td className="px-6 py-4">
-                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                <tbody className="divide-y divide-gray-100">
+                                    {filteredSubjects.map((subject, index) => (
+                                        <tr
+                                            key={subject.id}
+                                            className={`transition-colors hover:bg-purple-50/40 ${
+                                                index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
+                                            }`}
+                                        >
+                                            <td className="px-6 py-4 text-sm text-gray-400 font-medium">
+                                                {index + 1}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                                                {subject.subjectCode}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm font-medium text-gray-800">
+                                                {subject.subjectName}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-600">
+                                                {subject.instructor}
+                                            </td>
+                                            <td className="px-6 py-4 text-center">
+                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
                                                     {subject.status}
                                                 </span>
                                             </td>
@@ -127,12 +154,30 @@ export default function EnrolledSubjects({ subjects, schoolYears, filters, auth 
                                 </tbody>
                             </table>
                         </div>
-                    ) : (
-                        <p className="text-sm text-gray-500 text-center py-8">
-                            {search ? 'No subjects found matching your search.' : 'No enrolled subjects found.'}
+
+                        {/* Table Footer */}
+                        <div className="px-6 py-3 border-t border-gray-100 bg-gray-50/60 flex items-center justify-between">
+                            <p className="text-xs text-gray-500">
+                                Showing {filteredSubjects.length} of {subjects.length} subject{subjects.length !== 1 ? 's' : ''}
+                            </p>
+                            <p className="text-xs text-gray-400">
+                                School Year {filters.school_year}
+                            </p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="bg-white rounded-xl border border-dashed border-gray-300 p-14 text-center">
+                        <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <BookOpen className="w-6 h-6 text-gray-400" />
+                        </div>
+                        <p className="text-sm font-semibold text-gray-600">No subjects found</p>
+                        <p className="text-xs text-gray-400 mt-1">
+                            {search
+                                ? 'Try adjusting your search query.'
+                                : 'You are not currently enrolled in any subjects.'}
                         </p>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
         </StudentLayout>
     )

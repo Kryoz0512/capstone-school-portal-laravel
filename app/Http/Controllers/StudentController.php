@@ -87,7 +87,7 @@ class StudentController extends Controller
                         'subjectCode' => $subject->subject_code ?? 'N/A',
                         'subjectName' => $subject->subject_name,
                         'instructor' => $subject->instructor,
-                        'status' => 'Active',
+                        'status' => 'Enrolled',
                     ];
                 });
         }
@@ -1028,20 +1028,20 @@ class StudentController extends Controller
 
     public function export(Request $request)
     {
-        $format = $request->input('format', 'csv'); // Default to CSV
+        $format = $request->input('format', 'csv');
 
         try {
-            // Check if ZipArchive is available for XLSX
             if ($format === 'xlsx' && !class_exists('ZipArchive')) {
                 return back()->withErrors(['export' => 'XLSX export is not available. Please use CSV format or enable the zip extension.']);
             }
 
-            $students = Student::with(['user', 'gradeLevel'])->get();
-
+            $students = Student::with(['gradeLevel'])->get();
             $extension = $format === 'xlsx' ? 'xlsx' : 'csv';
-            $writer = \Spatie\SimpleExcel\SimpleExcelWriter::streamDownload('students_' . date('Y-m-d_His') . '.' . $extension);
 
-            // Add header row
+            $writer = \Spatie\SimpleExcel\SimpleExcelWriter::streamDownload(
+                'students_' . date('Y-m-d_His') . '.' . $extension
+            );
+
             $writer->addHeader([
                 'LRN',
                 'First Name',
@@ -1059,10 +1059,9 @@ class StudentController extends Controller
                 'Good Moral',
             ]);
 
-            // Add data rows
             foreach ($students as $student) {
                 $writer->addRow([
-                    "'" . $student->lrn, // Prepend with single quote to force text format
+                    "'" . $student->lrn,
                     $student->first_name,
                     $student->middle_name ?? '',
                     $student->last_name,
@@ -1080,6 +1079,7 @@ class StudentController extends Controller
             }
 
             return $writer->toBrowser();
+
         } catch (\Exception $e) {
             Log::error('Export failed', ['message' => $e->getMessage(), 'format' => $format]);
             return back()->withErrors(['export' => 'Export failed: ' . $e->getMessage()]);
@@ -1089,49 +1089,207 @@ class StudentController extends Controller
     public function import(Request $request)
     {
         $request->validate([
-            'file' => 'required|file|max:2048',
+            'file' => 'required|file|mimes:csv,xlsx,xls|max:2048',
         ]);
 
         $file = $request->file('file');
         $extension = strtolower($file->getClientOriginalExtension());
-        $originalName = $file->getClientOriginalName();
-
-        if (!in_array($extension, ['csv', 'xlsx', 'xls'])) {
-            return back()->withErrors(['file' => 'The file must be a CSV, XLSX, or XLS file.']);
-        }
 
         try {
-            // Generate a random unique filename to handle multi-user background updates cleanly
-            $fileName = 'import-' . Str::uuid() . '.' . $extension;
+            $rows = \Spatie\SimpleExcel\SimpleExcelReader::create($file->getRealPath(), $extension)
+                ->noHeaderRow()
+                ->getRows();
 
-            // Save to storage/app/imports/ using the full path
-            $storedPath = $file->storeAs('imports', $fileName, 'local');
+            $importedCount = 0;
+            $duplicateCount = 0;
+            $errorCount = 0;
+            $errors = [];
+            $importedStudents = [];
+            $duplicateStudents = [];
 
-            // If storeAs returns false, try manual save
-            if (!$storedPath) {
-                $directory = storage_path('app/imports');
-                if (!file_exists($directory)) {
-                    mkdir($directory, 0755, true);
+            $isFirstRow = true;
+
+            foreach ($rows as $index => $row) {
+                // Skip header row
+                if ($isFirstRow) {
+                    $isFirstRow = false;
+                    continue;
                 }
-                $file->move($directory, $fileName);
-                $storedPath = 'imports/' . $fileName;
+
+                $rowNum = $index + 1;
+
+                // Map columns by position, cast everything to string to handle
+                // DateTimeImmutable objects that Excel returns for date cells
+                $values = array_values($row);
+
+                $lrn = isset($values[0]) ? ltrim(trim((string) $values[0]), "'") : null;
+                $firstName = isset($values[1]) ? trim((string) $values[1]) : null;
+                $middleName = isset($values[2]) ? trim((string) $values[2]) : null;
+                $lastName = isset($values[3]) ? trim((string) $values[3]) : null;
+                $suffix = isset($values[4]) ? trim((string) $values[4]) : null;
+                $birthDateRaw = isset($values[5]) ? $values[5] : null;
+                $gender = isset($values[6]) ? strtolower(trim((string) $values[6])) : null;
+                $studentStatus = isset($values[7]) ? strtolower(trim((string) $values[7])) : null;
+                $gradeLevelName = isset($values[8]) ? trim((string) $values[8]) : null;
+                $schoolYear = isset($values[9]) ? trim((string) $values[9]) : null;
+                $hasPsa = isset($values[10]) ? strtolower(trim((string) $values[10])) === 'yes' : false;
+                $hasSf9 = isset($values[11]) ? strtolower(trim((string) $values[11])) === 'yes' : false;
+                $hasReportCard = isset($values[12]) ? strtolower(trim((string) $values[12])) === 'yes' : false;
+                $hasGoodMoral = isset($values[13]) ? strtolower(trim((string) $values[13])) === 'yes' : false;
+
+                // Safely parse birth date whether it's a string or DateTimeImmutable
+                $birthDate = null;
+                if ($birthDateRaw !== null && $birthDateRaw !== '') {
+                    try {
+                        if ($birthDateRaw instanceof \DateTimeInterface) {
+                            $birthDate = \Carbon\Carbon::instance($birthDateRaw)->format('Y-m-d');
+                        } else {
+                            $birthDate = \Carbon\Carbon::parse((string) $birthDateRaw)->format('Y-m-d');
+                        }
+                    } catch (\Exception $e) {
+                        $birthDate = null;
+                    }
+                }
+
+                // Basic validation
+                if (!$lrn || !$firstName || !$lastName) {
+                    $errors[] = "Row {$rowNum}: Missing required fields (LRN, First Name, or Last Name).";
+                    $errorCount++;
+                    continue;
+                }
+
+                if (strlen($lrn) !== 12 || !ctype_digit($lrn)) {
+                    $errors[] = "Row {$rowNum}: LRN '{$lrn}' must be exactly 12 digits.";
+                    $errorCount++;
+                    continue;
+                }
+
+                if (!in_array($gender, ['male', 'female'])) {
+                    $errors[] = "Row {$rowNum}: Invalid gender '{$gender}'. Must be male or female.";
+                    $errorCount++;
+                    continue;
+                }
+
+                if (!in_array($studentStatus, ['new', 'transferee', 'returning'])) {
+                    $errors[] = "Row {$rowNum}: Invalid student status '{$studentStatus}'.";
+                    $errorCount++;
+                    continue;
+                }
+
+                // Resolve grade level
+                $gradeLevel = \App\Models\GradeLevel::where('name', $gradeLevelName)->first();
+                if ($studentStatus !== 'new' && !$gradeLevel) {
+                    $errors[] = "Row {$rowNum}: Grade level '{$gradeLevelName}' not found.";
+                    $errorCount++;
+                    continue;
+                }
+
+                // For new students, always auto-assign Grade 7
+                if ($studentStatus === 'new') {
+                    $gradeLevel = \App\Models\GradeLevel::where('name', 'Grade 7')->first();
+                }
+
+                DB::beginTransaction();
+                try {
+                    $existingStudent = Student::where('lrn', $lrn)->first();
+
+                    if ($existingStudent) {
+                        // Same school year = duplicate, skip
+                        if ($existingStudent->school_year === $schoolYear) {
+                            $duplicateStudents[] = ['name' => trim($firstName . ' ' . $lastName), 'lrn' => $lrn];
+                            $duplicateCount++;
+                            DB::rollBack();
+                            continue;
+                        }
+
+                        // Returning student — update for new school year
+                        if ($studentStatus === 'returning') {
+                            $existingStudent->update([
+                                'school_year' => $schoolYear,
+                                'current_grade_level_id' => $gradeLevel?->id,
+                                'student_status' => 'returning',
+                                'has_psa_birth_certificate' => $hasPsa,
+                                'has_sf9' => $hasSf9,
+                                'has_report_card' => $hasReportCard,
+                                'has_good_moral' => $hasGoodMoral,
+                            ]);
+
+                            $importedStudents[] = ['name' => trim($firstName . ' ' . $lastName), 'lrn' => $lrn];
+                            $importedCount++;
+                            DB::commit();
+                            continue;
+                        }
+
+                        // Exists but not marked as returning — treat as duplicate
+                       $duplicateStudents[] = ['name' => trim($firstName . ' ' . $lastName), 'lrn' => $lrn];
+                        $duplicateCount++;
+                        DB::rollBack();
+                        continue;
+                    }
+
+                    // Create user account
+                    $user = User::create([
+                        'name' => trim($firstName . ' ' . $lastName),
+                        'email' => 'SNHS-' . $lrn,
+                        'password' => Hash::make($lrn),
+                        'role' => 'student',
+                        'password_changed' => false,
+                    ]);
+
+                    // Create student record
+                    $student = Student::create([
+                        'user_id' => $user->id,
+                        'student_status' => $studentStatus,
+                        'lrn' => $lrn,
+                        'school_year' => $schoolYear,
+                        'last_name' => $lastName,
+                        'first_name' => $firstName,
+                        'middle_name' => $middleName ?: null,
+                        'suffix' => $suffix ?: null,
+                        'gender' => $gender,
+                        'birth_date' => $birthDate,
+                        'current_grade_level_id' => $gradeLevel?->id,
+                        'has_psa_birth_certificate' => $hasPsa,
+                        'has_sf9' => $hasSf9,
+                        'has_report_card' => $hasReportCard,
+                        'has_good_moral' => $hasGoodMoral,
+                    ]);
+
+                    // Create default profile
+                    $student->profile()->create([
+                        'place_of_birth' => 'Bongabon, Nueva Ecija',
+                        'city_municipality' => 'Bongabon',
+                        'province_state' => 'Nueva Ecija',
+                        'country' => 'Philippines',
+                        'nationality' => 'Filipino',
+                    ]);
+
+                    $importedStudents[] = ['name' => trim($firstName . ' ' . $lastName), 'lrn' => $lrn];
+                    $importedCount++;
+                    DB::commit();
+
+                } catch (\Exception $e) {
+                    DB::rollBack();
+                    $errors[] = "Row {$rowNum}: " . $e->getMessage();
+                    $errorCount++;
+                }
             }
 
-            // Create import job record
-            $importJob = \App\Models\ImportJob::create([
-                'user_id' => Auth::id(),
-                'filename' => $originalName,
-                'status' => 'pending',
+            $message = "Import complete. {$importedCount} student(s) imported, {$duplicateCount} duplicate(s) skipped, {$errorCount} error(s).";
+
+            return back()->with([
+                'success' => $message,
+                'imported_count' => $importedCount,
+                'duplicate_count' => $duplicateCount,
+                'error_count' => $errorCount,
+                'imported_students' => $importedStudents,
+                'duplicate_students' => $duplicateStudents,
+                'import_row_errors' => $errors,  // renamed from 'errors'
             ]);
 
-            // Dispatch the job to your queue worker infrastructure
-            ImportStudentsJob::dispatch($storedPath, $extension, $originalName, $importJob->id);
-
-            return back()->with('success', 'The student file has been queued for background importing. You will find updates in the system logs or your dashboard shortly!')->with('import_job_id', $importJob->id);
-
         } catch (\Exception $e) {
-            Log::error('Import dispatch exception', ['message' => $e->getMessage()]);
-            return back()->withErrors(['import' => 'Failed to initialize background import: ' . $e->getMessage()]);
+            Log::error('Import failed', ['message' => $e->getMessage()]);
+            return back()->withErrors(['import' => 'Import failed: ' . $e->getMessage()]);
         }
     }
 

@@ -1,6 +1,7 @@
 import { Head, router } from '@inertiajs/react'
 import StudentLayout from '@/layouts/student-layout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Calendar } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
 type ScheduleItem = {
@@ -41,10 +42,33 @@ type Props = {
     }
 }
 
+const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'] as const
+const dayLabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+
+function ScheduleCell({ value }: { value: string }) {
+    if (!value) {
+        return <span className="text-gray-300 text-sm">—</span>
+    }
+
+    const lines = value.split('\n').filter(Boolean)
+    const subject = lines[0] ?? ''
+    const teacher = lines[1] ?? ''
+    const room = lines[2] ?? ''
+
+    return (
+        <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-semibold text-purple-900 leading-tight">{subject}</span>
+            {teacher && <span className="text-sm text-gray-500 leading-tight">{teacher}</span>}
+            {room && (
+                <span className="text-sm text-gray-400 leading-tight">{room}</span>
+            )}
+        </div>
+    )
+}
+
 export default function StudentSchedule({ schedules, schoolYears, studentInfo, filters, auth }: Props) {
     const [schoolYear, setSchoolYear] = useState(filters.school_year || '')
 
-    // Update filter when selection changes
     useEffect(() => {
         if (schoolYear) {
             router.get(`/student/schedule?school_year=${schoolYear}`, {}, {
@@ -59,118 +83,114 @@ export default function StudentSchedule({ schedules, schoolYears, studentInfo, f
             <Head title="Class Schedule" />
 
             <div className="space-y-6">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">My Schedule</h1>
-                    <p className="text-sm text-gray-500 mt-1">
-                        View your weekly class schedule
-                    </p>
-                </div>
 
-                {/* Student Info */}
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <div>
-                            <p className="text-sm text-gray-500 mb-1">Student Name</p>
-                            <p className="text-base font-semibold text-gray-900">{studentInfo.name}</p>
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-500 mb-1">Student LRN</p>
-                            <p className="text-base font-semibold text-gray-900">{studentInfo.lrn}</p>
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-500 mb-1">Grade Level</p>
-                            <p className="text-base font-semibold text-gray-900">{studentInfo.gradeLevel}</p>
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-500 mb-1">Section</p>
-                            <p className="text-base font-semibold text-gray-900">{studentInfo.section}</p>
-                        </div>
+                {/* Page Header */}
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900">Class Schedule</h1>
+                        <p className="text-sm text-gray-500 mt-1">
+                            Weekly schedule for school year {filters.school_year}
+                        </p>
+                    </div>
+                    <div className="w-48">
+                        <Select value={schoolYear} onValueChange={setSchoolYear}>
+                            <SelectTrigger className="bg-white border-gray-200">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {schoolYears.map((year) => (
+                                    <SelectItem key={year.value} value={year.value}>
+                                        {year.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                     </div>
                 </div>
 
-                {/* Filter */}
-                <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-                    <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                        <h2 className="text-base font-semibold text-gray-900">Filter Options</h2>
+                {/* Student Info Card */}
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div className="px-6 py-4 bg-gradient-to-r from-purple-900 via-purple-800 to-purple-900">
+                        <p className="text-sm font-semibold text-purple-200 uppercase tracking-wider mb-0.5">Student Information</p>
+                        <p className="text-lg font-bold text-white">{studentInfo.name}</p>
                     </div>
-                    <div className="p-6">
-                        <div className="max-w-xs">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                School Year <span className="text-red-500">*</span>
-                            </label>
-                            <Select value={schoolYear} onValueChange={setSchoolYear}>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {schoolYears.map((year) => (
-                                        <SelectItem key={year.value} value={year.value}>
-                                            {year.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 divide-x divide-y divide-gray-100">
+                        <div className="px-6 py-4">
+                            <p className="text-sm text-gray-400 uppercase tracking-wide mb-1">LRN</p>
+                            <p className="text-sm font-semibold text-gray-900">{studentInfo.lrn}</p>
+                        </div>
+                        <div className="px-6 py-4">
+                            <p className="text-sm text-gray-400 uppercase tracking-wide mb-1">Grade Level</p>
+                            <p className="text-sm font-semibold text-gray-900">{studentInfo.gradeLevel}</p>
+                        </div>
+                        <div className="px-6 py-4">
+                            <p className="text-sm text-gray-400 uppercase tracking-wide mb-1">Section</p>
+                            <p className="text-sm font-semibold text-gray-900">{studentInfo.section}</p>
                         </div>
                     </div>
                 </div>
 
                 {/* Schedule Table */}
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-gray-100">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700 w-40">Time</th>
-                                    <th className="px-6 py-3 text-center text-sm font-medium text-gray-700">Monday</th>
-                                    <th className="px-6 py-3 text-center text-sm font-medium text-gray-700">Tuesday</th>
-                                    <th className="px-6 py-3 text-center text-sm font-medium text-gray-700">Wednesday</th>
-                                    <th className="px-6 py-3 text-center text-sm font-medium text-gray-700">Thursday</th>
-                                    <th className="px-6 py-3 text-center text-sm font-medium text-gray-700">Friday</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                                {schedules.length > 0 ? (
-                                    schedules.map((item, index) => (
-                                        <tr key={index} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 text-sm font-medium text-gray-900">{item.time}</td>
-                                            <td className="px-6 py-4 text-center">
-                                                <div className={`text-sm ${!item.monday ? 'text-gray-400' : 'text-gray-900 whitespace-pre-line'}`}>
-                                                    {item.monday || '-'}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <div className={`text-sm ${!item.tuesday ? 'text-gray-400' : 'text-gray-900 whitespace-pre-line'}`}>
-                                                    {item.tuesday || '-'}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <div className={`text-sm ${!item.wednesday ? 'text-gray-400' : 'text-gray-900 whitespace-pre-line'}`}>
-                                                    {item.wednesday || '-'}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <div className={`text-sm ${!item.thursday ? 'text-gray-400' : 'text-gray-900 whitespace-pre-line'}`}>
-                                                    {item.thursday || '-'}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <div className={`text-sm ${!item.friday ? 'text-gray-400' : 'text-gray-900 whitespace-pre-line'}`}>
-                                                    {item.friday || '-'}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-500">
-                                            No schedule found for this school year
-                                        </td>
+                {schedules.length > 0 ? (
+                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full">
+                                <thead>
+                                    <tr className="bg-gradient-to-r from-purple-900 via-purple-800 to-purple-900">
+                                        <th className="px-6 py-3.5 text-left text-sm font-semibold text-white uppercase tracking-wider w-40">
+                                            Time
+                                        </th>
+                                        {dayLabels.map(day => (
+                                            <th
+                                                key={day}
+                                                className="px-4 py-3.5 text-center text-sm font-semibold text-white uppercase tracking-wider"
+                                            >
+                                                {day}
+                                            </th>
+                                        ))}
                                     </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {schedules.map((item, index) => (
+                                        <tr
+                                            key={index}
+                                            className={`transition-colors hover:bg-purple-50/40 ${
+                                                index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
+                                            }`}
+                                        >
+                                            <td className="px-6 py-4 text-sm font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
+                                                {item.time}
+                                            </td>
+                                            {days.map(day => (
+                                                <td key={day} className="px-4 py-4 text-center align-top">
+                                                    <ScheduleCell value={item[day]} />
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-6 py-3 border-t border-gray-100 bg-gray-50/60 flex items-center justify-between">
+                            <p className="text-sm text-gray-500">
+                                {schedules.length} time slot{schedules.length !== 1 ? 's' : ''} scheduled
+                            </p>
+                            <p className="text-sm text-gray-400">School Year {filters.school_year}</p>
+                        </div>
                     </div>
-                </div>
+                ) : (
+                    <div className="bg-white rounded-xl border border-dashed border-gray-300 p-14 text-center">
+                        <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Calendar className="w-6 h-6 text-gray-400" />
+                        </div>
+                        <p className="text-sm font-semibold text-gray-600">No schedule available</p>
+                        <p className="text-sm text-gray-400 mt-1">
+                            No classes have been scheduled for this school year yet.
+                        </p>
+                    </div>
+                )}
             </div>
         </StudentLayout>
     )

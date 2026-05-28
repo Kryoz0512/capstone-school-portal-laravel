@@ -110,22 +110,33 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
     }, [startYear, endYear])
 
     useEffect(() => {
-        console.log('Flash data:', flash)
-        console.log('Import job ID from flash:', flash.import_job_id)
+        const imported = flash.imported_students || []
+        const duplicates = flash.duplicate_students || []
+        const rowErrors = flash.import_row_errors || []
+        const importedCount = flash.imported_count || 0
+        const duplicateCount = flash.duplicate_count || 0
+        const errorCount = flash.error_count || 0
 
-        // Start polling if we have an import job ID
-        if (flash.import_job_id) {
-            console.log('Starting poll for import job:', flash.import_job_id)
-            pollImportStatus(flash.import_job_id)
-        }
+        const hasImportData =
+            imported.length > 0 ||
+            duplicates.length > 0 ||
+            rowErrors.length > 0 ||
+            importedCount > 0 ||
+            duplicateCount > 0 ||
+            errorCount > 0
 
-        // Show modal if there are imported students OR errors (legacy support)
-        if ((flash.imported_students && flash.imported_students.length > 0) || (flash.import_errors && flash.import_errors.length > 0)) {
-            setImportedStudents(flash.imported_students || [])
-            setImportErrors(flash.import_errors || [])
+        if (hasImportData) {
+            setImportedStudents(imported)
+            setDuplicateStudents(duplicates)
+            setImportErrors(rowErrors)
+            setImportStats({
+                imported: importedCount,
+                duplicates: duplicateCount,
+                errors: errorCount,
+            })
             setShowImportedModal(true)
         }
-    }, [flash, flash.import_job_id])
+    }, [flash.imported_students, flash.duplicate_students, flash.import_row_errors, flash.imported_count, flash.duplicate_count, flash.error_count])
 
     const { data, setData, post, processing, errors, reset } = useForm({
         student_status: '',
@@ -707,8 +718,8 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                     <div className="space-y-4">
                                         {/* PSA Birth Certificate - Required for Returning Students */}
                                         <div className={`bg-white border-2 rounded-xl p-4 transition-colors ${activeTab === 'old'
-                                                ? 'border-red-300 bg-gradient-to-br from-red-50 to-pink-50'
-                                                : 'border-gray-200 hover:border-gray-300'
+                                            ? 'border-red-300 bg-gradient-to-br from-red-50 to-pink-50'
+                                            : 'border-gray-200 hover:border-gray-300'
                                             }`}>
                                             <div className="flex items-start gap-3">
                                                 <input
@@ -786,8 +797,8 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
 
                                         {/* Good Moral Certificate - Required for Transferees and Returning Students */}
                                         <div className={`bg-white border-2 rounded-xl p-4 transition-colors ${activeTab === 'transferee' || activeTab === 'old'
-                                                ? 'border-purple-300 bg-gradient-to-br from-purple-50 to-pink-50'
-                                                : 'border-gray-200 hover:border-gray-300'
+                                            ? 'border-purple-300 bg-gradient-to-br from-purple-50 to-pink-50'
+                                            : 'border-gray-200 hover:border-gray-300'
                                             }`}>
                                             <div className="flex items-start gap-3">
                                                 <input
@@ -796,8 +807,8 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                                     checked={data.has_good_moral}
                                                     onChange={(e) => setData('has_good_moral', e.target.checked)}
                                                     className={`mt-1 h-5 w-5 rounded border-gray-300 cursor-pointer ${activeTab === 'transferee' || activeTab === 'old'
-                                                            ? 'text-purple-600 focus:ring-purple-500'
-                                                            : 'text-gray-600 focus:ring-gray-500'
+                                                        ? 'text-purple-600 focus:ring-purple-500'
+                                                        : 'text-gray-600 focus:ring-gray-500'
                                                         }`}
                                                 />
                                                 <label htmlFor="good_moral" className="flex-1 cursor-pointer">

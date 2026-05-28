@@ -46,10 +46,10 @@ class HandleInertiaRequests extends Middleware
                 case 'super_admin':
                     $admin = \App\Models\Admin::where('user_id', $user->id)->with('profilePicture')->first();
                     if ($admin) {
-                        $profilePicture = $admin->profilePicture?->file_path 
-                            ? asset('storage/' . $admin->profilePicture->file_path) 
+                        $profilePicture = $admin->profilePicture?->file_path
+                            ? asset('storage/' . $admin->profilePicture->file_path)
                             : null;
-                        
+
                         $userTypeData = [
                             'role' => $admin->role,
                             'position' => $admin->position,
@@ -57,24 +57,24 @@ class HandleInertiaRequests extends Middleware
                         ];
                     }
                     break;
-                    
+
                 case 'teacher':
                     $teacher = \App\Models\Teacher::where('user_id', $user->id)->with('profilePicture')->first();
                     if ($teacher) {
-                        $profilePicture = $teacher->profilePicture?->file_path 
-                            ? asset('storage/' . $teacher->profilePicture->file_path) 
+                        $profilePicture = $teacher->profilePicture?->file_path
+                            ? asset('storage/' . $teacher->profilePicture->file_path)
                             : null;
                         $userTypeData = [
                             'profile_picture' => $profilePicture,
                         ];
                     }
                     break;
-                    
+
                 case 'student':
                     $student = \App\Models\Student::where('user_id', $user->id)->with('profilePicture')->first();
                     if ($student) {
-                        $profilePicture = $student->profilePicture?->file_path 
-                            ? asset('storage/' . $student->profilePicture->file_path) 
+                        $profilePicture = $student->profilePicture?->file_path
+                            ? asset('storage/' . $student->profilePicture->file_path)
                             : null;
                         $userTypeData = [
                             'profile_picture' => $profilePicture,
@@ -93,15 +93,19 @@ class HandleInertiaRequests extends Middleware
                 'teacher' => $user && $user->role === 'teacher' ? $userTypeData : null,
                 'student' => $user && $user->role === 'student' ? $userTypeData : null,
             ],
-            'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'sidebarOpen' => !$request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => [
-                'success' => $request->session()->get('success'),
-                'error' => $request->session()->get('error'),
-                'imported_students' => $request->session()->get('imported_students'),
-                'import_errors' => $request->session()->get('import_errors'),
+                'success' => session('success'),
+                'error' => session('error'),
+                'imported_students' => session('imported_students'),
+                'duplicate_students' => session('duplicate_students'),
+                'imported_count' => session('imported_count'),
+                'duplicate_count' => session('duplicate_count'),
+                'error_count' => session('error_count'),
+                'import_row_errors' => session('import_row_errors'), // renamed
             ],
         ];
-        
+
         return $sharedData;
     }
 }

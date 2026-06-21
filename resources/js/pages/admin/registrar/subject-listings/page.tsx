@@ -182,10 +182,10 @@ export default function SubjectListings({ auth, subjects = [], gradeLevels = [] 
                             <thead className="bg-green-700">
                                 <tr>
                                     <th className="px-6 py-3 text-left text-sm font-medium text-white">Subject Code</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Subject Name</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Description</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Grade Level</th>
-                                    <th className="px-6 py-3 text-left text-sm font-medium text-gray-700">Actions</th>
+                                    <th className="px-6 py-3 text-left text-sm font-medium text-white">Subject Name</th>
+                                    <th className="px-6 py-3 text-left text-sm font-medium text-white">Description</th>
+                                    <th className="px-6 py-3 text-left text-sm font-medium text-white">Grade Level</th>
+                                    <th className="px-6 py-3 text-left text-sm font-medium text-white">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">

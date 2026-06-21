@@ -52,7 +52,7 @@ export default function EditGradeModal({ open, onOpenChange, student, filters }:
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault()
-        
+
         console.log('Submitting grade data:', data)
 
         post('/teacher/grade-sheets', {
@@ -99,7 +99,6 @@ export default function EditGradeModal({ open, onOpenChange, student, filters }:
                             className="bg-gray-50"
                         />
                     </div>
-
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             Grade <span className="text-red-500">*</span>
@@ -110,11 +109,26 @@ export default function EditGradeModal({ open, onOpenChange, student, filters }:
                             max="100"
                             step="0.01"
                             value={data.grade}
-                            onChange={(e) => setData('grade', e.target.value)}
+                            onChange={(e) => {
+                                const raw = e.target.value
+                                setData('grade', raw)
+                            }}
+                            onBlur={(e) => {
+                                const num = parseFloat(e.target.value)
+                                if (isNaN(num)) return
+
+                                // Round half up to nearest whole number
+                                const rounded = Math.round(num)
+
+                                // Clamp to 100 max
+                                const clamped = Math.min(rounded, 100)
+
+                                setData('grade', clamped.toString())
+                            }}
                             placeholder="Enter grade"
                             autoFocus
                         />
-                        <InputError message={errors.grade}/>
+                        <InputError message={errors.grade} />
                         <p className="text-xs text-gray-500 mt-1">
                             Valid grade range: 75-100
                         </p>

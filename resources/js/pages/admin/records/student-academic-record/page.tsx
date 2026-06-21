@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, Download, ShieldCheck, ShieldAlert } from 'lucide-react'
+import { ArrowLeft, Download, ShieldCheck, ShieldAlert, Check, X } from 'lucide-react'
 import { useState, useMemo } from 'react'
 
 type SubjectGrade = {
@@ -32,7 +32,6 @@ type GradeLevelRecord = {
     is_promotable_level?: boolean
     can_promote?: boolean
     next_grade_level?: string | null
-    // new clearance fields
     clearance_total?: number
     clearance_cleared?: number
     all_cleared?: boolean
@@ -70,6 +69,28 @@ type Props = {
     }
 }
 
+function RequirementCard({ met, label, detail }: { met: boolean; label: string; detail: string }) {
+    return (
+        <div
+            className={`flex items-start gap-3 rounded-lg border px-4 py-3 ${
+                met ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'
+            }`}
+        >
+            <div
+                className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
+                    met ? 'bg-green-600' : 'bg-gray-300'
+                }`}
+            >
+                {met ? <Check className="w-3 h-3 text-white" strokeWidth={3} /> : <X className="w-3 h-3 text-white" strokeWidth={3} />}
+            </div>
+            <div>
+                <p className={`text-sm font-medium ${met ? 'text-green-900' : 'text-gray-700'}`}>{label}</p>
+                <p className={`text-xs mt-0.5 ${met ? 'text-green-700' : 'text-gray-500'}`}>{detail}</p>
+            </div>
+        </div>
+    )
+}
+
 export default function StudentAcademicRecord({ student, academic_record, grade_levels, auth }: Props) {
     const [selectedGradeLevel, setSelectedGradeLevel] = useState<string>(
         academic_record.find(r => r.has_data)?.grade_level_id.toString() || grade_levels[0]?.id.toString() || ''
@@ -80,10 +101,32 @@ export default function StudentAcademicRecord({ student, academic_record, grade_
         return academic_record.find(r => r.grade_level_id.toString() === selectedGradeLevel)
     }, [academic_record, selectedGradeLevel])
 
-    const currentGradeRemarks = useMemo(() => {
-        const record = academic_record.find(r => r.grade_level === student.current_grade_level)
-        return record?.remarks ?? null
+    // Full record for the student's current grade level (used for the graduation gate)
+    const currentGradeRecord = useMemo(() => {
+        return academic_record.find(r => r.grade_level === student.current_grade_level)
     }, [academic_record, student.current_grade_level])
+
+    const currentGradeRemarks = currentGradeRecord?.remarks ?? null
+    const isClearanceComplete = currentGradeRecord?.all_cleared ?? false
+    const areAllGradesComplete = currentGradeRecord?.all_grades_complete ?? false
+    const hasPassed = currentGradeRemarks === 'Passed'
+    const canMarkGraduate = areAllGradesComplete && hasPassed && isClearanceComplete
+
+    const gradesCompletionStats = useMemo(() => {
+        const subjects = currentGradeRecord?.subjects ?? []
+        const total = subjects.length
+        const completed = subjects.filter(
+            s =>
+                s.quarter_1 !== null &&
+                s.quarter_2 !== null &&
+                s.quarter_3 !== null &&
+                s.quarter_4 !== null &&
+                s.final_grade !== null
+        ).length
+        return { completed, total }
+    }, [currentGradeRecord])
+
+    const requirementsMetCount = [areAllGradesComplete, hasPassed, isClearanceComplete].filter(Boolean).length
 
     const handleGraduationToggle = (checked: boolean) => {
         setReadyToGraduate(checked)
@@ -110,8 +153,8 @@ export default function StudentAcademicRecord({ student, academic_record, grade_
             return 'Student must pass this grade level before promotion.'
         }
         if (!record.all_cleared) {
-            const cleared  = record.clearance_cleared ?? 0
-            const total    = record.clearance_total ?? 0
+            const cleared = record.clearance_cleared ?? 0
+            const total = record.clearance_total ?? 0
             return `Student clearance is incomplete — ${cleared} of ${total} subject${total !== 1 ? 's' : ''} cleared by teachers. All subjects must be cleared before promotion.`
         }
         return 'Promotion is not available for this grade level.'
@@ -148,7 +191,7 @@ export default function StudentAcademicRecord({ student, academic_record, grade_
                         <h2 className="text-lg font-semibold text-white">Student Information</h2>
                     </div>
                     <div className="p-6">
-                        <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${student.is_grade_10 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'}`}>
+                        <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${student.is_grade_10 ? 'lg:grid-cols-6' : 'lg:grid-cols-5'}`}>
                             <div>
                                 <p className="text-sm text-gray-500 mb-1">Student Name</p>
                                 <p className="font-semibold text-gray-900">{student.name}</p>
@@ -165,6 +208,24 @@ export default function StudentAcademicRecord({ student, academic_record, grade_
                                 <p className="text-sm text-gray-500 mb-1">Current Section</p>
                                 <p className="font-semibold text-gray-900">{student.current_section || 'Not assigned'}</p>
                             </div>
+                            {/* Final Average — derived from the currently selected grade level record */}
+                            <div>
+                                <p className="text-sm text-gray-500 mb-1">Final Average</p>
+                                {currentRecord?.has_data && currentRecord?.final_average ? (
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-semibold text-gray-900">{currentRecord.final_average}</p>
+                                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                            currentRecord.remarks === 'Passed'
+                                                ? 'bg-green-100 text-green-800'
+                                                : 'bg-red-100 text-red-800'
+                                        }`}>
+                                            {currentRecord.remarks}
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <p className="font-semibold text-gray-400">—</p>
+                                )}
+                            </div>
                             {student.is_grade_10 && (
                                 <div>
                                     <p className="text-sm text-gray-500 mb-1">Ready to Graduate (SHS)</p>
@@ -173,26 +234,54 @@ export default function StudentAcademicRecord({ student, academic_record, grade_
                                             id="ready-to-graduate"
                                             checked={readyToGraduate}
                                             onCheckedChange={(checked) => handleGraduationToggle(checked as boolean)}
-                                            disabled={currentGradeRemarks !== 'Passed'}
+                                            disabled={!canMarkGraduate}
                                             className="h-5 w-5"
                                         />
                                         <Label
                                             htmlFor="ready-to-graduate"
                                             className={`text-sm font-medium cursor-pointer ${
-                                                currentGradeRemarks !== 'Passed' ? 'text-gray-400' : 'text-gray-900'
+                                                !canMarkGraduate ? 'text-gray-400' : 'text-gray-900'
                                             }`}
                                         >
-                                            {readyToGraduate ? 'Marked as ready' : 'Not ready'}
+                                            {readyToGraduate ? 'Completed' : 'Not ready to graduate'}
                                         </Label>
                                     </div>
-                                    {currentGradeRemarks !== 'Passed' && (
-                                        <p className="text-xs text-gray-500 mt-1">
-                                            Student must pass Grade 10 before graduating from high school.
-                                        </p>
-                                    )}
                                 </div>
                             )}
                         </div>
+
+                        {/* Graduation requirements — full width so cards have room to breathe */}
+                        {student.is_grade_10 && !canMarkGraduate && (
+                            <div className="mt-6 pt-6 border-t border-gray-100">
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="text-sm font-semibold text-gray-900">Graduation Requirements</h3>
+                                    <span className="text-xs font-medium text-gray-400">
+                                        {requirementsMetCount} of 3 requirements met
+                                    </span>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <RequirementCard
+                                        met={areAllGradesComplete}
+                                        label="Grades Recorded"
+                                        detail={`${gradesCompletionStats.completed} of ${gradesCompletionStats.total} subjects complete`}
+                                    />
+                                    <RequirementCard
+                                        met={hasPassed}
+                                        label="Passing Average"
+                                        detail={
+                                            currentGradeRecord?.final_average != null
+                                                ? `Final average: ${currentGradeRecord.final_average}`
+                                                : 'No final average yet'
+                                        }
+                                    />
+                                    <RequirementCard
+                                        met={isClearanceComplete}
+                                        label="Subject Clearance"
+                                        detail={`${currentGradeRecord?.clearance_cleared ?? 0} of ${currentGradeRecord?.clearance_total ?? 0} subjects cleared`}
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -227,22 +316,8 @@ export default function StudentAcademicRecord({ student, academic_record, grade_
                 {currentRecord ? (
                     <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
                         {/* Record Header */}
-                        <div className="px-6 py-4 border-b border-gray-200 bg-green-700 flex items-center justify-between">
+                        <div className="px-6 py-4 border-b border-gray-200 bg-green-700">
                             <h2 className="text-lg font-semibold text-white">{currentRecord.grade_level}</h2>
-                            {currentRecord.has_data && currentRecord.final_average && (
-                                <div className="flex items-center gap-4">
-                                    <span className="text-white text-sm">
-                                        Final Average: <span className="font-bold text-lg">{currentRecord.final_average}</span>
-                                    </span>
-                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                        currentRecord.remarks === 'Passed'
-                                            ? 'bg-green-100 text-green-800'
-                                            : 'bg-red-100 text-red-800'
-                                    }`}>
-                                        {currentRecord.remarks}
-                                    </span>
-                                </div>
-                            )}
                         </div>
 
                         {/* No data state */}
@@ -289,11 +364,10 @@ export default function StudentAcademicRecord({ student, academic_record, grade_
                                                 <td className="px-6 py-4 text-sm text-center font-bold text-gray-900">{subject.final_grade ?? '-'}</td>
                                                 <td className="px-6 py-4 text-center">
                                                     {subject.remarks ? (
-                                                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                                                            subject.remarks === 'Passed'
+                                                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${subject.remarks === 'Passed'
                                                                 ? 'bg-green-100 text-green-800'
                                                                 : 'bg-red-100 text-red-800'
-                                                        }`}>
+                                                            }`}>
                                                             {subject.remarks}
                                                         </span>
                                                     ) : (

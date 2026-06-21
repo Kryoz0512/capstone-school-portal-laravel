@@ -13,7 +13,7 @@ type Room = {
     id: number
     room_number: string
     capacity: number
-    status: 'Active' | 'In Construction' | 'Maintenance'
+    status: 'Available' | 'Vacant' | 'Occupied'
     students_count: number
 }
 
@@ -42,7 +42,7 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
     const [searchTerm, setSearchTerm] = useState('')
     const [capacityFilter, setCapacityFilter] = useState('')
     const [statusFilter, setStatusFilter] = useState('All')
-    
+
     // Pagination states
     const [currentPage, setCurrentPage] = useState(1)
     const [itemsPerPage, setItemsPerPage] = useState(10)
@@ -91,7 +91,7 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
                             Search and filter available rooms
                         </p>
                     </div>
-                    <Button 
+                    <Button
                         className="bg-green-600 hover:bg-green-700 text-white"
                         onClick={() => setIsModalOpen(true)}
                     >
@@ -101,9 +101,9 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
 
                 <AddRoomModal open={isModalOpen} onOpenChange={setIsModalOpen} />
                 <EditRoomModal open={isEditModalOpen} onOpenChange={setIsEditModalOpen} room={selectedRoom} />
-                <DeleteRoomModal 
-                    open={isDeleteModalOpen} 
-                    onOpenChange={setIsDeleteModalOpen} 
+                <DeleteRoomModal
+                    open={isDeleteModalOpen}
+                    onOpenChange={setIsDeleteModalOpen}
                     roomId={roomToDelete?.id || null}
                     roomNumber={roomToDelete?.room_number || ''}
                 />
@@ -145,9 +145,9 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="All">All</SelectItem>
-                                    <SelectItem value="Active">Active</SelectItem>
-                                    <SelectItem value="In Construction">In Construction</SelectItem>
-                                    <SelectItem value="Maintenance">Maintenance</SelectItem>
+                                    <SelectItem value="Available">Available</SelectItem>
+                                    <SelectItem value="Vacant">Vacant</SelectItem>
+                                    <SelectItem value="Occupied">Occupied</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -192,26 +192,25 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span
-                                                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                                                        room.status === 'Active'
+                                                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${room.status === 'Available'
                                                             ? 'bg-green-100 text-green-800'
-                                                            : room.status === 'In Construction'
-                                                            ? 'bg-yellow-100 text-yellow-800'
-                                                            : 'bg-cyan-100 text-cyan-800'
-                                                    }`}
+                                                            : room.status === 'Vacant'
+                                                                ? 'bg-yellow-100 text-yellow-800'
+                                                                : 'bg-red-100 text-red-800'
+                                                        }`}
                                                 >
                                                     {room.status}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-2">
-                                                    <button 
+                                                    <button
                                                         className="text-gray-600 hover:text-green-600"
                                                         onClick={() => handleEdit(room)}
                                                     >
                                                         <Pencil className="w-4 h-4" />
                                                     </button>
-                                                    <button 
+                                                    <button
                                                         className="text-gray-600 hover:text-red-600"
                                                         onClick={() => handleDelete(room)}
                                                     >
@@ -241,8 +240,8 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
                             <div className="flex items-center gap-4">
                                 <div className="flex items-center gap-2">
                                     <span className="text-sm text-gray-600">Show</span>
-                                    <Select 
-                                        value={itemsPerPage.toString()} 
+                                    <Select
+                                        value={itemsPerPage.toString()}
                                         onValueChange={(value) => setItemsPerPage(Number(value))}
                                     >
                                         <SelectTrigger className="w-20">
@@ -270,7 +269,7 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
                                 >
                                     <ChevronLeft className="w-4 h-4" />
                                 </Button>
-                                
+
                                 <div className="flex items-center gap-1">
                                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
                                         // Show first page, last page, current page, and pages around current

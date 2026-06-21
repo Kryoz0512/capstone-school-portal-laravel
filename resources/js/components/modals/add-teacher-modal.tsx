@@ -20,7 +20,7 @@ type AddTeacherModalProps = {
 export default function AddTeacherModal({ open, onOpenChange, subjects = [] }: AddTeacherModalProps) {
     const [employeeNumberError, setEmployeeNumberError] = useState<string>('')
     const [checkingEmployeeNumber, setCheckingEmployeeNumber] = useState(false)
-    
+
     const { data, setData, post, processing, errors, reset } = useForm({
         firstName: '',
         lastName: '',
@@ -56,9 +56,9 @@ export default function AddTeacherModal({ open, onOpenChange, subjects = [] }: A
                 const response = await axios.post('/admin/user-management/teachers/check-employee-number', {
                     employee_number: data.employeeNumber
                 })
-                
+
                 if (response.data.exists) {
-                    setEmployeeNumberError('This employee number is already taken')
+                    setEmployeeNumberError('This employee number is already registered')
                 } else {
                     setEmployeeNumberError('')
                 }
@@ -165,11 +165,15 @@ export default function AddTeacherModal({ open, onOpenChange, subjects = [] }: A
                             value={data.employeeNumber}
                             onChange={(e) => {
                                 const value = e.target.value.replace(/[^0-9]/g, '')
-                                setData('employeeNumber', value)
+                                if (value.length <= 6) {
+                                    setData('employeeNumber', value)
+                                }
                             }}
-                            placeholder="e.g., 1000001"
-                            pattern="[0-9]+"
-                            title="Only numbers are allowed"
+                            maxLength={6}
+                            minLength={6}
+                            placeholder="e.g., 100001"
+                            pattern="[0-9]{6}"
+                            title="Employee number must be exactly 6 digits"
                             className={employeeNumberError ? 'border-red-500' : ''}
                         />
                         {checkingEmployeeNumber && (
@@ -263,7 +267,7 @@ export default function AddTeacherModal({ open, onOpenChange, subjects = [] }: A
                             className="bg-green-600 hover:bg-green-700"
                             disabled={processing || !!employeeNumberError || checkingEmployeeNumber}
                         >
-                            {processing ? 'Creating...' : 'Create Teacher'}
+                            {processing ? 'Creating...' : 'Add Teacher'}
                         </Button>
                     </div>
                 </form>

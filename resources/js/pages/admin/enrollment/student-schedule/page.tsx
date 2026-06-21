@@ -157,8 +157,8 @@ export default function StudentSchedule({ auth, students, gradeLevels, filters }
                         <table className="w-full">
                             <thead className="bg-green-700">
                                 <tr>
-                                    <th className="px-6 py-5 text-left text-base font-semibold text-white uppercase tracking-wider">Student Name</th>
                                     <th className="px-6 py-5 text-left text-base font-semibold text-white uppercase tracking-wider">LRN</th>
+                                    <th className="px-6 py-5 text-left text-base font-semibold text-white uppercase tracking-wider">Student Name</th>
                                     <th className="px-6 py-5 text-left text-base font-semibold text-white uppercase tracking-wider">Grade Level</th>
                                     <th className="px-6 py-5 text-left text-base font-semibold text-white uppercase tracking-wider">Section</th>
                                 </tr>
@@ -171,8 +171,8 @@ export default function StudentSchedule({ auth, students, gradeLevels, filters }
                                             className="hover:bg-gray-50 cursor-pointer"
                                             onClick={() => handleStudentClick(student.id)}
                                         >
-                                            <td className="px-6 py-4 text-sm text-gray-900">{student.studentName}</td>
                                             <td className="px-6 py-4 text-sm text-gray-900">{student.lrn}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">{student.studentName}</td>
                                             <td className="px-6 py-4 text-sm text-gray-900">{student.gradeLevel}</td>
                                             <td className="px-6 py-4 text-sm text-gray-900">{student.section}</td>
                                         </tr>

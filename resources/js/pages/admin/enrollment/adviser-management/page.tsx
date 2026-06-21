@@ -61,12 +61,12 @@ export default function AdviserManagement({ auth, sections = [], teachers = [], 
     // Filter sections
     const filteredSections = useMemo(() => {
         return sections.filter(section => {
-            const matchesSearch = 
+            const matchesSearch =
                 section.section_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 section.current_adviser.toLowerCase().includes(searchTerm.toLowerCase())
-            
+
             const matchesGradeLevel = gradeLevelFilter === 'all' || section.grade_level === gradeLevelFilter
-            
+
             return matchesSearch && matchesGradeLevel
         })
     }, [sections, searchTerm, gradeLevelFilter])
@@ -102,7 +102,7 @@ export default function AdviserManagement({ auth, sections = [], teachers = [], 
                     </p>
                 </div>
 
-                <AssignAdviserModal 
+                <AssignAdviserModal
                     open={isModalOpen}
                     onOpenChange={setIsModalOpen}
                     section={selectedSection}
@@ -175,8 +175,8 @@ export default function AdviserManagement({ auth, sections = [], teachers = [], 
                             <table className="w-full">
                                 <thead className="bg-green-700">
                                     <tr>
-                                        <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Section</th>
                                         <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Grade Level</th>
+                                        <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Section</th>
                                         <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Current Adviser</th>
                                         <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Actions</th>
                                     </tr>
@@ -185,12 +185,13 @@ export default function AdviserManagement({ auth, sections = [], teachers = [], 
                                     {paginatedSections.length > 0 ? (
                                         paginatedSections.map((section) => (
                                             <tr key={section.id} className="hover:bg-gray-50">
-                                                <td className="px-6 py-4 text-sm text-gray-900">{section.section_name}</td>
                                                 <td className="px-6 py-4">
                                                     <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                                         {section.grade_level}
                                                     </span>
                                                 </td>
+                                                <td className="px-6 py-4 text-sm text-gray-900">{section.section_name}</td>
+
                                                 <td className="px-6 py-4 text-sm text-gray-900">
                                                     {section.current_adviser === 'Not Assigned' ? (
                                                         <span className="text-gray-400 italic">{section.current_adviser}</span>
@@ -199,8 +200,8 @@ export default function AdviserManagement({ auth, sections = [], teachers = [], 
                                                     )}
                                                 </td>
                                                 <td className="px-6 py-4">
-                                                    <Button 
-                                                        size="sm" 
+                                                    <Button
+                                                        size="sm"
                                                         className="bg-green-600 hover:bg-green-700 text-white"
                                                         onClick={() => handleAssign(section)}
                                                     >
@@ -224,77 +225,77 @@ export default function AdviserManagement({ auth, sections = [], teachers = [], 
                     {/* Pagination */}
                     {filteredSections.length > 0 && (
                         <div className="p-4 border-t border-gray-200 flex items-center justify-between">
-                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm text-gray-600">Show</span>
+                                    <Select
+                                        value={itemsPerPage.toString()}
+                                        onValueChange={(value) => setItemsPerPage(Number(value))}
+                                    >
+                                        <SelectTrigger className="w-20">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="10">10</SelectItem>
+                                            <SelectItem value="25">25</SelectItem>
+                                            <SelectItem value="50">50</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <span className="text-sm text-gray-600">entries</span>
+                                </div>
+                                <p className="text-sm text-gray-600">
+                                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredSections.length)} of {filteredSections.length} entries
+                                </p>
+                            </div>
+
                             <div className="flex items-center gap-2">
-                                <span className="text-sm text-gray-600">Show</span>
-                                <Select 
-                                    value={itemsPerPage.toString()} 
-                                    onValueChange={(value) => setItemsPerPage(Number(value))}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                    disabled={currentPage === 1}
                                 >
-                                    <SelectTrigger className="w-20">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="10">10</SelectItem>
-                                        <SelectItem value="25">25</SelectItem>
-                                        <SelectItem value="50">50</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <span className="text-sm text-gray-600">entries</span>
-                            </div>
-                            <p className="text-sm text-gray-600">
-                                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredSections.length)} of {filteredSections.length} entries
-                            </p>
-                        </div>
+                                    <ChevronLeft className="w-4 h-4" />
+                                </Button>
 
-                        <div className="flex items-center gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                disabled={currentPage === 1}
-                            >
-                                <ChevronLeft className="w-4 h-4" />
-                            </Button>
-                            
-                            <div className="flex items-center gap-1">
-                                {Array.from({ length: totalPages || 1 }, (_, i) => i + 1).map((page) => {
-                                    if (
-                                        page === 1 ||
-                                        page === totalPages ||
-                                        (page >= currentPage - 1 && page <= currentPage + 1)
-                                    ) {
-                                        return (
-                                            <Button
-                                                key={page}
-                                                variant={currentPage === page ? "default" : "outline"}
-                                                size="sm"
-                                                onClick={() => setCurrentPage(page)}
-                                                className={currentPage === page ? "bg-green-600 hover:bg-green-700" : ""}
-                                            >
-                                                {page}
-                                            </Button>
-                                        )
-                                    } else if (
-                                        page === currentPage - 2 ||
-                                        page === currentPage + 2
-                                    ) {
-                                        return <span key={page} className="px-2">...</span>
-                                    }
-                                    return null
-                                })}
-                            </div>
+                                <div className="flex items-center gap-1">
+                                    {Array.from({ length: totalPages || 1 }, (_, i) => i + 1).map((page) => {
+                                        if (
+                                            page === 1 ||
+                                            page === totalPages ||
+                                            (page >= currentPage - 1 && page <= currentPage + 1)
+                                        ) {
+                                            return (
+                                                <Button
+                                                    key={page}
+                                                    variant={currentPage === page ? "default" : "outline"}
+                                                    size="sm"
+                                                    onClick={() => setCurrentPage(page)}
+                                                    className={currentPage === page ? "bg-green-600 hover:bg-green-700" : ""}
+                                                >
+                                                    {page}
+                                                </Button>
+                                            )
+                                        } else if (
+                                            page === currentPage - 2 ||
+                                            page === currentPage + 2
+                                        ) {
+                                            return <span key={page} className="px-2">...</span>
+                                        }
+                                        return null
+                                    })}
+                                </div>
 
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                disabled={currentPage === totalPages}
-                            >
-                                <ChevronRight className="w-4 h-4" />
-                            </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                    disabled={currentPage === totalPages}
+                                >
+                                    <ChevronRight className="w-4 h-4" />
+                                </Button>
+                            </div>
                         </div>
-                    </div>
                     )}
                 </div>
             </div>

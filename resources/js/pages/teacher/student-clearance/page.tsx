@@ -361,7 +361,6 @@ export default function StudentClearance({ subjects, students, filters, auth }: 
                                             <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider">Grade & Section</th>
                                             <th className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider">Status</th>
                                             <th className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider">Clearance</th>
-                                            <th className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
@@ -430,15 +429,6 @@ export default function StudentClearance({ subjects, students, filters, auth }: 
                                                                     {isCleared ? 'Cleared' : 'Clear'}
                                                                 </label>
                                                             </div>
-                                                        </td>
-                                                        <td className="px-6 py-5 text-center">
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                className="text-blue-600 border-blue-300 hover:text-white hover:bg-blue-600 hover:border-blue-600 transition-all shadow-sm"
-                                                            >
-                                                                <FileText className="w-4 h-4 mr-1" /> View Details
-                                                            </Button>
                                                         </td>
                                                     </tr>
                                                 )

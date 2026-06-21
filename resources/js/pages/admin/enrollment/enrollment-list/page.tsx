@@ -85,35 +85,35 @@ export default function EnrollmentList({ auth, students = [], gradeLevels = [], 
     // Filter sections based on selected grade level and input
     const filteredSections = useMemo(() => {
         let filtered = sections
-        
+
         // Filter by grade level
         if (gradeLevelFilter !== 'all') {
             const selectedGrade = gradeLevels.find(g => g.id.toString() === gradeLevelFilter)
             filtered = filtered.filter(s => s.grade_level === selectedGrade?.name)
         }
-        
+
         // Filter by input text
         if (sectionInput.trim()) {
-            filtered = filtered.filter(s => 
+            filtered = filtered.filter(s =>
                 s.section_name.toLowerCase().includes(sectionInput.toLowerCase())
             )
         }
-        
+
         return filtered
     }, [gradeLevelFilter, sectionInput, sections, gradeLevels])
 
     // Auto-apply filters when they change
     useEffect(() => {
         const params: any = {}
-        
+
         if (gradeLevelFilter !== 'all') {
             params.grade_level = gradeLevelFilter
         }
-        
+
         if (selectedSectionId) {
             params.section = selectedSectionId
         }
-        
+
         if (searchTerm.trim()) {
             params.search = searchTerm.trim()
         }
@@ -210,14 +210,14 @@ export default function EnrollmentList({ auth, students = [], gradeLevels = [], 
         if (!data.grade_level_id) return []
         const selectedGrade = gradeLevels.find(g => g.id.toString() === data.grade_level_id)
         let filtered = sections.filter(s => s.grade_level === selectedGrade?.name)
-        
+
         // Filter by input text
         if (editSectionInput.trim()) {
-            filtered = filtered.filter(s => 
+            filtered = filtered.filter(s =>
                 s.section_name.toLowerCase().includes(editSectionInput.toLowerCase())
             )
         }
-        
+
         return filtered
     }, [data.grade_level_id, editSectionInput, gradeLevels, sections])
 
@@ -270,7 +270,7 @@ export default function EnrollmentList({ auth, students = [], gradeLevels = [], 
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="text-sm font-semibold text-gray-900">Filters</h2>
                         {hasActiveFilters && (
-                            <Button 
+                            <Button
                                 onClick={handleClearFilters}
                                 variant="outline"
                                 size="sm"
@@ -342,7 +342,7 @@ export default function EnrollmentList({ auth, students = [], gradeLevels = [], 
                         <div className="p-8 text-center">
                             <p className="text-lg font-medium text-gray-900 mb-2">No Enrolled Students</p>
                             <p className="text-sm text-gray-500">
-                                {hasActiveFilters 
+                                {hasActiveFilters
                                     ? 'No students match your filter criteria.'
                                     : 'No students have been assigned to sections yet.'}
                             </p>
@@ -353,10 +353,10 @@ export default function EnrollmentList({ auth, students = [], gradeLevels = [], 
                                 <table className="w-full">
                                     <thead className="bg-green-700">
                                         <tr>
-                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Student Name</th>
                                             <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">LRN</th>
-                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Section</th>
+                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Student Name</th>
                                             <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Grade Level</th>
+                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Section</th>
                                             <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Adviser</th>
                                             <th className="px-6 py-4 text-center text-sm font-semibold text-white uppercase tracking-wider">Actions</th>
                                         </tr>
@@ -364,18 +364,19 @@ export default function EnrollmentList({ auth, students = [], gradeLevels = [], 
                                     <tbody className="divide-y divide-gray-200">
                                         {paginatedStudents.map((student) => (
                                             <tr key={student.id} className="hover:bg-gray-50">
-                                                <td className="px-6 py-4 text-sm text-gray-900">{student.student_name}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-900">{student.lrn}</td>
-                                                <td className="px-6 py-4">
-                                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                        {student.section}
-                                                    </span>
-                                                </td>
+                                                <td className="px-6 py-4 text-sm text-gray-900">{student.student_name}</td>
                                                 <td className="px-6 py-4">
                                                     <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                                                         {student.grade_level}
                                                     </span>
                                                 </td>
+                                                <td className="px-6 py-4">
+                                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                        {student.section}
+                                                    </span>
+                                                </td>
+
                                                 <td className="px-6 py-4 text-sm text-gray-900">
                                                     {student.adviser === 'Not Assigned' ? (
                                                         <span className="text-gray-400 italic">{student.adviser}</span>
@@ -406,8 +407,8 @@ export default function EnrollmentList({ auth, students = [], gradeLevels = [], 
                                     <div className="flex items-center gap-4">
                                         <div className="flex items-center gap-2">
                                             <span className="text-sm text-gray-600">Show</span>
-                                            <Select 
-                                                value={itemsPerPage.toString()} 
+                                            <Select
+                                                value={itemsPerPage.toString()}
                                                 onValueChange={(value) => setItemsPerPage(Number(value))}
                                             >
                                                 <SelectTrigger className="w-20">
@@ -435,7 +436,7 @@ export default function EnrollmentList({ auth, students = [], gradeLevels = [], 
                                         >
                                             <ChevronLeft className="w-4 h-4" />
                                         </Button>
-                                        
+
                                         <div className="flex items-center gap-1">
                                             {Array.from({ length: totalPages || 1 }, (_, i) => i + 1).map((page) => {
                                                 if (
@@ -495,8 +496,8 @@ export default function EnrollmentList({ auth, students = [], gradeLevels = [], 
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Grade Level <span className="text-red-500">*</span>
                             </label>
-                            <Select 
-                                value={data.grade_level_id} 
+                            <Select
+                                value={data.grade_level_id}
                                 onValueChange={(value) => {
                                     setData('grade_level_id', value)
                                     setData('section_id', '')
@@ -552,16 +553,16 @@ export default function EnrollmentList({ auth, students = [], gradeLevels = [], 
                         </div>
 
                         <div className="flex gap-3 pt-4">
-                            <Button 
-                                type="button" 
-                                variant="outline" 
+                            <Button
+                                type="button"
+                                variant="outline"
                                 onClick={handleEditCancel}
                                 disabled={processing}
                             >
                                 Cancel
                             </Button>
-                            <Button 
-                                type="submit" 
+                            <Button
+                                type="submit"
                                 className="bg-green-600 hover:bg-green-700 text-white"
                                 disabled={processing}
                             >

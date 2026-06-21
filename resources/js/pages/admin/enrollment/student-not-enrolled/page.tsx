@@ -28,6 +28,11 @@ type Section = {
     id: number
     name: string
     grade_level_id: number
+    room_number: string
+    capacity: number
+    current_students: number
+    available_slots: number
+    is_full: boolean
 }
 
 type Props = {
@@ -258,8 +263,8 @@ export default function StudentNotEnrolled({ auth, students = [], gradeLevels = 
                         <table className="w-full">
                             <thead className="bg-green-700">
                                 <tr>
-                                    <th className="px-6 py-4 text-left text-base font-medium text-white">Student Name</th>
                                     <th className="px-6 py-4 text-left text-base font-medium text-white">LRN</th>
+                                    <th className="px-6 py-4 text-left text-base font-medium text-white">Student Name</th>
                                     <th className="px-6 py-4 text-left text-base font-medium text-white">Gender</th>
                                     <th className="px-6 py-4 text-left text-base font-medium text-white">Age</th>
                                     <th className="px-6 py-4 text-left text-base font-medium text-white">Grade Level</th>
@@ -271,14 +276,14 @@ export default function StudentNotEnrolled({ auth, students = [], gradeLevels = 
                                 {paginatedStudents.length > 0 ? (
                                     paginatedStudents.map((student) => (
                                         <tr key={student.id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 text-sm text-gray-900">{student.studentName}</td>
                                             <td className="px-6 py-4 text-sm text-gray-900">{student.lrn}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">{student.studentName}</td>
                                             <td className="px-6 py-4 text-sm text-gray-900">{student.gender}</td>
                                             <td className="px-6 py-4 text-sm text-gray-900">{student.age || '-'}</td>
                                             <td className="px-6 py-4 text-sm text-gray-500">{student.gradeLevel || '-'}</td>
                                             <td className="px-6 py-4">
                                                 <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                                    Not Yet Assigned
+                                                    No Section Assigned
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">

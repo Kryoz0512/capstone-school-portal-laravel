@@ -3,9 +3,8 @@ import AdminLayout from '@/layouts/admin-layout'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Pencil, ChevronLeft, ChevronRight } from 'lucide-react'
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 
 type Student = {
     id: number
@@ -13,7 +12,6 @@ type Student = {
     lrn: string
     gradeLevel: string
     section: string
-    readyToGraduate: boolean
 }
 
 type GradeLevel = {
@@ -93,15 +91,6 @@ export default function ViewEditStudent({ auth, students = [], gradeLevels = [] 
     const handleEdit = (student: Student) => {
         // Pass the current grade level as a query parameter
         router.visit(`/admin/admission/view-edit-student/${student.id}/edit?grade=${encodeURIComponent(gradeFilter)}`)
-    }
-
-    const handleGraduationReadinessChange = (studentId: number, checked: boolean) => {
-        router.put(`/admin/students/${studentId}/graduation-readiness`, {
-            ready_to_graduate: checked,
-        }, {
-            preserveState: true,
-            preserveScroll: true,
-        })
     }
 
     return (
@@ -185,7 +174,6 @@ export default function ViewEditStudent({ auth, students = [], gradeLevels = [] 
                                     <th className="px-6 py-5 text-left text-base font-semibold text-white uppercase tracking-wider">LRN</th>
                                     <th className="px-6 py-5 text-left text-base font-semibold text-white uppercase tracking-wider">Grade Level</th>
                                     <th className="px-6 py-5 text-left text-base font-semibold text-white uppercase tracking-wider">Section</th>
-                                    <th className="px-6 py-5 text-center text-base font-semibold text-white uppercase tracking-wider">Ready to Graduate</th>
                                     <th className="px-6 py-5 text-left text-base font-semibold text-white uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
@@ -197,15 +185,6 @@ export default function ViewEditStudent({ auth, students = [], gradeLevels = [] 
                                             <td className="px-6 py-4 text-sm text-gray-900">{student.lrn}</td>
                                             <td className="px-6 py-4 text-sm text-gray-900">{student.gradeLevel}</td>
                                             <td className="px-6 py-4 text-sm text-gray-900">{student.section}</td>
-                                            <td className="px-6 py-4 text-center">
-                                                <Checkbox
-                                                    checked={student.readyToGraduate}
-                                                    onCheckedChange={(checked) => 
-                                                        handleGraduationReadinessChange(student.id, checked as boolean)
-                                                    }
-                                                    className="mx-auto"
-                                                />
-                                            </td>
                                             <td className="px-6 py-4">
                                                 <button 
                                                     className="text-gray-600 hover:text-green-600"
@@ -218,7 +197,7 @@ export default function ViewEditStudent({ auth, students = [], gradeLevels = [] 
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-500">
+                                        <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-500">
                                             {gradeFilter === 'all'
                                                 ? 'Please select a grade level to view students.'
                                                 : students.length === 0 

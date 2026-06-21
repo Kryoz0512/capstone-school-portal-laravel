@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Illuminate\Support\Carbon;
+use App\Models\ActivityLog;
 use App\Jobs\ImportStudentsJob;
 use Illuminate\Support\Str;
 
@@ -311,8 +312,7 @@ class StudentController extends Controller
                     $formatGrade = function ($value) {
                         if ($value === null)
                             return null;
-                        $formatted = (float) $value;
-                        return ($formatted == floor($formatted)) ? (int) $formatted : $formatted;
+                        return (int) round((float) $value, 0, PHP_ROUND_HALF_UP);
                     };
 
                     return [
@@ -443,10 +443,8 @@ class StudentController extends Controller
 
     public function viewEdit()
     {
-        // Fetch students who have been assigned a section (enrolled students)
         $students = Student::with(['user', 'gradeLevel', 'section'])
-            ->whereNotNull('current_section_id')
-            ->get()
+            ->get()  // Remove the whereNotNull filter
             ->map(function ($student) {
                 return [
                     'id' => $student->id,
@@ -469,6 +467,66 @@ class StudentController extends Controller
             'students' => $students,
             'gradeLevels' => $gradeLevels,
         ]);
+    }
+
+    public function userManagement()
+    {
+        $students = Student::with('gradeLevel')
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get()
+            ->map(function ($student) {
+                return [
+                    'id' => $student->id,
+                    'lrn' => $student->lrn,
+                    'name' => trim($student->first_name . ' ' . ($student->middle_name ? $student->middle_name . ' ' : '') . $student->last_name),
+                    'grade_level' => $student->gradeLevel ? $student->gradeLevel->name : 'N/A',
+                    'requires_password_change' => $this->studentRequiresPasswordChange($student),
+                ];
+            });
+
+        $gradeLevels = GradeLevel::select('id', 'name')->get();
+
+        return Inertia::render('admin/user-management/student/page', [
+            'students' => $students,
+            'gradeLevels' => $gradeLevels,
+        ]);
+    }
+
+    private function studentRequiresPasswordChange(Student $student): bool
+    {
+        $user = User::find($student->user_id);
+        return $user ? !$user->password_changed : false;
+    }
+
+    public function resetPassword(Student $student)
+    {
+        $user = User::find($student->user_id);
+
+        if (!$user) {
+            return back()->withErrors(['error' => 'This student does not have a linked user account.']);
+        }
+
+        DB::beginTransaction();
+        try {
+            $user->update([
+                'password' => Hash::make($student->lrn),
+                'password_changed' => false, // forces redirect to change-password on next login
+            ]);
+
+            ActivityLog::create([
+                'user_id' => Auth::id(),
+                'action' => 'reset_password',
+                'description' => 'Reset password for student: ' . trim($student->first_name . ' ' . $student->last_name) . ' (LRN: ' . $student->lrn . ')',
+            ]);
+
+            DB::commit();
+
+            return redirect()->back()->with('success', 'Password reset successfully. The student must set a new password on their next login.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors(['error' => 'Failed to reset password: ' . $e->getMessage()]);
+        }
     }
 
     public function scheduleIndex(Request $request)
@@ -577,8 +635,8 @@ class StudentController extends Controller
         ];
 
         $messages = [
-            'has_report_card.required' => 'Form 137 (Report Card) is required when enrolling.',
-            'has_report_card.accepted' => 'Form 137 (Report Card) must be submitted.',
+            'has_report_card.required' => 'Form 138 (Report Card) is required when enrolling.',
+            'has_report_card.accepted' => 'Form 138 (Report Card) must be submitted.',
         ];
 
         // Conditional validation based on student status
@@ -1054,8 +1112,8 @@ class StudentController extends Controller
                 'Grade Level',
                 'School Year',
                 'PSA Birth Certificate',
-                'SF9',
-                'Report Card',
+                'Form 137 (SF9)',
+                'Form 138 (Report Card)',
                 'Good Moral',
             ]);
 
@@ -1165,7 +1223,7 @@ class StudentController extends Controller
                 }
 
                 if (!$hasReportCard) {
-                    $errors[] = "Row {$rowNum}: Form 137 (Report Card) is required.";
+                    $errors[] = "Row {$rowNum}: Form 138 (Report Card) is required.";
                     $errorCount++;
                     continue;
                 }
@@ -1345,8 +1403,8 @@ class StudentController extends Controller
                 'Grade Level',
                 'School Year',
                 'PSA Birth Certificate',
-                'SF9',
-                'Form 137',
+                'Form 137 (SF9)',
+                'Form 138 (Report Card)',
                 'Good Moral',
             ],
             [
@@ -1709,22 +1767,5 @@ class StudentController extends Controller
         }
 
         return back()->with('success', 'Profile picture deleted successfully.');
-    }
-
-    public function updateGraduationReadiness(Request $request, Student $student)
-    {
-        $validated = $request->validate([
-            'ready_to_graduate' => 'required|boolean',
-        ]);
-
-        try {
-            $student->update([
-                'ready_to_graduate' => $validated['ready_to_graduate'],
-            ]);
-
-            return back()->with('success', 'Graduation readiness updated successfully');
-        } catch (\Exception $e) {
-            return back()->withErrors(['error' => 'Failed to update graduation readiness: ' . $e->getMessage()]);
-        }
     }
 }

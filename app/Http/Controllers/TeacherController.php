@@ -114,7 +114,7 @@ class TeacherController extends Controller
         $validated = $request->validate([
             'firstName' => 'required|string|max:255',
             'lastName' => 'required|string|max:255',
-            'employeeNumber' => 'required|string|unique:tbl_teachers,employee_number',
+            'employeeNumber' => 'required|string|digits:6|unique:tbl_teachers,employee_number',
             'subject' => 'required|string',
             'position' => 'required|string',
             'password' => 'required|string|min:8',
@@ -171,7 +171,7 @@ class TeacherController extends Controller
         $validated = $request->validate([
             'firstName' => 'required|string|max:255',
             'lastName' => 'required|string|max:255',
-            'employeeNumber' => 'required|string|unique:tbl_teachers,employee_number,' . $teacher->id,
+            'employeeNumber' => 'required|string|digits:6|unique:tbl_teachers,employee_number,' . $teacher->id,
             'subject' => 'required|string',
             'position' => 'required|string',
             'password' => 'nullable|string|min:8',
@@ -528,8 +528,7 @@ class TeacherController extends Controller
         $formatGrade = function ($grade) {
             if ($grade === null)
                 return null;
-            $formatted = (float) $grade;
-            return $formatted == floor($formatted) ? (int) $formatted : $formatted;
+            return (int) round((float) $grade, 0, PHP_ROUND_HALF_UP);
         };
 
         return [
@@ -864,15 +863,14 @@ class TeacherController extends Controller
             ?? Student::orderBy('school_year', 'desc')->value('school_year')
             ?? date('Y') . '-' . (date('Y') + 1);
 
-        $subjects = DB::table('tbl_teacher_subjects')
-            ->join('tbl_subjects', 'tbl_teacher_subjects.subject_id', '=', 'tbl_subjects.id')
-            ->join('tbl_schedules', function ($join) use ($teacher) {
-                $join->on('tbl_schedules.subject_id', '=', 'tbl_subjects.id')
-                    ->where('tbl_schedules.teacher_id', $teacher->id);
-            })
+        // Drive purely from tbl_schedules — this is the single source of truth
+        // for which teacher teaches which subject in which section.
+        // tbl_teacher_subjects is redundant here and was causing the bad join.
+        $subjects = DB::table('tbl_schedules')
+            ->join('tbl_subjects', 'tbl_schedules.subject_id', '=', 'tbl_subjects.id')
             ->join('tbl_class_sections', 'tbl_schedules.class_section_id', '=', 'tbl_class_sections.id')
             ->join('tbl_grade_levels', 'tbl_class_sections.grade_level_id', '=', 'tbl_grade_levels.id')
-            ->where('tbl_teacher_subjects.teacher_id', $teacher->id)
+            ->where('tbl_schedules.teacher_id', $teacher->id)
             ->select(
                 'tbl_subjects.id',
                 'tbl_subjects.name as subject_name',
@@ -884,44 +882,53 @@ class TeacherController extends Controller
             ->distinct()
             ->get();
 
-        $students = [];
-        if ($subjectId && $sectionId) {
-            // Load clearances for this subject+section+year keyed by student_id
-            $clearances = \App\Models\Clearance::where('subject_id', $subjectId)
-                ->where('class_section_id', $sectionId)
-                ->where('school_year', $schoolYear)
-                ->get()
-                ->keyBy('student_id');
+        $students = collect();
 
-            $students = Student::where('current_section_id', $sectionId)
-                ->where('school_year', $schoolYear)
-                ->with(['gradeLevel', 'section', 'profilePicture'])
-                ->get()
-                ->map(function ($student) use ($clearances) {
-                    $clearance = $clearances->get($student->id);
-                    return [
-                        'id' => $student->id,
-                        'student_id' => $student->lrn,
-                        'firstName' => $student->first_name,
-                        'lastName' => $student->last_name,
-                        'middleName' => $student->middle_name ?? null,
-                        'grade_level' => $student->gradeLevel?->name ?? 'N/A',
-                        'section' => $student->section?->section_name ?? 'N/A',
-                        'clearance_status' => $clearance?->status ?? 'pending',
-                        'profile_picture' => $student->profilePicture
-                            ? asset('storage/' . $student->profilePicture->file_path)
-                            : null,
-                    ];
-                })
-                ->values();
+        if ($subjectId && $sectionId) {
+            // Verify this teacher actually teaches this subject in this section
+            // to prevent teachers from querying other sections
+            $validAssignment = DB::table('tbl_schedules')
+                ->where('teacher_id', $teacher->id)
+                ->where('subject_id', $subjectId)
+                ->where('class_section_id', $sectionId)
+                ->exists();
+
+            if ($validAssignment) {
+                $clearances = \App\Models\Clearance::where('subject_id', $subjectId)
+                    ->where('class_section_id', $sectionId)
+                    ->where('school_year', $schoolYear)
+                    ->get()
+                    ->keyBy('student_id');
+
+                $students = Student::where('current_section_id', $sectionId)
+                    ->with(['gradeLevel', 'section', 'profilePicture'])
+                    ->get()
+                    ->map(function ($student) use ($clearances) {
+                        $clearance = $clearances->get($student->id);
+                        return [
+                            'id' => $student->id,
+                            'student_id' => $student->lrn,
+                            'firstName' => $student->first_name,
+                            'lastName' => $student->last_name,
+                            'middleName' => $student->middle_name ?? null,
+                            'grade_level' => $student->gradeLevel?->name ?? 'N/A',
+                            'section' => $student->section?->section_name ?? 'N/A',
+                            'clearance_status' => $clearance?->status ?? 'pending',
+                            'profile_picture' => $student->profilePicture
+                                ? asset('storage/' . $student->profilePicture->file_path)
+                                : null,
+                        ];
+                    })
+                    ->values();
+            }
         }
 
         return Inertia::render('teacher/student-clearance/page', [
             'subjects' => $subjects,
             'students' => $students,
             'filters' => [
-                'subject_id' => $subjectId,
-                'section_id' => $sectionId,
+                'subject_id' => $subjectId ? (int) $subjectId : null,
+                'section_id' => $sectionId ? (int) $sectionId : null,
                 'school_year' => $schoolYear,
             ],
         ]);

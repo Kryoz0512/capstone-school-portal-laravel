@@ -10,7 +10,7 @@ type Room = {
     id: number
     room_number: string
     capacity: number
-    status: 'Active' | 'In Construction' | 'Maintenance'
+    status: 'Available' | 'Vacant' | 'Occupied'
 }
 
 type EditRoomModalProps = {
@@ -23,7 +23,7 @@ export default function EditRoomModal({ open, onOpenChange, room }: EditRoomModa
     const { data, setData, put, processing, errors, reset } = useForm({
         room_number: '',
         capacity: '',
-        status: 'Active' as 'Active' | 'In Construction' | 'Maintenance'
+        status: 'Available' as 'Available' | 'Vacant' | 'Occupied'
     })
 
     const [roomNumberError, setRoomNumberError] = useState('')
@@ -56,7 +56,7 @@ export default function EditRoomModal({ open, onOpenChange, room }: EditRoomModa
                     room_number: data.room_number,
                     room_id: room?.id
                 })
-                
+
                 if (!response.data.available) {
                     setRoomNumberError(response.data.message)
                 } else {
@@ -145,22 +145,22 @@ export default function EditRoomModal({ open, onOpenChange, room }: EditRoomModa
                         </label>
                         <Select
                             value={data.status}
-                            onValueChange={(value: 'Active' | 'In Construction' | 'Maintenance') => setData('status', value)}
+                            onValueChange={(value: 'Available' | 'Vacant' | 'Occupied') => setData('status', value)}
                         >
                             <SelectTrigger>
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="Active">Active</SelectItem>
-                                <SelectItem value="In Construction">In Construction</SelectItem>
-                                <SelectItem value="Maintenance">Maintenance</SelectItem>
+                                <SelectItem value="Available">Available</SelectItem>
+                                <SelectItem value="Vacant">Vacant</SelectItem>
+                                <SelectItem value="Occupied">Occupied</SelectItem>
                             </SelectContent>
                         </Select>
                         {errors.status && (
                             <p className="text-xs text-red-500 mt-1">{errors.status}</p>
                         )}
                         <p className="text-xs text-gray-500 mt-1">
-                            Active: Available for use | In Construction: Being built | Maintenance: Under repair
+                            Available: Ready for use | Vacant: Empty but assignable | Occupied: Currently in use
                         </p>
                     </div>
 

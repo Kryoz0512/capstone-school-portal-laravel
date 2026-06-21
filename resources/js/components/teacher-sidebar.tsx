@@ -123,7 +123,7 @@ export default function TeacherSidebar({ currentPath, user, teacher }: SidebarPr
                 </Link>
 
                 {/* Transcript of Records */}
-                <Link
+                {/* <Link
                     href="/teacher/transcript-of-records"
                     className={`flex items-center gap-3 px-4 py-3 mb-1 rounded-xl transition-all duration-300 group ${isActive('/teacher/transcript-of-records')
                             ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30 scale-[1.02]'
@@ -137,7 +137,7 @@ export default function TeacherSidebar({ currentPath, user, teacher }: SidebarPr
                         <File className="w-4 h-4" />
                     </div>
                     <span className="font-medium">Transcript of Records</span>
-                </Link>
+                </Link> */}
 
                 {/* Schedule */}
                 <Link

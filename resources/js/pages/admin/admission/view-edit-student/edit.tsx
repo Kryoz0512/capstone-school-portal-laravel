@@ -85,7 +85,7 @@ type Props = {
 export default function EditStudentGSPIS({ auth, student }: Props) {
     const [showErrorModal, setShowErrorModal] = useState(false)
     const [errorMessage, setErrorMessage] = useState('')
-    
+
     const { data, setData, put, processing, errors } = useForm({
         // Personal Information
         lastName: student.lastName || '',
@@ -103,7 +103,7 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
         nationality: student.profile?.nationality || '',
         placeOfBirth: student.profile?.placeOfBirth || '',
         mobileNumber: student.profile?.mobileNumber || '',
-        
+
         // Residence Data
         contactNumber: student.profile?.contactNumber || '',
         guardianName: student.profile?.guardianName || '',
@@ -113,26 +113,26 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
         provinceState: student.profile?.provinceState || '',
         zipCode: student.profile?.zipCode || '',
         country: student.profile?.country || '',
-        
+
         // Physical Description
         height: student.profile?.height?.toString() || '',
         weight: student.profile?.weight?.toString() || '',
-        build: student.profile?.build || '',
+        build: student.profile?.build || 'None',
         eyeColor: student.profile?.eyeColor || '',
         hairColor: student.profile?.hairColor || '',
-        
+
         // Family Data - Father
         fatherLastName: student.profile?.fatherLastName || '',
         fatherFirstName: student.profile?.fatherFirstName || '',
         fatherMiddleName: student.profile?.fatherMiddleName || '',
         fatherExtensionName: student.profile?.fatherExtensionName || '',
-        
+
         // Family Data - Mother
         motherLastName: student.profile?.motherLastName || '',
         motherFirstName: student.profile?.motherFirstName || '',
         motherMiddleName: student.profile?.motherMiddleName || '',
         motherExtensionName: student.profile?.motherExtensionName || '',
-        
+
         // Family Data - Guardian
         guardianLastName: student.profile?.guardianLastName || '',
         guardianFirstName: student.profile?.guardianFirstName || '',
@@ -144,7 +144,7 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
         // Remove dashes from phone numbers to get raw digits
         const mobileDigits = data.mobileNumber.replace(/-/g, '')
         const contactDigits = data.contactNumber.replace(/-/g, '')
-        
+
         // Validate mobile number
         if (mobileDigits) {
             if (mobileDigits.length !== 11) {
@@ -158,7 +158,7 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
                 return
             }
         }
-        
+
         // Validate contact number
         if (contactDigits) {
             if (contactDigits.length !== 11) {
@@ -172,11 +172,11 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
                 return
             }
         }
-        
+
         // Get the grade level from URL query parameter for redirect after save
         const urlParams = new URLSearchParams(window.location.search)
         const grade = urlParams.get('grade')
-        
+
         put(update.url({ id: student.id }), {
             onSuccess: () => {
                 // Redirect back with the grade level parameter if it exists
@@ -193,7 +193,7 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
         // Get the grade level from URL query parameter
         const urlParams = new URLSearchParams(window.location.search)
         const grade = urlParams.get('grade')
-        
+
         // Navigate back with the grade level parameter if it exists
         if (grade) {
             router.visit(`/admin/admission/view-edit-student?grade=${encodeURIComponent(grade)}`)
@@ -201,6 +201,10 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
             router.visit('/admin/admission/view-edit-student')
         }
     }
+
+    const [showOtherReligion, setShowOtherReligion] = useState(
+        !['Roman Catholic', 'Islam', 'Iglesia ni Cristo', 'Protestant', ''].includes(student.profile?.religion || '')
+    )
 
     return (
         <AdminLayout user={auth?.user} admin={auth?.admin}>
@@ -238,7 +242,7 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
                     {/* I - Learner's Personal Information */}
                     <div className="space-y-4">
                         <h2 className="text-lg font-semibold text-gray-900">I - Learner's Personal Information</h2>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -325,7 +329,18 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Religion
                                 </label>
-                                <Select value={data.religion} onValueChange={(value) => setData('religion', value)}>
+                                <Select
+                                    value={showOtherReligion ? 'Other' : data.religion}
+                                    onValueChange={(value) => {
+                                        if (value === 'Other') {
+                                            setShowOtherReligion(true)
+                                            setData('religion', '')
+                                        } else {
+                                            setShowOtherReligion(false)
+                                            setData('religion', value)
+                                        }
+                                    }}
+                                >
                                     <SelectTrigger>
                                         <SelectValue placeholder="Select religion" />
                                     </SelectTrigger>
@@ -337,6 +352,15 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
                                         <SelectItem value="Other">Other</SelectItem>
                                     </SelectContent>
                                 </Select>
+                                {showOtherReligion && (
+                                    <Input
+                                        className="mt-2"
+                                        value={data.religion}
+                                        onChange={(e) => setData('religion', e.target.value)}
+                                        placeholder="Please specify religion"
+                                        autoFocus
+                                    />
+                                )}
                             </div>
                         </div>
 
@@ -400,13 +424,27 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
                                     />
                                     <span className="text-sm">Yes, if yes please specify:</span>
                                 </label>
-                                <Input
+                                <Select
                                     value={data.pwdType}
-                                    onChange={(e) => setData('pwdType', e.target.value)}
-                                    placeholder="Type of Disability"
+                                    onValueChange={(value) => setData('pwdType', value)}
                                     disabled={data.pwd === 'No'}
-                                    className="max-w-xs"
-                                />
+                                >
+                                    <SelectTrigger className="max-w-xs">
+                                        <SelectValue placeholder="Select disability type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Visual Impairment">Visual Impairment</SelectItem>
+                                        <SelectItem value="Hearing Impairment">Hearing Impairment</SelectItem>
+                                        <SelectItem value="Physical/Orthopedic Disability">Physical/Orthopedic Disability</SelectItem>
+                                        <SelectItem value="Intellectual Disability">Intellectual Disability</SelectItem>
+                                        <SelectItem value="Learning Disability">Learning Disability</SelectItem>
+                                        <SelectItem value="Speech/Language Impairment">Speech/Language Impairment</SelectItem>
+                                        <SelectItem value="Psychosocial Disability">Psychosocial Disability</SelectItem>
+                                        <SelectItem value="Autism Spectrum Disorder">Autism Spectrum Disorder</SelectItem>
+                                        <SelectItem value="Chronic Illness">Chronic Illness</SelectItem>
+                                        <SelectItem value="Multiple Disabilities">Multiple Disabilities</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                         </div>
 
@@ -446,7 +484,7 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
                     {/* II - Learner's Residence Data */}
                     <div className="space-y-4 pt-6 border-t">
                         <h2 className="text-lg font-semibold text-gray-900">II - Learner's Learner's Residence Data</h2>
-                        
+
                         <div className="space-y-2">
                             <label className="block text-sm font-medium text-gray-700">
                                 Current Contact Address:
@@ -535,7 +573,7 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
                     {/* III - Physical Description */}
                     <div className="space-y-4 pt-6 border-t">
                         <h2 className="text-lg font-semibold text-gray-900">III - Physical Description</h2>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -563,11 +601,22 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                     Build
                                 </label>
-                                <Input
-                                    value={data.build}
-                                    onChange={(e) => setData('build', e.target.value)}
-                                    placeholder="Build"
-                                />
+                                <Select
+                                    value={data.build || "None"}
+                                    onValueChange={(value) => setData('build', value === "None" ? "" : value)}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select Build" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="None">None</SelectItem>
+                                        <SelectItem value="Slim">Slim</SelectItem>
+                                        <SelectItem value="Medium">Medium</SelectItem>
+                                        <SelectItem value="Heavy">Heavy</SelectItem>
+                                        <SelectItem value="Athletic">Athletic</SelectItem>
+                                        <SelectItem value="Stocky">Stocky</SelectItem>
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -595,7 +644,7 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
                     {/* IV - Family Data */}
                     <div className="space-y-6 pt-6 border-t">
                         <h2 className="text-lg font-semibold text-gray-900">IV - Family Data</h2>
-                        
+
                         {/* Father's Name */}
                         <div className="space-y-2">
                             <label className="block text-sm font-medium text-gray-700">Father's Name</label>

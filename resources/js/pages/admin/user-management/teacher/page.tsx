@@ -247,7 +247,7 @@ export default function TeacherManagement({ auth, teachers = [], gradeLevels = [
                                     <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Username</th>
                                     <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Subject</th>
                                     <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Position</th>
-                                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Last Updated</th>
+                                    <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">Last Modified</th>
                                     <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>

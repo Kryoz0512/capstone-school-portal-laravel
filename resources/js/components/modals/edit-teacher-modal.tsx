@@ -52,7 +52,7 @@ export default function EditTeacherModal({ open, onOpenChange, teacher, gradeLev
             const nameParts = teacher.name.split(' ')
             const firstName = nameParts[0] || ''
             const lastName = nameParts.slice(1).join(' ') || ''
-            
+
             setData({
                 firstName: firstName,
                 lastName: lastName,
@@ -156,11 +156,15 @@ export default function EditTeacherModal({ open, onOpenChange, teacher, gradeLev
                             value={data.employeeNumber}
                             onChange={(e) => {
                                 const value = e.target.value.replace(/[^0-9]/g, '')
-                                setData('employeeNumber', value)
+                                if (value.length <= 6) {
+                                    setData('employeeNumber', value)
+                                }
                             }}
-                            placeholder="e.g., 1000001"
-                            pattern="[0-9]+"
-                            title="Only numbers are allowed"
+                            maxLength={6}
+                            minLength={6}
+                            placeholder="e.g., 100001"
+                            pattern="[0-9]{6}"
+                            title="Employee number must be exactly 6 digits"
                         />
                         {errors.employeeNumber && <p className="text-xs text-red-500 mt-1">{errors.employeeNumber}</p>}
                     </div>

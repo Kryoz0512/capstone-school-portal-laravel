@@ -41,6 +41,7 @@ type Props = {
 // ─── DatePicker Component ────────────────────────────────────────────────────
 function DatePicker({ value, onChange }: { value: string; onChange: (val: string) => void }) {
     const [open, setOpen] = useState(false)
+    const [view, setView] = useState<'days' | 'years'>('days')
     const [viewDate, setViewDate] = useState(() => {
         if (value && value.length === 10) {
             const [mm, dd, yyyy] = value.split('/')
@@ -74,6 +75,10 @@ function DatePicker({ value, onChange }: { value: string; onChange: (val: string
         'July', 'August', 'September', 'October', 'November', 'December',
     ]
 
+    // Year grid: 20 years centered around current view year
+    const yearGridBase = Math.floor(year / 12) * 12
+    const yearGridYears = Array.from({ length: 20 }, (_, i) => yearGridBase - 4 + i)
+
     const firstDay = new Date(year, month, 1).getDay()
     const daysInMonth = new Date(year, month + 1, 0).getDate()
     const daysInPrev = new Date(year, month, 0).getDate()
@@ -96,12 +101,32 @@ function DatePicker({ value, onChange }: { value: string; onChange: (val: string
         setOpen(false)
     }
 
+    const selectYear = (y: number) => {
+        setViewDate(new Date(y, month, 1))
+        setView('days')
+    }
+
+    const handlePrev = () => {
+        if (view === 'years') {
+            setViewDate(new Date(year - 12, month, 1))
+        } else {
+            setViewDate(new Date(year, month - 1, 1))
+        }
+    }
+
+    const handleNext = () => {
+        if (view === 'years') {
+            setViewDate(new Date(year + 12, month, 1))
+        } else {
+            setViewDate(new Date(year, month + 1, 1))
+        }
+    }
+
     const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         let val = e.target.value.replace(/[^0-9]/g, '')
         if (val.length >= 3) val = val.slice(0, 2) + '/' + val.slice(2)
         if (val.length >= 6) val = val.slice(0, 5) + '/' + val.slice(5, 9)
         onChange(val)
-
         if (val.length === 10) {
             const [mm, dd, yyyy] = val.split('/')
             const d = new Date(+yyyy, +mm - 1, 1)
@@ -117,13 +142,13 @@ function DatePicker({ value, onChange }: { value: string; onChange: (val: string
                     placeholder="MM/DD/YYYY"
                     value={value}
                     onChange={handleTextChange}
-                    onFocus={() => setOpen(true)}
+                    onFocus={() => { setOpen(true); setView('days') }}
                     maxLength={10}
                     className="h-11 pr-10"
                 />
                 <button
                     type="button"
-                    onClick={() => setOpen(o => !o)}
+                    onClick={() => { setOpen(o => !o); setView('days') }}
                     className="absolute inset-y-0 right-0 px-3 flex items-center text-gray-400 hover:text-gray-600"
                 >
                     <Calendar className="w-4 h-4" />
@@ -136,64 +161,91 @@ function DatePicker({ value, onChange }: { value: string; onChange: (val: string
                     <div className="flex items-center justify-between mb-3">
                         <button
                             type="button"
-                            onClick={() => setViewDate(new Date(year, month - 1, 1))}
+                            onClick={handlePrev}
                             className="p-1 rounded hover:bg-gray-100 text-gray-600"
                         >
-                            ↑
+                            ←
                         </button>
-                        <span className="text-sm font-semibold text-gray-800">
-                            {monthNames[month]} {year} ▾
-                        </span>
                         <button
                             type="button"
-                            onClick={() => setViewDate(new Date(year, month + 1, 1))}
+                            onClick={() => setView(v => v === 'years' ? 'days' : 'years')}
+                            className="text-sm font-semibold text-gray-800 px-3 py-1 rounded hover:bg-gray-100"
+                        >
+                            {monthNames[month]} {year} {view === 'years' ? '▴' : '▾'}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleNext}
                             className="p-1 rounded hover:bg-gray-100 text-gray-600"
                         >
-                            ↓
+                            →
                         </button>
                     </div>
 
-                    {/* Day headers */}
-                    <div className="grid grid-cols-7 mb-1">
-                        {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
-                            <div key={d} className="text-center text-xs font-medium text-gray-400 py-1">{d}</div>
-                        ))}
-                    </div>
-
-                    {/* Days grid */}
-                    <div className="grid grid-cols-7">
-                        {cells.map((cell, i) => {
-                            const isSelected =
-                                cell.type === 'current' &&
-                                selectedDate &&
-                                selectedDate.getFullYear() === year &&
-                                selectedDate.getMonth() === month &&
-                                selectedDate.getDate() === cell.day
-
-                            const isToday =
-                                cell.type === 'current' &&
-                                today.getFullYear() === year &&
-                                today.getMonth() === month &&
-                                today.getDate() === cell.day
-
-                            return (
+                    {/* Year grid */}
+                    {view === 'years' && (
+                        <div className="grid grid-cols-4 gap-1 mb-3">
+                            {yearGridYears.map(y => (
                                 <button
-                                    key={i}
+                                    key={y}
                                     type="button"
-                                    disabled={cell.type !== 'current'}
-                                    onClick={() => cell.type === 'current' && selectDay(cell.day)}
+                                    onClick={() => selectYear(y)}
                                     className={`
-                                        text-center text-sm py-1.5 rounded-full mx-auto w-8 h-8 flex items-center justify-center transition-colors
-                                        ${cell.type !== 'current' ? 'text-gray-300 cursor-default' : 'cursor-pointer hover:bg-blue-50'}
-                                        ${isSelected ? 'bg-blue-600 text-white hover:bg-blue-700 font-semibold' : ''}
-                                        ${isToday && !isSelected ? 'border border-blue-400 text-blue-600 font-semibold' : ''}
+                                        text-sm py-1.5 rounded-lg transition-colors
+                                        ${y === year
+                                            ? 'bg-blue-600 text-white font-semibold'
+                                            : 'hover:bg-blue-50 text-gray-700'}
                                     `}
                                 >
-                                    {cell.day}
+                                    {y}
                                 </button>
-                            )
-                        })}
-                    </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Day grid */}
+                    {view === 'days' && (
+                        <>
+                            <div className="grid grid-cols-7 mb-1">
+                                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
+                                    <div key={d} className="text-center text-xs font-medium text-gray-400 py-1">{d}</div>
+                                ))}
+                            </div>
+                            <div className="grid grid-cols-7">
+                                {cells.map((cell, i) => {
+                                    const isSelected =
+                                        cell.type === 'current' &&
+                                        selectedDate &&
+                                        selectedDate.getFullYear() === year &&
+                                        selectedDate.getMonth() === month &&
+                                        selectedDate.getDate() === cell.day
+
+                                    const isToday =
+                                        cell.type === 'current' &&
+                                        today.getFullYear() === year &&
+                                        today.getMonth() === month &&
+                                        today.getDate() === cell.day
+
+                                    return (
+                                        <button
+                                            key={i}
+                                            type="button"
+                                            disabled={cell.type !== 'current'}
+                                            onClick={() => cell.type === 'current' && selectDay(cell.day)}
+                                            className={`
+                                                text-center text-sm py-1.5 rounded-full mx-auto w-8 h-8 flex items-center justify-center transition-colors
+                                                ${cell.type !== 'current' ? 'text-gray-300 cursor-default' : 'cursor-pointer hover:bg-blue-50'}
+                                                ${isSelected ? 'bg-blue-600 text-white hover:bg-blue-700 font-semibold' : ''}
+                                                ${isToday && !isSelected ? 'border border-blue-400 text-blue-600 font-semibold' : ''}
+                                            `}
+                                        >
+                                            {cell.day}
+                                        </button>
+                                    )
+                                })}
+                            </div>
+                        </>
+                    )}
 
                     {/* Footer */}
                     <div className="flex justify-between mt-3 pt-3 border-t border-gray-100">
@@ -223,7 +275,6 @@ function DatePicker({ value, onChange }: { value: string; onChange: (val: string
         </div>
     )
 }
-
 // ─── Main Component ──────────────────────────────────────────────────────────
 export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
     const [activeTab, setActiveTab] = useState('new')
@@ -843,25 +894,25 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                                 <div className="text-xs text-amber-800 space-y-1">
                                                     {activeTab === 'new' && (
                                                         <>
-                                                            <p>• <strong>Form 137 (Report Card)</strong> is required</p>
-                                                            <p>• <strong>Form 138 (SF9)</strong> — please submit as soon as possible</p>
+                                                            <p>• <strong>Form 138 (Report Card)</strong> is required</p>
+                                                            <p>• <strong>Form 137 (SF9)</strong> — please submit as soon as possible</p>
                                                             <p>• Other documents can be submitted as follow-up</p>
                                                         </>
                                                     )}
                                                     {activeTab === 'transferee' && (
                                                         <>
-                                                            <p>• <strong>Form 137 (Report Card)</strong> is required</p>
+                                                            <p>• <strong>Form 138 (Report Card)</strong> is required</p>
                                                             <p>• <strong>Good Moral Certificate</strong> is required for transferees</p>
-                                                            <p>• <strong>Form 138 (SF9)</strong> — please submit as soon as possible</p>
+                                                            <p>• <strong>Form 137 (SF9)</strong> — please submit as soon as possible</p>
                                                             <p>• Other documents can be submitted as follow-up</p>
                                                         </>
                                                     )}
                                                     {activeTab === 'old' && (
                                                         <>
-                                                            <p>• <strong>Form 137 (Report Card)</strong> is required</p>
+                                                            <p>• <strong>Form 138 (Report Card)</strong> is required</p>
                                                             <p>• <strong>PSA Birth Certificate</strong> is required</p>
                                                             <p>• <strong>Good Moral Certificate</strong> is required</p>
-                                                            <p>• <strong>Form 138 (SF9)</strong> — please submit as soon as possible</p>
+                                                            <p>• <strong>Form 137 (SF9)</strong> — please submit as soon as possible</p>
                                                         </>
                                                     )}
                                                 </div>
@@ -909,7 +960,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                                 />
                                                 <label htmlFor="sf9" className="flex-1 cursor-pointer">
                                                     <div className="flex items-center gap-2 mb-1">
-                                                        <span className="text-sm font-semibold text-gray-900">Form 138 (SF9)</span>
+                                                        <span className="text-sm font-semibold text-gray-900">Form 137 (SF9)</span>
                                                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Optional But Submit ASAP</span>
                                                     </div>
                                                     <p className="text-xs text-gray-600">Learner's Permanent Academic Record — not required at enrollment but must be submitted as soon as possible</p>
@@ -930,7 +981,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                                 />
                                                 <label htmlFor="report_card" className="flex-1 cursor-pointer">
                                                     <div className="flex items-center gap-2 mb-1">
-                                                        <span className="text-sm font-semibold text-gray-900">Form 137 (Report Card)</span>
+                                                        <span className="text-sm font-semibold text-gray-900">Form 138 (Report Card)</span>
                                                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Required</span>
                                                     </div>
                                                     <p className="text-xs text-gray-600">Official learner's permanent academic record / report card</p>

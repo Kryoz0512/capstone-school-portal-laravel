@@ -1,60 +1,33 @@
 import { Head } from '@inertiajs/react'
 import TeacherLayout from '@/layouts/teacher-layout'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Download, FileText } from 'lucide-react'
 
-type Document = {
+type DocumentItem = {
     id: number
     title: string
-    description: string
-    type: 'PDF' | 'DOCX'
-    size: string
+    file_name: string
+    file_type: string
+    file_size: string
+    uploaded_by: string
+    uploaded_at: string
 }
 
 type Props = {
+    documents: DocumentItem[]
     auth?: {
-        user: {
-            id: number
-            name: string
-            email: string
-            role: string
-        }
+        user: { id: number; name: string; email: string; role: string }
     }
 }
 
-export default function Documents({ auth }: Props) {
-    const documents: Document[] = [
-        {
-            id: 1,
-            title: 'Teaching Load',
-            description: 'Your current teaching assignments and schedule',
-            type: 'PDF',
-            size: '245 KB'
-        },
-        {
-            id: 2,
-            title: 'Class Roster',
-            description: 'Complete list of students in your classes',
-            type: 'DOCX',
-            size: '128 KB'
-        },
-        {
-            id: 3,
-            title: 'Curriculum Guide',
-            description: 'Subject curriculum and learning competencies',
-            type: 'PDF',
-            size: '1.2 MB'
-        },
-        {
-            id: 4,
-            title: 'Grading Sheet Template',
-            description: 'Template for recording student grades',
-            type: 'DOCX',
-            size: '89 KB'
-        }
-    ]
+const fileTypeBadge: Record<string, string> = {
+    PDF: 'bg-red-50 text-red-700',
+    DOC: 'bg-blue-50 text-blue-700',
+    DOCX: 'bg-blue-50 text-blue-700',
+    XLS: 'bg-green-50 text-green-700',
+    XLSX: 'bg-green-50 text-green-700',
+}
 
+export default function Documents({ documents, auth }: Props) {
     return (
         <TeacherLayout user={auth?.user}>
             <Head title="Documents" />
@@ -63,47 +36,63 @@ export default function Documents({ auth }: Props) {
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Documents</h1>
                     <p className="text-sm text-gray-500 mt-1">
-                        Access and download your teaching documents
+                        Access and download templates uploaded by the registrar's office
                     </p>
                 </div>
 
-                {/* Documents Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {documents.map((doc) => (
-                        <Card key={doc.id} className="hover:shadow-lg transition-shadow">
-                            <CardHeader>
-                                <div className="flex items-start justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-green-100 rounded-lg">
-                                            <FileText className="w-6 h-6 text-green-700" />
-                                        </div>
-                                        <div>
-                                            <CardTitle className="text-lg">{doc.title}</CardTitle>
-                                            <div className="flex items-center gap-2 mt-1">
-                                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                                                    doc.type === 'PDF' 
-                                                        ? 'bg-red-100 text-red-800' 
-                                                        : 'bg-blue-100 text-blue-800'
-                                                }`}>
-                                                    {doc.type}
-                                                </span>
-                                                <span className="text-xs text-gray-500">{doc.size}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent>
-                                <CardDescription className="mb-4">
-                                    {doc.description}
-                                </CardDescription>
-                                <Button className="w-full bg-green-700 hover:bg-green-800">
-                                    <Download className="w-4 h-4 mr-2" />
-                                    Download
-                                </Button>
-                            </CardContent>
-                        </Card>
-                    ))}
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Title</th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">File</th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Date Added</th>
+                                    <th className="px-6 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200 bg-white">
+                                {documents.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={4} className="px-6 py-12 text-center">
+                                            <FileText className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                                            <p className="text-sm font-medium text-gray-500">No documents available yet</p>
+                                            <p className="text-xs text-gray-400 mt-1">Check back later once the registrar's office uploads files.</p>
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    documents.map((doc, index) => (
+                                        <tr key={doc.id} className={`hover:bg-gray-50 ${index % 2 === 1 ? 'bg-gray-50/40' : ''}`}>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-2">
+                                                    <FileText className="w-4 h-4 text-gray-400 shrink-0" />
+                                                    <span className="text-sm font-medium text-gray-900">{doc.title}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`text-xs font-medium px-2 py-0.5 rounded ${fileTypeBadge[doc.file_type] ?? 'bg-gray-50 text-gray-700'}`}>
+                                                        {doc.file_type}
+                                                    </span>
+                                                    <span className="text-xs text-gray-400">{doc.file_size}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-600">{doc.uploaded_at}</td>
+                                            <td className="px-6 py-4 text-right">
+                                                <a
+                                                    href={`/teacher/documents/${doc.id}/download`}
+                                                    className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-800"
+                                                >
+                                                    <Download className="w-3.5 h-3.5" />
+                                                    Download
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </TeacherLayout>

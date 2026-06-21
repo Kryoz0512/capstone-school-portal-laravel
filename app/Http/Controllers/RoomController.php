@@ -16,9 +16,9 @@ class RoomController extends Controller
                 $query->join('tbl_students', 'tbl_class_sections.id', '=', 'tbl_students.current_section_id');
             }
         ])->orderBy('room_number')->get();
-        
+
         $admin = \App\Models\Admin::where('user_id', Auth::id())->first();
-        
+
         return Inertia::render('admin/enrollment/room-listings/page', [
             'rooms' => $rooms,
         ]);
@@ -27,17 +27,16 @@ class RoomController extends Controller
     public function checkRoomNumber(Request $request)
     {
         $roomNumber = $request->input('room_number');
-        $roomId = $request->input('room_id'); // For edit mode
-        
+        $roomId = $request->input('room_id');
+
         $query = Room::where('room_number', $roomNumber);
-        
-        // Exclude current room when editing
+
         if ($roomId) {
             $query->where('id', '!=', $roomId);
         }
-        
+
         $exists = $query->exists();
-        
+
         return response()->json([
             'available' => !$exists,
             'message' => $exists ? 'This room number is already taken.' : 'Room number is available.'
@@ -49,7 +48,7 @@ class RoomController extends Controller
         $validated = $request->validate([
             'room_number' => 'required|string|unique:tbl_room,room_number',
             'capacity' => 'required|integer|min:1',
-            'status' => 'required|in:Active,In Construction,Maintenance'
+            'status' => 'required|in:Available,Vacant,Occupied',
         ]);
 
         Room::create($validated);
@@ -64,7 +63,7 @@ class RoomController extends Controller
         $validated = $request->validate([
             'room_number' => 'required|string|unique:tbl_room,room_number,' . $id,
             'capacity' => 'required|integer|min:1',
-            'status' => 'required|in:Active,In Construction,Maintenance'
+            'status' => 'required|in:Available,Vacant,Occupied',
         ]);
 
         $room->update($validated);
@@ -75,7 +74,7 @@ class RoomController extends Controller
     public function destroy($id)
     {
         $room = Room::findOrFail($id);
-        
+
         // Archive the room before deletion
         \App\Models\Archive::create([
             'archivable_type' => Room::class,
@@ -87,7 +86,7 @@ class RoomController extends Controller
             ]),
             'archived_by' => Auth::id(),
         ]);
-        
+
         $room->delete();
 
         return redirect()->back()->with('success', 'Room deleted successfully');

@@ -16,7 +16,7 @@ export default function AddRoomModal({ open, onOpenChange }: AddRoomModalProps) 
     const { data, setData, post, processing, errors, reset } = useForm({
         room_number: '',
         capacity: '',
-        status: 'Active' as 'Active' | 'In Construction' | 'Maintenance'
+        status: 'Available' as 'Available' | 'Vacant' | 'Occupied'
     })
 
     const [roomNumberError, setRoomNumberError] = useState('')
@@ -125,22 +125,22 @@ export default function AddRoomModal({ open, onOpenChange }: AddRoomModalProps) 
                         </label>
                         <Select
                             value={data.status}
-                            onValueChange={(value: 'Active' | 'In Construction' | 'Maintenance') => setData('status', value)}
+                            onValueChange={(value: 'Available' | 'Vacant' | 'Occupied') => setData('status', value)}
                         >
                             <SelectTrigger>
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="Active">Active</SelectItem>
-                                <SelectItem value="In Construction">In Construction</SelectItem>
-                                <SelectItem value="Maintenance">Maintenance</SelectItem>
+                                <SelectItem value="Available">Available</SelectItem>
+                                <SelectItem value="Vacant">Vacant</SelectItem>
+                                <SelectItem value="Occupied">Occupied</SelectItem>
                             </SelectContent>
                         </Select>
                         {errors.status && (
                             <p className="text-xs text-red-500 mt-1">{errors.status}</p>
                         )}
                         <p className="text-xs text-gray-500 mt-1">
-                            Active: Available for use | In Construction: Being built | Maintenance: Under repair
+                            Available: Available for use | Vacant: Vacant | Occupied: Occupied
                         </p>
                     </div>
 

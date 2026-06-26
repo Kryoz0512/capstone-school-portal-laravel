@@ -2,9 +2,23 @@ import { Head } from '@inertiajs/react'
 import AdminLayout from '@/layouts/admin-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Upload, Trash2, User, GraduationCap, Users, CheckCircle, XCircle } from 'lucide-react'
-import { useState } from 'react'
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog'
+import {
+    Upload,
+    Trash2,
+    User,
+    GraduationCap,
+    Users,
+    Search,
+} from 'lucide-react'
+import { useRef, useState } from 'react'
 import axios from 'axios'
 
 type Props = {
@@ -20,169 +34,141 @@ type Props = {
             position: string
         }
     }
+    students: PersonRow[]
+    teachers: PersonRow[]
+    staffAdmins: PersonRow[]
 }
 
-type VerifiedUser = {
+type PersonRow = {
     id: number
     name: string
     identifier: string
-    type: string
+    type: 'student' | 'teacher' | 'staff_admin'
     profile_picture: string | null
     grade_level?: string | null
     section?: string | null
 }
 
-export default function UploadDeletePicturePage({ auth }: Props) {
-    const [selectedUserType, setSelectedUserType] = useState('')
-    const [searchTerm, setSearchTerm] = useState('')
-    const [selectedFile, setSelectedFile] = useState<File | null>(null)
-    const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-    const [verifying, setVerifying] = useState(false)
-    const [verifiedUser, setVerifiedUser] = useState<VerifiedUser | null>(null)
-    const [verificationError, setVerificationError] = useState('')
+type TabKey = 'student' | 'teacher' | 'staff_admin'
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0]
-        if (file) {
-            setSelectedFile(file)
-            const reader = new FileReader()
-            reader.onloadend = () => {
-                setPreviewUrl(reader.result as string)
-            }
-            reader.readAsDataURL(file)
-        }
+const TAB_CONFIG: Record<TabKey, { label: string; icon: typeof GraduationCap; identifierLabel: string; accent: string }> = {
+    student: {
+        label: 'Student',
+        icon: GraduationCap,
+        identifierLabel: 'LRN',
+        accent: 'blue',
+    },
+    teacher: {
+        label: 'Teacher',
+        icon: User,
+        identifierLabel: 'Employee No.',
+        accent: 'green',
+    },
+    staff_admin: {
+        label: 'Staff & Admin',
+        icon: Users,
+        identifierLabel: 'Employee No.',
+        accent: 'purple',
+    },
+}
+
+export default function UploadDeletePicturePage({ auth, students, teachers, staffAdmins }: Props) {
+    const [activeTab, setActiveTab] = useState<TabKey>('student')
+    const [search, setSearch] = useState('')
+    const [rows, setRows] = useState<{ student: PersonRow[]; teacher: PersonRow[]; staff_admin: PersonRow[] }>({
+        student: students,
+        teacher: teachers,
+        staff_admin: staffAdmins,
+    })
+    const [busyId, setBusyId] = useState<number | null>(null)
+    const [pendingDelete, setPendingDelete] = useState<PersonRow | null>(null)
+
+    const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({})
+
+    const currentRows = rows[activeTab].filter((row) => {
+        if (!search.trim()) return true
+        const term = search.toLowerCase()
+        return (
+            row.name.toLowerCase().includes(term) ||
+            row.identifier.toLowerCase().includes(term)
+        )
+    })
+
+    const updateRow = (type: TabKey, id: number, updates: Partial<PersonRow>) => {
+        setRows((prev) => ({
+            ...prev,
+            [type]: prev[type].map((row) => (row.id === id ? { ...row, ...updates } : row)),
+        }))
     }
 
-    const handleVerify = async () => {
-        if (!selectedUserType || !searchTerm) {
+    const handleTabChange = (tab: TabKey) => {
+        setActiveTab(tab)
+        setSearch('')
+    }
+
+    const triggerFilePicker = (id: number) => {
+        fileInputRefs.current[id]?.click()
+    }
+
+    const handleFileChange = async (row: PersonRow, file: File | undefined) => {
+        if (!file) return
+
+        if (!file.type.startsWith('image/')) {
+            alert('Please select an image file')
+            return
+        }
+        if (file.size > 2 * 1024 * 1024) {
+            alert('File size must be less than 2MB')
             return
         }
 
-        setVerifying(true)
-        setVerificationError('')
-        setVerifiedUser(null)
-
-        try {
-            const response = await axios.post('/admin/admission/profile-picture/verify', {
-                user_type: selectedUserType,
-                identifier: searchTerm
-            })
-
-            if (response.data.success) {
-                setVerifiedUser(response.data.user)
-                setVerificationError('')
-            }
-        } catch (error: any) {
-            if (error.response && error.response.data) {
-                setVerificationError(error.response.data.message)
-            } else {
-                setVerificationError('An error occurred while verifying the user')
-            }
-            setVerifiedUser(null)
-        } finally {
-            setVerifying(false)
-        }
-    }
-
-    const handleUpload = async () => {
-        if (!selectedFile || !verifiedUser) {
-            alert('Please verify user and select a file first')
-            return
-        }
+        setBusyId(row.id)
 
         try {
             const formData = new FormData()
-            formData.append('picture', selectedFile)
-            formData.append('user_id', verifiedUser.id.toString())
-            formData.append('user_type', verifiedUser.type)
+            formData.append('picture', file)
+            formData.append('user_id', row.id.toString())
+            formData.append('user_type', row.type)
 
             const response = await axios.post('/admin/admission/profile-picture/upload', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
+                headers: { 'Content-Type': 'multipart/form-data' },
             })
 
             if (response.data.success) {
-                alert('Profile picture uploaded successfully!')
-                // Update the verified user with new profile picture
-                setVerifiedUser({
-                    ...verifiedUser,
-                    profile_picture: response.data.profile_picture
-                })
-                // Clear the file input
-                setSelectedFile(null)
-                setPreviewUrl(null)
+                updateRow(row.type, row.id, { profile_picture: response.data.profile_picture })
             }
         } catch (error: any) {
-            console.error('Upload error:', error)
             alert(error.response?.data?.message || 'Failed to upload profile picture')
+        } finally {
+            setBusyId(null)
+            const input = fileInputRefs.current[row.id]
+            if (input) input.value = ''
         }
     }
 
-    const handleDelete = async () => {
-        if (!verifiedUser) {
-            alert('Please verify user first')
-            return
-        }
+    const requestDelete = (row: PersonRow) => {
+        setPendingDelete(row)
+    }
 
-        if (!confirm('Are you sure you want to delete this profile picture? This action cannot be undone.')) {
-            return
-        }
+    const confirmDelete = async () => {
+        if (!pendingDelete) return
+        const row = pendingDelete
+
+        setBusyId(row.id)
 
         try {
             const response = await axios.delete('/admin/admission/profile-picture/delete', {
-                data: {
-                    user_id: verifiedUser.id,
-                    user_type: verifiedUser.type
-                }
+                data: { user_id: row.id, user_type: row.type },
             })
 
             if (response.data.success) {
-                alert('Profile picture deleted successfully!')
-                // Update the verified user to remove profile picture
-                setVerifiedUser({
-                    ...verifiedUser,
-                    profile_picture: null
-                })
+                updateRow(row.type, row.id, { profile_picture: null })
             }
         } catch (error: any) {
-            console.error('Delete error:', error)
             alert(error.response?.data?.message || 'Failed to delete profile picture')
-        }
-    }
-
-    const handleUserTypeChange = (type: string) => {
-        setSelectedUserType(type)
-        setSearchTerm('')
-        setVerifiedUser(null)
-        setVerificationError('')
-        setSelectedFile(null)
-        setPreviewUrl(null)
-    }
-
-    const getPlaceholderText = () => {
-        switch (selectedUserType) {
-            case 'student':
-                return 'Enter Student LRN'
-            case 'teacher':
-                return 'Enter Teacher Employee No.'
-            case 'staff_admin':
-                return 'Enter Staff/Admin Employee No.'
-            default:
-                return 'Select user type first'
-        }
-    }
-
-    const getUserTypeIcon = (type: string) => {
-        switch (type) {
-            case 'student':
-                return <GraduationCap className="w-12 h-12 text-blue-600" />
-            case 'teacher':
-                return <User className="w-12 h-12 text-green-600" />
-            case 'staff_admin':
-                return <Users className="w-12 h-12 text-purple-600" />
-            default:
-                return null
+        } finally {
+            setBusyId(null)
+            setPendingDelete(null)
         }
     }
 
@@ -198,226 +184,178 @@ export default function UploadDeletePicturePage({ auth }: Props) {
                     </p>
                 </div>
 
-                {/* User Type Selection */}
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Select User Type</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <button
-                            onClick={() => handleUserTypeChange('student')}
-                            className={`p-6 border-2 rounded-lg transition-all ${
-                                selectedUserType === 'student'
-                                    ? 'border-blue-600 bg-blue-50'
-                                    : 'border-gray-200 hover:border-blue-300'
-                            }`}
-                        >
-                            <div className="flex flex-col items-center gap-3">
-                                <GraduationCap className="w-12 h-12 text-blue-600" />
-                                <span className="font-semibold text-gray-900">Student</span>
-                                <span className="text-xs text-gray-500">Upload/Delete student photos</span>
-                            </div>
-                        </button>
+                {/* Tabs */}
+                <div className="bg-white rounded-lg border border-gray-200">
+                    <div className="flex border-b border-gray-200">
+                        {(Object.keys(TAB_CONFIG) as TabKey[]).map((tab) => {
+                            const config = TAB_CONFIG[tab]
+                            const Icon = config.icon
+                            const isActive = activeTab === tab
+                            return (
+                                <button
+                                    key={tab}
+                                    onClick={() => handleTabChange(tab)}
+                                    className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+                                        isActive
+                                            ? tab === 'student'
+                                                ? 'border-blue-600 text-blue-600'
+                                                : tab === 'teacher'
+                                                ? 'border-green-600 text-green-600'
+                                                : 'border-purple-600 text-purple-600'
+                                            : 'border-transparent text-gray-500 hover:text-gray-700'
+                                    }`}
+                                >
+                                    <Icon className="w-4 h-4" />
+                                    {config.label}
+                                    <span className="text-xs bg-gray-100 text-gray-600 rounded-full px-2 py-0.5">
+                                        {rows[tab].length}
+                                    </span>
+                                </button>
+                            )
+                        })}
+                    </div>
 
-                        <button
-                            onClick={() => handleUserTypeChange('teacher')}
-                            className={`p-6 border-2 rounded-lg transition-all ${
-                                selectedUserType === 'teacher'
-                                    ? 'border-green-600 bg-green-50'
-                                    : 'border-gray-200 hover:border-green-300'
-                            }`}
-                        >
-                            <div className="flex flex-col items-center gap-3">
-                                <User className="w-12 h-12 text-green-600" />
-                                <span className="font-semibold text-gray-900">Teacher</span>
-                                <span className="text-xs text-gray-500">Upload/Delete teacher photos</span>
-                            </div>
-                        </button>
+                    <div className="p-6 space-y-4">
+                        {/* Search */}
+                        <div className="relative max-w-sm">
+                            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <Input
+                                type="text"
+                                placeholder={`Search by name or ${TAB_CONFIG[activeTab].identifierLabel}`}
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="pl-9"
+                            />
+                        </div>
 
-                        <button
-                            onClick={() => handleUserTypeChange('staff_admin')}
-                            className={`p-6 border-2 rounded-lg transition-all ${
-                                selectedUserType === 'staff_admin'
-                                    ? 'border-purple-600 bg-purple-50'
-                                    : 'border-gray-200 hover:border-purple-300'
-                            }`}
-                        >
-                            <div className="flex flex-col items-center gap-3">
-                                <Users className="w-12 h-12 text-purple-600" />
-                                <span className="font-semibold text-gray-900">Staff & Admin</span>
-                                <span className="text-xs text-gray-500">Upload/Delete staff photos</span>
-                            </div>
-                        </button>
+                        {/* Table */}
+                        <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                            <table className="w-full text-sm">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="text-left font-medium text-gray-600 px-4 py-3 w-20">Photo</th>
+                                        <th className="text-left font-medium text-gray-600 px-4 py-3">Name</th>
+                                        <th className="text-left font-medium text-gray-600 px-4 py-3">
+                                            {TAB_CONFIG[activeTab].identifierLabel}
+                                        </th>
+                                        {activeTab === 'student' && (
+                                            <>
+                                                <th className="text-left font-medium text-gray-600 px-4 py-3">Grade Level</th>
+                                                <th className="text-left font-medium text-gray-600 px-4 py-3">Section</th>
+                                            </>
+                                        )}
+                                        <th className="text-right font-medium text-gray-600 px-4 py-3">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {currentRows.length === 0 && (
+                                        <tr>
+                                            <td
+                                                colSpan={activeTab === 'student' ? 6 : 4}
+                                                className="px-4 py-10 text-center text-gray-500"
+                                            >
+                                                {search ? 'No matching records found.' : 'No records found.'}
+                                            </td>
+                                        </tr>
+                                    )}
+                                    {currentRows.map((row) => (
+                                        <tr key={row.id} className="hover:bg-gray-50">
+                                            <td className="px-4 py-3">
+                                                <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 border border-gray-200 flex items-center justify-center">
+                                                    {row.profile_picture ? (
+                                                        <img
+                                                            src={row.profile_picture}
+                                                            alt={row.name}
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <User className="w-5 h-5 text-gray-400" />
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 font-medium text-gray-900">{row.name}</td>
+                                            <td className="px-4 py-3 text-gray-600">{row.identifier}</td>
+                                            {activeTab === 'student' && (
+                                                <>
+                                                    <td className="px-4 py-3 text-gray-600">{row.grade_level || 'N/A'}</td>
+                                                    <td className="px-4 py-3 text-gray-600">{row.section || 'N/A'}</td>
+                                                </>
+                                            )}
+                                            <td className="px-4 py-3">
+                                                <div className="flex justify-end gap-2">
+                                                    <input
+                                                        ref={(el) => {
+                                                            fileInputRefs.current[row.id] = el
+                                                        }}
+                                                        type="file"
+                                                        accept="image/jpeg,image/jpg,image/png,image/gif"
+                                                        className="hidden"
+                                                        onChange={(e) => handleFileChange(row, e.target.files?.[0])}
+                                                    />
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="border-green-600 text-green-700 hover:bg-green-50"
+                                                        disabled={busyId === row.id}
+                                                        onClick={() => triggerFilePicker(row.id)}
+                                                    >
+                                                        <Upload className="w-3.5 h-3.5 mr-1.5" />
+                                                        {busyId === row.id ? 'Uploading...' : row.profile_picture ? 'Replace' : 'Upload'}
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="border-red-600 text-red-600 hover:bg-red-50"
+                                                        disabled={busyId === row.id || !row.profile_picture}
+                                                        onClick={() => requestDelete(row)}
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                                                        Delete
+                                                    </Button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
-
-                {/* Search User */}
-                {selectedUserType && (
-                    <div className="bg-white rounded-lg border border-gray-200 p-6">
-                        <h2 className="text-lg font-semibold text-gray-900 mb-4">Search User</h2>
-                        <div className="flex items-center gap-3">
-                            <div className="flex-shrink-0">
-                                {getUserTypeIcon(selectedUserType)}
-                            </div>
-                            <div className="flex-1">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    {selectedUserType === 'student' ? 'LRN' : 'Employee Number'} <span className="text-red-500">*</span>
-                                </label>
-                                <div className="flex gap-2">
-                                    <Input
-                                        type="text"
-                                        placeholder={getPlaceholderText()}
-                                        value={searchTerm}
-                                        onChange={(e) => {
-                                            setSearchTerm(e.target.value)
-                                            setVerifiedUser(null)
-                                            setVerificationError('')
-                                        }}
-                                        className="max-w-md"
-                                    />
-                                    <Button
-                                        onClick={handleVerify}
-                                        disabled={!searchTerm || verifying}
-                                        className="bg-blue-600 hover:bg-blue-700"
-                                    >
-                                        {verifying ? 'Verifying...' : 'Verify'}
-                                    </Button>
-                                </div>
-                                {verificationError && (
-                                    <div className="flex items-center gap-2 mt-2 text-red-600">
-                                        <XCircle className="w-4 h-4" />
-                                        <p className="text-sm">{verificationError}</p>
-                                    </div>
-                                )}
-                                {verifiedUser && (
-                                    <div className="flex items-center gap-2 mt-2 text-green-600">
-                                        <CheckCircle className="w-4 h-4" />
-                                        <p className="text-sm">User found: {verifiedUser.name}</p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Upload Section */}
-                {verifiedUser && (
-                    <div className="bg-white rounded-lg border border-gray-200 p-6">
-                        <h2 className="text-lg font-semibold text-gray-900 mb-4">Current Profile Picture</h2>
-                        <div className="flex items-center gap-6 mb-6">
-                            <div className="w-32 h-32 rounded-full border-4 border-gray-200 overflow-hidden bg-gray-100 flex items-center justify-center">
-                                {verifiedUser.profile_picture ? (
-                                    <img
-                                        src={verifiedUser.profile_picture}
-                                        alt={verifiedUser.name}
-                                        className="w-full h-full object-cover"
-                                    />
-                                ) : (
-                                    <div className="text-center">
-                                        <User className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                                        <p className="text-xs text-gray-500">No picture</p>
-                                    </div>
-                                )}
-                            </div>
-                            <div>
-                                <h3 className="font-semibold text-gray-900">{verifiedUser.name}</h3>
-                                <p className="text-sm text-gray-600">
-                                    {verifiedUser.type === 'student' ? 'LRN' : 'Employee No'}: {verifiedUser.identifier}
-                                </p>
-                                {verifiedUser.type === 'student' && (
-                                    <div className="text-sm text-gray-600 space-y-0.5 mt-1">
-                                        {verifiedUser.grade_level && (
-                                            <p>Grade Level: <span className="font-medium">{verifiedUser.grade_level}</span></p>
-                                        )}
-                                        {verifiedUser.section && (
-                                            <p>Section: <span className="font-medium">{verifiedUser.section}</span></p>
-                                        )}
-                                    </div>
-                                )}
-                                <p className="text-sm text-gray-500 mt-1">
-                                    {verifiedUser.profile_picture ? 'Profile picture is set' : 'No profile picture uploaded'}
-                                </p>
-                            </div>
-                        </div>
-
-                        <h2 className="text-lg font-semibold text-gray-900 mb-4">Upload New Picture</h2>
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    Select Image File
-                                </label>
-                                <div className="flex items-center gap-4">
-                                    <Input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={handleFileChange}
-                                        className="max-w-md"
-                                    />
-                                    <Button
-                                        onClick={handleUpload}
-                                        className="bg-green-600 hover:bg-green-700"
-                                        disabled={!selectedFile}
-                                    >
-                                        <Upload className="w-4 h-4 mr-2" />
-                                        Upload
-                                    </Button>
-                                </div>
-                                <p className="text-xs text-gray-500 mt-1">
-                                    Accepted formats: JPG, PNG, GIF (Max size: 2MB)
-                                </p>
-                            </div>
-
-                            {/* Image Preview */}
-                            {previewUrl && (
-                                <div className="mt-4">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Preview
-                                    </label>
-                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 w-48 h-48 flex items-center justify-center">
-                                        <img
-                                            src={previewUrl}
-                                            alt="Preview"
-                                            className="max-w-full max-h-full object-contain"
-                                        />
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {/* Delete Section */}
-                {verifiedUser && verifiedUser.profile_picture && (
-                    <div className="bg-white rounded-lg border border-red-200 p-6">
-                        <h2 className="text-lg font-semibold text-gray-900 mb-4">Delete Picture</h2>
-                        <div className="flex items-center gap-4">
-                            <div className="flex-1">
-                                <p className="text-sm text-gray-600">
-                                    Remove the profile picture for <strong>{verifiedUser.name}</strong>. This action cannot be undone.
-                                </p>
-                            </div>
-                            <Button
-                                onClick={handleDelete}
-                                variant="outline"
-                                className="border-red-600 text-red-600 hover:bg-red-50"
-                            >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete Picture
-                            </Button>
-                        </div>
-                    </div>
-                )}
-
-                {/* Info Box */}
-                {!selectedUserType && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-                        <h3 className="text-sm font-semibold text-blue-900 mb-2">Getting Started</h3>
-                        <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-                            <li>Select a user type (Student, Teacher, or Staff & Admin)</li>
-                            <li>Enter the user's LRN or Employee Number</li>
-                            <li>Upload a new picture or delete the existing one</li>
-                        </ul>
-                    </div>
-                )}
             </div>
+
+            {/* Delete confirmation modal */}
+            <Dialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <div className="flex items-center justify-center mb-2">
+                            <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center">
+                                <Trash2 className="w-6 h-6 text-red-600" />
+                            </div>
+                        </div>
+                        <DialogTitle className="text-center">Delete Profile Picture</DialogTitle>
+                        <DialogDescription className="text-center">
+                            Remove the profile picture for <strong>{pendingDelete?.name}</strong>? This action
+                            cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="sm:justify-center gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setPendingDelete(null)}
+                            disabled={busyId === pendingDelete?.id}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                            onClick={confirmDelete}
+                            disabled={busyId === pendingDelete?.id}
+                        >
+                            {busyId === pendingDelete?.id ? 'Deleting...' : 'Delete Picture'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AdminLayout>
     )
 }

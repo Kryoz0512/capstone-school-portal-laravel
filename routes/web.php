@@ -213,7 +213,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('admin/admission/accreditations/{accreditation}', [AccreditationController::class, 'destroy'])->name('admin.admission.accreditations.destroy');
 
     Route::get('admin/admission/upload-delete-picture', [ProfilePictureController::class, 'index'])->name('admin.admission.upload-delete-picture');
-    Route::post('admin/admission/profile-picture/verify', [ProfilePictureController::class, 'verify'])->name('admin.admission.profile-picture.verify');
+    // Route::post('admin/admission/profile-picture/verify', [ProfilePictureController::class, 'verify'])->name('admin.admission.profile-picture.verify');
     Route::post('admin/admission/profile-picture/upload', [ProfilePictureController::class, 'upload'])->name('admin.admission.profile-picture.upload');
     Route::delete('admin/admission/profile-picture/delete', [ProfilePictureController::class, 'delete'])->name('admin.admission.profile-picture.delete');
 

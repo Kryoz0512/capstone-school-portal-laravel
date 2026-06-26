@@ -13,93 +13,54 @@ class ProfilePictureController extends Controller
 {
     public function index()
     {
-        return Inertia::render('admin/admission/upload-delete-picture/page', [
-        ]);
-    }
-
-    public function verify(Request $request)
-    {
-        $validated = $request->validate([
-            'user_type' => 'required|in:student,teacher,staff_admin',
-            'identifier' => 'required|string',
-        ]);
-
-        $userType = $validated['user_type'];
-        $identifier = $validated['identifier'];
-        $user = null;
-        $userData = null;
-
-        try {
-            switch ($userType) {
-                case 'student':
-                    $user = Student::with(['gradeLevel', 'section', 'profilePicture'])->where('lrn', $identifier)->first();
-                    if (!$user) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => "No student found with LRN: {$identifier}"
-                        ], 404);
-                    }
-                    $profilePictureUrl = $user->profilePicture?->file_path ? asset('storage/' . $user->profilePicture->file_path) : null;
-                    $userData = [
-                        'id' => $user->id,
-                        'name' => trim($user->first_name . ' ' . $user->last_name),
-                        'identifier' => $user->lrn,
-                        'type' => 'student',
-                        'profile_picture' => $profilePictureUrl,
-                        'grade_level' => $user->gradeLevel ? $user->gradeLevel->name : null,
-                        'section' => $user->section ? $user->section->section_name : null,
-                    ];
-                    break;
-
-                case 'teacher':
-                    $user = Teacher::with('profilePicture')->where('employee_number', $identifier)->first();
-                    if (!$user) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => "No teacher found with Employee Number: {$identifier}"
-                        ], 404);
-                    }
-                    $profilePictureUrl = $user->profilePicture?->file_path ? asset('storage/' . $user->profilePicture->file_path) : null;
-                    $userData = [
-                        'id' => $user->id,
-                        'name' => $user->name,
-                        'identifier' => $user->employee_number,
-                        'type' => 'teacher',
-                        'profile_picture' => $profilePictureUrl,
-                    ];
-                    break;
-
-                case 'staff_admin':
-                    $user = Admin::with('profilePicture')->where('employee_number', $identifier)->first();
-                    if (!$user) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => "No staff/admin found with Employee Number: {$identifier}"
-                        ], 404);
-                    }
-                    $profilePictureUrl = $user->profilePicture?->file_path ? asset('storage/' . $user->profilePicture->file_path) : null;
-                    $userData = [
-                        'id' => $user->id,
-                        'name' => trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')),
-                        'identifier' => $user->employee_number,
-                        'type' => 'staff_admin',
-                        'profile_picture' => $profilePictureUrl,
-                    ];
-                    break;
-            }
-
-            return response()->json([
-                'success' => true,
-                'message' => 'User found successfully',
-                'user' => $userData
+        $students = Student::with(['gradeLevel', 'section', 'profilePicture'])
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get()
+            ->map(fn ($student) => [
+                'id' => $student->id,
+                'name' => trim($student->first_name . ' ' . $student->last_name),
+                'identifier' => $student->lrn,
+                'type' => 'student',
+                'profile_picture' => $student->profilePicture?->file_path
+                    ? asset('storage/' . $student->profilePicture->file_path)
+                    : null,
+                'grade_level' => $student->gradeLevel?->name,
+                'section' => $student->section?->section_name,
             ]);
 
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'An error occurred while verifying the user'
-            ], 500);
-        }
+        $teachers = Teacher::with('profilePicture')
+            ->orderBy('name')
+            ->get()
+            ->map(fn ($teacher) => [
+                'id' => $teacher->id,
+                'name' => $teacher->name,
+                'identifier' => $teacher->employee_number,
+                'type' => 'teacher',
+                'profile_picture' => $teacher->profilePicture?->file_path
+                    ? asset('storage/' . $teacher->profilePicture->file_path)
+                    : null,
+            ]);
+
+        $staffAdmins = Admin::with('profilePicture')
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get()
+            ->map(fn ($admin) => [
+                'id' => $admin->id,
+                'name' => trim(($admin->first_name ?? '') . ' ' . ($admin->last_name ?? '')),
+                'identifier' => $admin->employee_number,
+                'type' => 'staff_admin',
+                'profile_picture' => $admin->profilePicture?->file_path
+                    ? asset('storage/' . $admin->profilePicture->file_path)
+                    : null,
+            ]);
+
+        return Inertia::render('admin/admission/upload-delete-picture/page', [
+            'students' => $students,
+            'teachers' => $teachers,
+            'staffAdmins' => $staffAdmins,
+        ]);
     }
 
     public function upload(Request $request)
@@ -201,7 +162,7 @@ class ProfilePictureController extends Controller
 
             // Delete profile picture
             $profilePicture = $user->profilePicture;
-            
+
             if ($profilePicture) {
                 Storage::disk('public')->delete($profilePicture->file_path);
                 $profilePicture->delete();

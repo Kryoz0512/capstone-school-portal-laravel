@@ -17,19 +17,17 @@ type StudentLayoutProps = {
 
 export default function StudentLayout({ children, user }: StudentLayoutProps) {
     const { auth } = usePage<{ auth: { student?: { profile_picture?: string | null } } }>().props
-    
+
     return (
         <div className="flex min-h-screen bg-white">
-            {/* Sidebar - Fixed */}
+            {/* Sidebar — desktop only */}
             <StudentSidebar />
 
-            {/* Main Content - With left margin for fixed sidebar */}
-            <div className="flex-1 flex flex-col ml-72">
-                {/* Header */}
+            {/* Main content — no left margin on mobile, offset by sidebar width on desktop */}
+            <div className="flex-1 flex flex-col min-w-0 lg:ml-72">
                 <StudentHeader user={user} student={auth?.student} />
 
-                {/* Page Content */}
-                <main className="flex-1 p-8 bg-gray-50">
+                <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-gray-50">
                     {children}
                 </main>
             </div>

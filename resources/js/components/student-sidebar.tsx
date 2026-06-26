@@ -22,27 +22,24 @@ type SidebarProps = {
     }
 }
 
-export default function StudentSidebar({ currentPath, user, student }: SidebarProps) {
-    const studentName = student ? `${student.first_name} ${student.last_name}` : user?.name || 'Student'
-    const studentInfo = student?.grade_level ? `Grade ${student.grade_level}` : 'Student'
-    
-    const getCurrentPath = () => {
-        if (typeof window !== 'undefined') {
-            return window.location.pathname
-        }
-        return ''
-    }
+const navItems = [
+    { href: '/student/dashboard',         label: 'Dashboard',         Icon: LayoutDashboard },
+    { href: '/student/clearance',         label: 'Student Clearance', Icon: FileText },
+    { href: '/student/enrolled-subjects', label: 'Enrolled Subjects', Icon: BookOpen },
+    { href: '/student/schedule',          label: 'Student Schedule',  Icon: Calendar },
+    { href: '/student/report-card',       label: 'Report Card',       Icon: FileSpreadsheet },
+]
 
-    const isActive = (path: string) => {
-        return getCurrentPath() === path
-    }
-    
+export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+    const getCurrentPath = () =>
+        typeof window !== 'undefined' ? window.location.pathname : ''
+    const isActive = (path: string) => getCurrentPath() === path
+
     return (
-        <div className="w-72 bg-gradient-to-b from-purple-900 via-purple-800 to-purple-900 h-screen flex flex-col text-white fixed left-0 top-0 shadow-2xl border-r border-purple-700/50">
-            {/* Logo/Brand Section */}
-            <div className="p-6 bg-gradient-to-r from-purple-800/50 to-purple-700/30 backdrop-blur-sm border-b border-purple-700/50">
+        <div className="flex flex-col h-full text-white bg-gradient-to-b from-purple-900 via-purple-800 to-purple-900">
+            <div className="p-6 bg-gradient-to-r from-purple-800/50 to-purple-700/30 border-b border-purple-700/50">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shrink-0">
                         <GraduationCap className="w-5 h-5 text-white" />
                     </div>
                     <div>
@@ -51,104 +48,36 @@ export default function StudentSidebar({ currentPath, user, student }: SidebarPr
                     </div>
                 </div>
             </div>
-
-            {/* Navigation - Scrollable */}
-            <nav className="flex-1 py-4 overflow-y-auto scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-purple-900/20 px-3">
-                {/* Dashboard */}
-                <Link
-                    href="/student/dashboard"
-                    className={`flex items-center gap-3 px-4 py-3 mb-1 rounded-xl transition-all duration-300 group ${
-                        isActive('/student/dashboard') 
-                            ? 'bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-500/30 scale-[1.02]' 
-                            : 'text-purple-100 hover:bg-purple-700/50 hover:translate-x-1'
-                    }`}
-                >
-                    <div className={`p-2 rounded-lg transition-all duration-300 ${
-                        isActive('/student/dashboard')
-                            ? 'bg-white/20'
-                            : 'bg-purple-700/30 group-hover:bg-purple-600/40'
-                    }`}>
-                        <LayoutDashboard className="w-4 h-4" />
-                    </div>
-                    <span className="font-medium">Dashboard</span>
-                </Link>
-
-                {/* Student Clearance */}
-                <Link
-                    href="/student/clearance"
-                    className={`flex items-center gap-3 px-4 py-3 mb-1 rounded-xl transition-all duration-300 group ${
-                        isActive('/student/clearance') 
-                            ? 'bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-500/30 scale-[1.02]' 
-                            : 'text-purple-100 hover:bg-purple-700/50 hover:translate-x-1'
-                    }`}
-                >
-                    <div className={`p-2 rounded-lg transition-all duration-300 ${
-                        isActive('/student/clearance')
-                            ? 'bg-white/20'
-                            : 'bg-purple-700/30 group-hover:bg-purple-600/40'
-                    }`}>
-                        <FileText className="w-4 h-4" />
-                    </div>
-                    <span className="font-medium">Student Clearance</span>
-                </Link>
-
-                {/* Enrolled Subjects */}
-                <Link
-                    href="/student/enrolled-subjects"
-                    className={`flex items-center gap-3 px-4 py-3 mb-1 rounded-xl transition-all duration-300 group ${
-                        isActive('/student/enrolled-subjects') 
-                            ? 'bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-500/30 scale-[1.02]' 
-                            : 'text-purple-100 hover:bg-purple-700/50 hover:translate-x-1'
-                    }`}
-                >
-                    <div className={`p-2 rounded-lg transition-all duration-300 ${
-                        isActive('/student/enrolled-subjects')
-                            ? 'bg-white/20'
-                            : 'bg-purple-700/30 group-hover:bg-purple-600/40'
-                    }`}>
-                        <BookOpen className="w-4 h-4" />
-                    </div>
-                    <span className="font-medium">Enrolled Subjects</span>
-                </Link>
-
-                {/* Student Schedule */}
-                <Link
-                    href="/student/schedule"
-                    className={`flex items-center gap-3 px-4 py-3 mb-1 rounded-xl transition-all duration-300 group ${
-                        isActive('/student/schedule') 
-                            ? 'bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-500/30 scale-[1.02]' 
-                            : 'text-purple-100 hover:bg-purple-700/50 hover:translate-x-1'
-                    }`}
-                >
-                    <div className={`p-2 rounded-lg transition-all duration-300 ${
-                        isActive('/student/schedule')
-                            ? 'bg-white/20'
-                            : 'bg-purple-700/30 group-hover:bg-purple-600/40'
-                    }`}>
-                        <Calendar className="w-4 h-4" />
-                    </div>
-                    <span className="font-medium">Student Schedule</span>
-                </Link>
-
-                {/* Report Card */}
-                <Link
-                    href="/student/report-card"
-                    className={`flex items-center gap-3 px-4 py-3 mb-1 rounded-xl transition-all duration-300 group ${
-                        isActive('/student/report-card') 
-                            ? 'bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-500/30 scale-[1.02]' 
-                            : 'text-purple-100 hover:bg-purple-700/50 hover:translate-x-1'
-                    }`}
-                >
-                    <div className={`p-2 rounded-lg transition-all duration-300 ${
-                        isActive('/student/report-card')
-                            ? 'bg-white/20'
-                            : 'bg-purple-700/30 group-hover:bg-purple-600/40'
-                    }`}>
-                        <FileSpreadsheet className="w-4 h-4" />
-                    </div>
-                    <span className="font-medium">Report Card</span>
-                </Link>
+            <nav className="flex-1 py-4 overflow-y-auto px-3 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-purple-900/20">
+                {navItems.map(({ href, label, Icon }) => (
+                    <Link
+                        key={href}
+                        href={href}
+                        onClick={onNavigate}
+                        className={`flex items-center gap-3 px-4 py-3 mb-1 rounded-xl transition-all duration-300 group ${
+                            isActive(href)
+                                ? 'bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-500/30 scale-[1.02]'
+                                : 'text-purple-100 hover:bg-purple-700/50 hover:translate-x-1'
+                        }`}
+                    >
+                        <div className={`p-2 rounded-lg transition-all duration-300 ${
+                            isActive(href) ? 'bg-white/20' : 'bg-purple-700/30 group-hover:bg-purple-600/40'
+                        }`}>
+                            <Icon className="w-4 h-4" />
+                        </div>
+                        <span className="font-medium">{label}</span>
+                    </Link>
+                ))}
             </nav>
         </div>
+    )
+}
+
+export default function StudentSidebar({ user, student }: SidebarProps) {
+    // Desktop-only sidebar. Mobile navigation is handled by StudentHeader's Sheet.
+    return (
+        <aside className="hidden lg:flex w-72 shrink-0 fixed left-0 top-0 h-screen flex-col shadow-2xl border-r border-purple-700/50 z-30">
+            <SidebarContent />
+        </aside>
     )
 }

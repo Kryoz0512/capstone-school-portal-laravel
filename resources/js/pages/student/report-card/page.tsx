@@ -47,7 +47,6 @@ type Props = {
 export default function ReportCard({ grades, schoolYears, studentInfo, filters, auth }: Props) {
     const [schoolYear, setSchoolYear] = useState(filters.school_year || '')
 
-    // Update filter when selection changes
     useEffect(() => {
         if (schoolYear) {
             router.get(`/student/report-card?school_year=${schoolYear}`, {}, {
@@ -72,39 +71,40 @@ export default function ReportCard({ grades, schoolYears, studentInfo, filters, 
 
             <div className="space-y-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Report Card</h1>
+                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Report Card</h1>
                     <p className="text-sm text-gray-500 mt-1">Your academic performance</p>
                 </div>
 
                 {/* Student Info Card */}
-                <div className="bg-gray-50 rounded-lg border border-gray-200 p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 sm:p-6">
+                    {/* FIX: was md:grid-cols-2 lg:grid-cols-5, skipped sm breakpoint */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
                         <div>
-                            <p className="text-sm text-gray-600 mb-1">Student LRN:</p>
-                            <p className="text-base font-semibold text-gray-900">{studentInfo.lrn}</p>
+                            <p className="text-xs sm:text-sm text-gray-600 mb-1">Student LRN</p>
+                            <p className="text-sm sm:text-base font-semibold text-gray-900">{studentInfo.lrn}</p>
                         </div>
                         <div>
-                            <p className="text-sm text-gray-600 mb-1">Student Name:</p>
-                            <p className="text-base font-semibold text-gray-900">{studentInfo.name}</p>
+                            <p className="text-xs sm:text-sm text-gray-600 mb-1">Student Name</p>
+                            <p className="text-sm sm:text-base font-semibold text-gray-900">{studentInfo.name}</p>
                         </div>
                         <div>
-                            <p className="text-sm text-gray-600 mb-1">Grade Level:</p>
-                            <p className="text-base font-semibold text-gray-900">{studentInfo.gradeLevel}</p>
+                            <p className="text-xs sm:text-sm text-gray-600 mb-1">Grade Level</p>
+                            <p className="text-sm sm:text-base font-semibold text-gray-900">{studentInfo.gradeLevel}</p>
                         </div>
                         <div>
-                            <p className="text-sm text-gray-600 mb-1">Section:</p>
-                            <p className="text-base font-semibold text-gray-900">{studentInfo.section}</p>
+                            <p className="text-xs sm:text-sm text-gray-600 mb-1">Section</p>
+                            <p className="text-sm sm:text-base font-semibold text-gray-900">{studentInfo.section}</p>
                         </div>
                         <div>
-                            <p className="text-sm text-gray-600 mb-1">Section Adviser:</p>
-                            <p className="text-base font-semibold text-gray-900">{studentInfo.adviser}</p>
+                            <p className="text-xs sm:text-sm text-gray-600 mb-1">Section Adviser</p>
+                            <p className="text-sm sm:text-base font-semibold text-gray-900">{studentInfo.adviser}</p>
                         </div>
                     </div>
                 </div>
 
                 {/* Filter */}
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
-                    <div className="max-w-sm">
+                <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
+                    <div className="w-full sm:max-w-sm">
                         <label className="block text-sm font-medium text-gray-700 mb-2">Filter by School Year</label>
                         <Select value={schoolYear} onValueChange={setSchoolYear}>
                             <SelectTrigger>
@@ -125,37 +125,38 @@ export default function ReportCard({ grades, schoolYears, studentInfo, filters, 
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                     {grades.length > 0 ? (
                         <div className="overflow-x-auto">
-                            <table className="w-full">
+                            {/* min-w forces scroll rather than squish on mobile */}
+                            <table className="w-full min-w-[600px]">
                                 <thead className="bg-gradient-to-r from-purple-900 via-purple-800 to-purple-900 text-white">
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-sm font-medium">Subject</th>
-                                        <th className="px-6 py-3 text-left text-sm font-medium">Teacher</th>
-                                        <th className="px-6 py-3 text-center text-sm font-medium">Quarter 1</th>
-                                        <th className="px-6 py-3 text-center text-sm font-medium">Quarter 2</th>
-                                        <th className="px-6 py-3 text-center text-sm font-medium">Quarter 3</th>
-                                        <th className="px-6 py-3 text-center text-sm font-medium">Quarter 4</th>
-                                        <th className="px-6 py-3 text-center text-sm font-medium">Final Grade</th>
+                                        <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium">Subject</th>
+                                        <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium">Teacher</th>
+                                        <th className="px-2 sm:px-6 py-3 text-center text-xs sm:text-sm font-medium">Q1</th>
+                                        <th className="px-2 sm:px-6 py-3 text-center text-xs sm:text-sm font-medium">Q2</th>
+                                        <th className="px-2 sm:px-6 py-3 text-center text-xs sm:text-sm font-medium">Q3</th>
+                                        <th className="px-2 sm:px-6 py-3 text-center text-xs sm:text-sm font-medium">Q4</th>
+                                        <th className="px-2 sm:px-6 py-3 text-center text-xs sm:text-sm font-medium">Final</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
                                     {grades.map((grade) => (
                                         <tr key={grade.id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 text-sm text-gray-900">{grade.subject}</td>
-                                            <td className="px-6 py-4 text-sm text-gray-900">{grade.teacher}</td>
-                                            <td className="px-6 py-4 text-sm text-gray-900 text-center">
-                                                {grade.quarter1 ?? '-'}
+                                            <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-900">{grade.subject}</td>
+                                            <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-900">{grade.teacher}</td>
+                                            <td className="px-2 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-900 text-center">
+                                                {grade.quarter1 ?? '—'}
                                             </td>
-                                            <td className="px-6 py-4 text-sm text-gray-900 text-center">
-                                                {grade.quarter2 ?? '-'}
+                                            <td className="px-2 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-900 text-center">
+                                                {grade.quarter2 ?? '—'}
                                             </td>
-                                            <td className="px-6 py-4 text-sm text-gray-900 text-center">
-                                                {grade.quarter3 ?? '-'}
+                                            <td className="px-2 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-900 text-center">
+                                                {grade.quarter3 ?? '—'}
                                             </td>
-                                            <td className="px-6 py-4 text-sm text-gray-900 text-center">
-                                                {grade.quarter4 ?? '-'}
+                                            <td className="px-2 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-900 text-center">
+                                                {grade.quarter4 ?? '—'}
                                             </td>
-                                            <td className="px-6 py-4 text-sm font-semibold text-gray-900 text-center">
-                                                {grade.finalGrade ?? '-'}
+                                            <td className="px-2 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-gray-900 text-center">
+                                                {grade.finalGrade ?? '—'}
                                             </td>
                                         </tr>
                                     ))}
@@ -163,24 +164,30 @@ export default function ReportCard({ grades, schoolYears, studentInfo, filters, 
                                 {finalAverage !== null && (
                                     <tfoot>
                                         <tr className="bg-gray-50 border-t-2 border-gray-300">
-                                            <td colSpan={5} className="px-6 py-4 text-sm text-gray-500 font-medium">
-                                                General Average
-                                            </td>
-                                            <td className="px-6 py-4 text-center">
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${finalAverage >= 75
-                                                        ? 'bg-green-100 text-green-800'
-                                                        : 'bg-red-100 text-red-800'
+                                            {/*
+                                              FIX: colSpan was 5 — misaligned. Table has 7 cols total.
+                                              "General Average" label spans cols 1–6 (subject, teacher, Q1–Q4),
+                                              leaving col 7 (final grade) for the average value.
+                                              pass/fail badge moved into the label cell to avoid a dangling empty col.
+                                            */}
+                                            <td colSpan={6} className="px-3 sm:px-6 py-4 text-xs sm:text-sm text-gray-500 font-medium">
+                                                <div className="flex items-center gap-3">
+                                                    <span>General Average</span>
+                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                                        finalAverage >= 75
+                                                            ? 'bg-green-100 text-green-800'
+                                                            : 'bg-red-100 text-red-800'
                                                     }`}>
-                                                    {finalAverage >= 75 ? 'Passed' : 'Failed'}
-                                                </span>
+                                                        {finalAverage >= 75 ? 'Passed' : 'Failed'}
+                                                    </span>
+                                                </div>
                                             </td>
-                                            <td className="px-6 py-4 text-center text-base font-bold text-gray-900">
+                                            <td className="px-2 sm:px-6 py-4 text-center text-base font-bold text-gray-900">
                                                 {finalAverage.toFixed(2)}
                                             </td>
                                         </tr>
                                     </tfoot>
                                 )}
-
                             </table>
                         </div>
                     ) : (

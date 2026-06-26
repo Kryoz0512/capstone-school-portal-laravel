@@ -3,60 +3,28 @@ import TeacherLayout from '@/layouts/teacher-layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Mail, Phone, MapPin } from 'lucide-react'
 
-type Teacher = {
-    name: string
-    email: string
-    phone: string
-    address: string
-    employeeNumber: string
-    department: string
-    position: string
-    dateHired: string
-    specialization: string
-}
-
-type AssignedClass = {
-    gradeLevel: string
-    section: string
-    subject: string
-    students: number
-}
-
-type Props = {
-    teacher: Teacher
-    assignedClasses: AssignedClass[]
-    auth?: {
-        user: {
-            id: number
-            name: string
-            email: string
-            role: string
-        }
-    }
-}
+type Teacher = { name: string; email: string; phone: string; address: string; employeeNumber: string; department: string; position: string; dateHired: string; specialization: string }
+type AssignedClass = { gradeLevel: string; section: string; subject: string; students: number }
+type Props = { teacher: Teacher; assignedClasses: AssignedClass[]; auth?: { user: { id: number; name: string; email: string; role: string } } }
 
 export default function Profile({ teacher, assignedClasses, auth }: Props) {
     return (
         <TeacherLayout user={auth?.user}>
             <Head title="Profile" />
-
             <div className="space-y-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">My Profile</h1>
-                    <p className="text-sm text-gray-500 mt-1">
-                        View your professional information
-                    </p>
+                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900">My Profile</h1>
+                    <p className="text-sm text-gray-500 mt-1">View your professional information</p>
                 </div>
 
-                {/* Profile Card */}
                 <Card className="bg-gradient-to-r from-green-700 to-green-600 text-white">
                     <CardContent className="pt-6">
-                        <div className="flex items-center gap-6">
-                            <div className="w-24 h-24 rounded-full bg-white/20 flex items-center justify-center text-4xl font-bold">
+                        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6">
+                            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white/20 flex items-center justify-center text-3xl sm:text-4xl font-bold shrink-0">
                                 {teacher.name.charAt(0)}
                             </div>
-                            <div className="flex-1">
-                                <h2 className="text-2xl font-bold">{teacher.name}</h2>
+                            <div className="flex-1 text-center sm:text-left">
+                                <h2 className="text-xl sm:text-2xl font-bold">{teacher.name}</h2>
                                 <p className="text-green-100 mt-1">{teacher.position}</p>
                                 <p className="text-green-100 text-sm mt-1">Employee No: {teacher.employeeNumber}</p>
                             </div>
@@ -64,40 +32,28 @@ export default function Profile({ teacher, assignedClasses, auth }: Props) {
                     </CardContent>
                 </Card>
 
-                <div className="grid grid-cols-1 gap-6">
-                    {/* Contact Information */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Contact Information</CardTitle>
-                            <CardDescription>Your contact details</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-center gap-3">
-                                <Mail className="w-5 h-5 text-gray-400" />
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Contact Information</CardTitle>
+                        <CardDescription>Your contact details</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {[
+                            { Icon: Mail, label: 'Email', value: teacher.email },
+                            { Icon: Phone, label: 'Phone', value: teacher.phone },
+                            { Icon: MapPin, label: 'Address', value: teacher.address },
+                        ].map(({ Icon, label, value }) => (
+                            <div key={label} className="flex items-start gap-3">
+                                <Icon className="w-5 h-5 text-gray-400 mt-0.5 shrink-0" />
                                 <div>
-                                    <p className="text-sm text-gray-500">Email</p>
-                                    <p className="text-sm font-medium">{teacher.email}</p>
+                                    <p className="text-sm text-gray-500">{label}</p>
+                                    <p className="text-sm font-medium break-words">{value}</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <Phone className="w-5 h-5 text-gray-400" />
-                                <div>
-                                    <p className="text-sm text-gray-500">Phone</p>
-                                    <p className="text-sm font-medium">{teacher.phone}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <MapPin className="w-5 h-5 text-gray-400" />
-                                <div>
-                                    <p className="text-sm text-gray-500">Address</p>
-                                    <p className="text-sm font-medium">{teacher.address}</p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
+                        ))}
+                    </CardContent>
+                </Card>
 
-                {/* Assigned Classes */}
                 <Card>
                     <CardHeader>
                         <CardTitle>Assigned Classes</CardTitle>
@@ -106,7 +62,7 @@ export default function Profile({ teacher, assignedClasses, auth }: Props) {
                     <CardContent>
                         {assignedClasses.length > 0 ? (
                             <div className="overflow-x-auto">
-                                <table className="w-full">
+                                <table className="w-full min-w-[400px]">
                                     <thead className="bg-gray-50">
                                         <tr>
                                             <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">Grade Level</th>

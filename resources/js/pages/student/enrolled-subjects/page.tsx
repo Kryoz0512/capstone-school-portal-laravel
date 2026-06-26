@@ -60,14 +60,15 @@ export default function EnrolledSubjects({ subjects, schoolYears, filters, auth 
             <div className="space-y-6">
 
                 {/* Page Header */}
-                <div className="flex items-center justify-between">
+                {/* FIX: was flex items-center justify-between — collides on mobile */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900">Enrolled Subjects</h1>
+                        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Enrolled Subjects</h1>
                         <p className="text-sm text-gray-500 mt-1">
                             Your registered courses for school year {filters.school_year}
                         </p>
                     </div>
-                    <div className="text-right">
+                    <div className="sm:text-right">
                         <p className="text-2xl font-bold text-purple-800">{subjects.length}</p>
                         <p className="text-xs text-gray-500 mt-0.5">Total Subjects</p>
                     </div>
@@ -107,19 +108,20 @@ export default function EnrolledSubjects({ subjects, schoolYears, filters, auth 
                             <table className="w-full">
                                 <thead>
                                     <tr className="bg-gradient-to-r from-purple-900 via-purple-800 to-purple-900">
-                                        <th className="px-6 py-3.5 text-left text-xs font-semibold text-white uppercase tracking-wider w-8">
+                                        {/* FIX: hide # column on mobile */}
+                                        <th className="hidden sm:table-cell px-3 sm:px-6 py-3.5 text-left text-xs font-semibold text-white uppercase tracking-wider w-8">
                                             #
                                         </th>
-                                        <th className="px-6 py-3.5 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                                        <th className="px-3 sm:px-6 py-3.5 text-left text-xs font-semibold text-white uppercase tracking-wider">
                                             Subject Code
                                         </th>
-                                        <th className="px-6 py-3.5 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                                        <th className="px-3 sm:px-6 py-3.5 text-left text-xs font-semibold text-white uppercase tracking-wider">
                                             Subject Name
                                         </th>
-                                        <th className="px-6 py-3.5 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                                        <th className="hidden sm:table-cell px-3 sm:px-6 py-3.5 text-left text-xs font-semibold text-white uppercase tracking-wider">
                                             Instructor
                                         </th>
-                                        <th className="px-6 py-3.5 text-center text-xs font-semibold text-white uppercase tracking-wider">
+                                        <th className="px-3 sm:px-6 py-3.5 text-center text-xs font-semibold text-white uppercase tracking-wider">
                                             Status
                                         </th>
                                     </tr>
@@ -132,19 +134,22 @@ export default function EnrolledSubjects({ subjects, schoolYears, filters, auth 
                                                 index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
                                             }`}
                                         >
-                                            <td className="px-6 py-4 text-sm text-gray-400 font-medium">
+                                            {/* FIX: hide # cell on mobile to match header */}
+                                            <td className="hidden sm:table-cell px-3 sm:px-6 py-4 text-sm text-gray-400 font-medium">
                                                 {index + 1}
                                             </td>
-                                            <td className="px-6 py-4 text-sm font-semibold text-gray-900">
+                                            <td className="px-3 sm:px-6 py-4 text-sm font-semibold text-gray-900">
                                                 {subject.subjectCode}
                                             </td>
-                                            <td className="px-6 py-4 text-sm font-medium text-gray-800">
+                                            <td className="px-3 sm:px-6 py-4 text-sm font-medium text-gray-800">
                                                 {subject.subjectName}
+                                                {/* Show instructor under subject name on mobile */}
+                                                <p className="sm:hidden text-xs text-gray-500 mt-0.5">{subject.instructor}</p>
                                             </td>
-                                            <td className="px-6 py-4 text-sm text-gray-600">
+                                            <td className="hidden sm:table-cell px-3 sm:px-6 py-4 text-sm text-gray-600">
                                                 {subject.instructor}
                                             </td>
-                                            <td className="px-6 py-4 text-center">
+                                            <td className="px-3 sm:px-6 py-4 text-center">
                                                 <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
                                                     {subject.status}
                                                 </span>
@@ -156,7 +161,7 @@ export default function EnrolledSubjects({ subjects, schoolYears, filters, auth 
                         </div>
 
                         {/* Table Footer */}
-                        <div className="px-6 py-3 border-t border-gray-100 bg-gray-50/60 flex items-center justify-between">
+                        <div className="px-4 sm:px-6 py-3 border-t border-gray-100 bg-gray-50/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                             <p className="text-xs text-gray-500">
                                 Showing {filteredSubjects.length} of {subjects.length} subject{subjects.length !== 1 ? 's' : ''}
                             </p>
@@ -166,7 +171,7 @@ export default function EnrolledSubjects({ subjects, schoolYears, filters, auth 
                         </div>
                     </div>
                 ) : (
-                    <div className="bg-white rounded-xl border border-dashed border-gray-300 p-14 text-center">
+                    <div className="bg-white rounded-xl border border-dashed border-gray-300 p-10 sm:p-14 text-center">
                         <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <BookOpen className="w-6 h-6 text-gray-400" />
                         </div>

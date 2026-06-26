@@ -1,6 +1,6 @@
 import { Head } from '@inertiajs/react'
 import StudentLayout from '@/layouts/student-layout'
-import { CheckCircle2, Clock, ShieldCheck, ShieldAlert, BookOpen, User } from 'lucide-react'
+import { CheckCircle2, Clock, ShieldCheck, ShieldAlert, BookOpen } from 'lucide-react'
 
 type SubjectClearance = {
     subject_id: number
@@ -65,7 +65,7 @@ export default function StudentClearance({ clearanceInfo, subjectClearances, aut
 
             <div className="space-y-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Student Clearance</h1>
+                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Student Clearance</h1>
                     <p className="text-sm text-gray-500 mt-1">
                         Check your clearance status for each subject this school year
                     </p>
@@ -73,15 +73,17 @@ export default function StudentClearance({ clearanceInfo, subjectClearances, aut
 
                 {/* Overall Status Card */}
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                    <div className="px-6 py-4 border-b bg-gradient-to-r from-purple-900 via-purple-800 to-purple-900">
-                        <div className="flex items-center justify-between">
-                            <h2 className="text-lg font-semibold text-white">
+                    <div className="px-4 sm:px-6 py-4 border-b bg-gradient-to-r from-purple-900 via-purple-800 to-purple-900">
+                        {/* FIX: was flex items-center justify-between — badge would collide on small screens */}
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <h2 className="text-base sm:text-lg font-semibold text-white">
                                 School Year {clearanceInfo.schoolYear}
                             </h2>
-                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${isFullyCleared
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-yellow-100 text-yellow-800'
-                                }`}>
+                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold self-start sm:self-auto ${
+                                isFullyCleared
+                                    ? 'bg-green-100 text-green-800'
+                                    : 'bg-yellow-100 text-yellow-800'
+                            }`}>
                                 {isFullyCleared
                                     ? <><ShieldCheck className="w-3.5 h-3.5" /> Fully Cleared</>
                                     : <><ShieldAlert className="w-3.5 h-3.5" /> Clearance Pending</>
@@ -90,9 +92,9 @@ export default function StudentClearance({ clearanceInfo, subjectClearances, aut
                         </div>
                     </div>
 
-                    <div className="p-6 space-y-4">
+                    <div className="p-4 sm:p-6 space-y-4">
                         {/* Student info row */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 text-sm">
                             <div>
                                 <p className="text-gray-500">Student Name</p>
                                 <p className="font-semibold text-gray-900 mt-0.5">{clearanceInfo.studentName}</p>
@@ -117,12 +119,13 @@ export default function StudentClearance({ clearanceInfo, subjectClearances, aut
                             </div>
                             <div className="w-full bg-gray-100 rounded-full h-2.5">
                                 <div
-                                    className={`h-2.5 rounded-full transition-all duration-500 ${progressPct === 100
-                                        ? 'bg-green-500'
-                                        : progressPct >= 50
-                                            ? 'bg-orange-400'
-                                            : 'bg-red-500'
-                                        }`}
+                                    className={`h-2.5 rounded-full transition-all duration-500 ${
+                                        progressPct === 100
+                                            ? 'bg-green-500'
+                                            : progressPct >= 50
+                                                ? 'bg-orange-400'
+                                                : 'bg-red-500'
+                                    }`}
                                     style={{ width: `${progressPct}%` }}
                                 />
                             </div>
@@ -144,19 +147,18 @@ export default function StudentClearance({ clearanceInfo, subjectClearances, aut
                 {/* Per-subject clearance table */}
                 {subjectClearances.length > 0 ? (
                     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-
                         <div className="overflow-x-auto">
                             <table className="w-full">
                                 <thead>
                                     <tr className="bg-gradient-to-r from-purple-900 via-purple-800 to-purple-900">
-                                        <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                                        <th className="px-3 sm:px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                                             Subject
                                         </th>
-                                        <th className="px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
+                                        <th className="px-3 sm:px-6 py-4 text-left text-xs font-semibold text-white uppercase tracking-wider">
                                             Teacher
                                         </th>
-                                        <th className="px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">
-                                            Clearance Status
+                                        <th className="px-3 sm:px-6 py-4 text-center text-xs font-semibold text-white uppercase tracking-wider">
+                                            Status
                                         </th>
                                     </tr>
                                 </thead>
@@ -164,10 +166,12 @@ export default function StudentClearance({ clearanceInfo, subjectClearances, aut
                                     {subjectClearances.map((item, index) => (
                                         <tr
                                             key={item.subject_id}
-                                            className={`transition-colors hover:bg-gray-50 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'
-                                                }`}
+                                            className={`transition-colors hover:bg-gray-50 ${
+                                                index % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'
+                                            }`}
                                         >
-                                            <td className="px-6 py-4">
+                                            {/* FIX: px-3 sm:px-6 to reduce overflow on mobile */}
+                                            <td className="px-3 sm:px-6 py-4">
                                                 <div>
                                                     <p className="text-sm font-semibold text-gray-900">
                                                         {item.subject_name}
@@ -177,10 +181,10 @@ export default function StudentClearance({ clearanceInfo, subjectClearances, aut
                                                     )}
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4">
+                                            <td className="px-3 sm:px-6 py-4">
                                                 <span className="text-sm text-gray-700">{item.teacher_name}</span>
                                             </td>
-                                            <td className="px-6 py-4 text-center">
+                                            <td className="px-3 sm:px-6 py-4 text-center">
                                                 {getStatusBadge(item.status)}
                                             </td>
                                         </tr>

@@ -44,6 +44,7 @@ type Props = {
 
 const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'] as const
 const dayLabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
+const dayLabelsMobile = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
 
 function ScheduleCell({ value }: { value: string }) {
     if (!value) {
@@ -57,11 +58,9 @@ function ScheduleCell({ value }: { value: string }) {
 
     return (
         <div className="flex flex-col gap-0.5">
-            <span className="text-sm font-semibold text-purple-900 leading-tight">{subject}</span>
-            {teacher && <span className="text-sm text-gray-500 leading-tight">{teacher}</span>}
-            {room && (
-                <span className="text-sm text-gray-400 leading-tight">{room}</span>
-            )}
+            <span className="text-xs sm:text-sm font-semibold text-purple-900 leading-tight">{subject}</span>
+            {teacher && <span className="text-xs text-gray-500 leading-tight hidden sm:block">{teacher}</span>}
+            {room && <span className="text-xs text-gray-400 leading-tight hidden sm:block">{room}</span>}
         </div>
     )
 }
@@ -85,14 +84,16 @@ export default function StudentSchedule({ schedules, schoolYears, studentInfo, f
             <div className="space-y-6">
 
                 {/* Page Header */}
-                <div className="flex items-center justify-between">
+                {/* FIX: was flex items-center justify-between — Select squashed against title on mobile */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900">Class Schedule</h1>
+                        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Class Schedule</h1>
                         <p className="text-sm text-gray-500 mt-1">
                             Weekly schedule for school year {filters.school_year}
                         </p>
                     </div>
-                    <div className="w-48">
+                    {/* FIX: full width on mobile, fixed width on sm+ */}
+                    <div className="w-full sm:w-48">
                         <Select value={schoolYear} onValueChange={setSchoolYear}>
                             <SelectTrigger className="bg-white border-gray-200">
                                 <SelectValue />
@@ -110,21 +111,22 @@ export default function StudentSchedule({ schedules, schoolYears, studentInfo, f
 
                 {/* Student Info Card */}
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                    <div className="px-6 py-4 bg-gradient-to-r from-purple-900 via-purple-800 to-purple-900">
-                        <p className="text-sm font-semibold text-purple-200 uppercase tracking-wider mb-0.5">Student Information</p>
-                        <p className="text-lg font-bold text-white">{studentInfo.name}</p>
+                    <div className="px-4 sm:px-6 py-4 bg-gradient-to-r from-purple-900 via-purple-800 to-purple-900">
+                        <p className="text-xs font-semibold text-purple-200 uppercase tracking-wider mb-0.5">Student Information</p>
+                        <p className="text-base sm:text-lg font-bold text-white">{studentInfo.name}</p>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 divide-x divide-y divide-gray-100">
-                        <div className="px-6 py-4">
-                            <p className="text-sm text-gray-400 uppercase tracking-wide mb-1">LRN</p>
+                    {/* FIX: was grid-cols-2 sm:grid-cols-3 — third col clipped on very small screens */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+                        <div className="px-4 sm:px-6 py-3 sm:py-4">
+                            <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">LRN</p>
                             <p className="text-sm font-semibold text-gray-900">{studentInfo.lrn}</p>
                         </div>
-                        <div className="px-6 py-4">
-                            <p className="text-sm text-gray-400 uppercase tracking-wide mb-1">Grade Level</p>
+                        <div className="px-4 sm:px-6 py-3 sm:py-4">
+                            <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Grade Level</p>
                             <p className="text-sm font-semibold text-gray-900">{studentInfo.gradeLevel}</p>
                         </div>
-                        <div className="px-6 py-4">
-                            <p className="text-sm text-gray-400 uppercase tracking-wide mb-1">Section</p>
+                        <div className="px-4 sm:px-6 py-3 sm:py-4">
+                            <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Section</p>
                             <p className="text-sm font-semibold text-gray-900">{studentInfo.section}</p>
                         </div>
                     </div>
@@ -134,18 +136,20 @@ export default function StudentSchedule({ schedules, schoolYears, studentInfo, f
                 {schedules.length > 0 ? (
                     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
                         <div className="overflow-x-auto">
-                            <table className="w-full">
+                            <table className="w-full min-w-[480px]">
                                 <thead>
                                     <tr className="bg-gradient-to-r from-purple-900 via-purple-800 to-purple-900">
-                                        <th className="px-6 py-3.5 text-left text-sm font-semibold text-white uppercase tracking-wider w-40">
+                                        <th className="px-3 sm:px-6 py-3.5 text-left text-xs font-semibold text-white uppercase tracking-wider w-24 sm:w-40">
                                             Time
                                         </th>
-                                        {dayLabels.map(day => (
+                                        {dayLabels.map((day, i) => (
                                             <th
                                                 key={day}
-                                                className="px-4 py-3.5 text-center text-sm font-semibold text-white uppercase tracking-wider"
+                                                className="px-2 sm:px-4 py-3.5 text-center text-xs font-semibold text-white uppercase tracking-wider"
                                             >
-                                                {day}
+                                                {/* Show abbreviated day labels on mobile */}
+                                                <span className="sm:hidden">{dayLabelsMobile[i]}</span>
+                                                <span className="hidden sm:inline">{day}</span>
                                             </th>
                                         ))}
                                     </tr>
@@ -158,11 +162,11 @@ export default function StudentSchedule({ schedules, schoolYears, studentInfo, f
                                                 index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'
                                             }`}
                                         >
-                                            <td className="px-6 py-4 text-sm font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
+                                            <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
                                                 {item.time}
                                             </td>
                                             {days.map(day => (
-                                                <td key={day} className="px-4 py-4 text-center align-top">
+                                                <td key={day} className="px-2 sm:px-4 py-3 sm:py-4 text-center align-top">
                                                     <ScheduleCell value={item[day]} />
                                                 </td>
                                             ))}
@@ -173,15 +177,15 @@ export default function StudentSchedule({ schedules, schoolYears, studentInfo, f
                         </div>
 
                         {/* Footer */}
-                        <div className="px-6 py-3 border-t border-gray-100 bg-gray-50/60 flex items-center justify-between">
-                            <p className="text-sm text-gray-500">
+                        <div className="px-4 sm:px-6 py-3 border-t border-gray-100 bg-gray-50/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                            <p className="text-xs text-gray-500">
                                 {schedules.length} time slot{schedules.length !== 1 ? 's' : ''} scheduled
                             </p>
-                            <p className="text-sm text-gray-400">School Year {filters.school_year}</p>
+                            <p className="text-xs text-gray-400">School Year {filters.school_year}</p>
                         </div>
                     </div>
                 ) : (
-                    <div className="bg-white rounded-xl border border-dashed border-gray-300 p-14 text-center">
+                    <div className="bg-white rounded-xl border border-dashed border-gray-300 p-10 sm:p-14 text-center">
                         <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <Calendar className="w-6 h-6 text-gray-400" />
                         </div>

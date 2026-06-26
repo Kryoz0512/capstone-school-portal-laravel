@@ -3,6 +3,13 @@ import AdminLayout from '@/layouts/admin-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select'
+import {
     Dialog,
     DialogContent,
     DialogDescription,
@@ -17,6 +24,8 @@ import {
     GraduationCap,
     Users,
     Search,
+    ChevronLeft,
+    ChevronRight,
 } from 'lucide-react'
 import { useRef, useState } from 'react'
 import axios from 'axios'
@@ -82,10 +91,12 @@ export default function UploadDeletePicturePage({ auth, students, teachers, staf
     })
     const [busyId, setBusyId] = useState<number | null>(null)
     const [pendingDelete, setPendingDelete] = useState<PersonRow | null>(null)
+    const [pageSize, setPageSize] = useState(10)
+    const [page, setPage] = useState(1)
 
     const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({})
 
-    const currentRows = rows[activeTab].filter((row) => {
+    const filteredRows = rows[activeTab].filter((row) => {
         if (!search.trim()) return true
         const term = search.toLowerCase()
         return (
@@ -93,6 +104,12 @@ export default function UploadDeletePicturePage({ auth, students, teachers, staf
             row.identifier.toLowerCase().includes(term)
         )
     })
+
+    const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize))
+    const safePage = Math.min(page, totalPages)
+    const currentRows = filteredRows.slice((safePage - 1) * pageSize, safePage * pageSize)
+    const rangeStart = filteredRows.length === 0 ? 0 : (safePage - 1) * pageSize + 1
+    const rangeEnd = Math.min(safePage * pageSize, filteredRows.length)
 
     const updateRow = (type: TabKey, id: number, updates: Partial<PersonRow>) => {
         setRows((prev) => ({
@@ -104,6 +121,7 @@ export default function UploadDeletePicturePage({ auth, students, teachers, staf
     const handleTabChange = (tab: TabKey) => {
         setActiveTab(tab)
         setSearch('')
+        setPage(1)
     }
 
     const triggerFilePicker = (id: number) => {
@@ -223,7 +241,10 @@ export default function UploadDeletePicturePage({ auth, students, teachers, staf
                                 type="text"
                                 placeholder={`Search by name or ${TAB_CONFIG[activeTab].identifierLabel}`}
                                 value={search}
-                                onChange={(e) => setSearch(e.target.value)}
+                                onChange={(e) => {
+                                    setSearch(e.target.value)
+                                    setPage(1)
+                                }}
                                 className="pl-9"
                             />
                         </div>
@@ -318,6 +339,62 @@ export default function UploadDeletePicturePage({ auth, students, teachers, staf
                                     ))}
                                 </tbody>
                             </table>
+                        </div>
+
+                        {/* Pagination */}
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                                <span>Show</span>
+                                <Select
+                                    value={pageSize.toString()}
+                                    onValueChange={(value) => {
+                                        setPageSize(Number(value))
+                                        setPage(1)
+                                    }}
+                                >
+                                    <SelectTrigger className="w-20 h-8">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="10">10</SelectItem>
+                                        <SelectItem value="50">50</SelectItem>
+                                        <SelectItem value="75">75</SelectItem>
+                                        <SelectItem value="100">100</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <span>entries</span>
+                            </div>
+
+                            <div className="flex items-center gap-4 sm:ml-auto">
+                                <span className="text-sm text-gray-500">
+                                    {filteredRows.length === 0
+                                        ? 'No entries'
+                                        : `Showing ${rangeStart}-${rangeEnd} of ${filteredRows.length}`}
+                                </span>
+                                <div className="flex items-center gap-1">
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-8 w-8 p-0"
+                                        disabled={safePage <= 1}
+                                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                    >
+                                        <ChevronLeft className="w-4 h-4" />
+                                    </Button>
+                                    <span className="text-sm text-gray-600 px-2 min-w-[5.5rem] text-center">
+                                        Page {safePage} of {totalPages}
+                                    </span>
+                                    <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-8 w-8 p-0"
+                                        disabled={safePage >= totalPages}
+                                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                                    >
+                                        <ChevronRight className="w-4 h-4" />
+                                    </Button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

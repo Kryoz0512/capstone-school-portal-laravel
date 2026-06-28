@@ -201,7 +201,7 @@ class StudentController extends Controller
                     'tbl_schedules.day_of_week',
                     'tbl_schedules.start_time',
                     'tbl_schedules.end_time',
-                    'tbl_room.room_number as room',
+                    'tbl_room.room_name as room',
                     'tbl_subjects.name as subject_name',
                     'tbl_teachers.name as teacher_name'
                 )
@@ -406,7 +406,7 @@ class StudentController extends Controller
                     'id' => $section->id,
                     'name' => $section->section_name,
                     'grade_level_id' => $section->grade_level_id,
-                    'room_number' => $section->room->room_number ?? 'No Room',
+                    'room_name' => $section->room->room_name ?? 'No Room',
                     'capacity' => $capacity,
                     'current_students' => $currentStudents,
                     'available_slots' => $availableSlots,
@@ -596,7 +596,7 @@ class StudentController extends Controller
                     'start_time' => \Carbon\Carbon::parse($schedule->start_time)->format('g:i A'),
                     'end_time' => \Carbon\Carbon::parse($schedule->end_time)->format('g:i A'),
                     'time_slot' => \Carbon\Carbon::parse($schedule->start_time)->format('g:i A') . ' - ' . \Carbon\Carbon::parse($schedule->end_time)->format('g:i A'),
-                    'room' => $schedule->room ? $schedule->room->room_number : 'N/A',
+                    'room' => $schedule->room ? $schedule->room->room_name : 'N/A',
                 ];
             });
 

@@ -14,7 +14,7 @@ type GradeLevel = {
 
 type Room = {
     id: number
-    room_number: string
+    room_name: string
     capacity: number
 }
 
@@ -145,7 +145,7 @@ export default function CreateSectionModal({ open, onOpenChange, gradeLevels, ro
         setShowRoomDropdown(true)
         
         // Try to find matching room and set room_id
-        const room = rooms.find(r => r.room_number.toLowerCase() === value.toLowerCase().trim())
+        const room = rooms.find(r => r.room_name.toLowerCase() === value.toLowerCase().trim())
         if (room) {
             setData('room_id', room.id)
         } else {
@@ -154,7 +154,7 @@ export default function CreateSectionModal({ open, onOpenChange, gradeLevels, ro
     }
 
     const handleRoomSelect = (room: Room) => {
-        setRoomNumberInput(room.room_number)
+        setRoomNumberInput(room.room_name)
         setData('room_id', room.id)
         setShowRoomDropdown(false)
     }
@@ -220,12 +220,12 @@ export default function CreateSectionModal({ open, onOpenChange, gradeLevels, ro
                             onChange={(e) => handleRoomNumberChange(e.target.value)}
                             onFocus={() => setShowRoomDropdown(true)}
                             onBlur={() => setTimeout(() => setShowRoomDropdown(false), 200)}
-                            placeholder="Enter room number"
+                            placeholder="Enter room name"
                         />
                         
                         {showRoomDropdown && roomNumberInput && rooms.length > 0 && (() => {
                             const filteredRooms = rooms
-                                .filter(room => room.room_number.toLowerCase().includes(roomNumberInput.toLowerCase()))
+                                .filter(room => room.room_name.toLowerCase().includes(roomNumberInput.toLowerCase()))
                                 .slice(0, 5);
                             
                             return filteredRooms.length > 0 ? (
@@ -237,7 +237,7 @@ export default function CreateSectionModal({ open, onOpenChange, gradeLevels, ro
                                             onClick={() => handleRoomSelect(room)}
                                             className="w-full text-left px-3 py-2 hover:bg-gray-100 text-sm border-b last:border-b-0"
                                         >
-                                            <div className="font-medium">{room.room_number}</div>
+                                            <div className="font-medium">{room.room_name}</div>
                                             <div className="text-xs text-gray-500">Capacity: {room.capacity}</div>
                                         </button>
                                     ))}

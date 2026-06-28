@@ -15,7 +15,7 @@ class RoomController extends Controller
             'sections as students_count' => function ($query) {
                 $query->join('tbl_students', 'tbl_class_sections.id', '=', 'tbl_students.current_section_id');
             }
-        ])->orderBy('room_number')->get();
+        ])->orderBy('room_name')->get();
 
         $admin = \App\Models\Admin::where('user_id', Auth::id())->first();
 
@@ -26,10 +26,10 @@ class RoomController extends Controller
 
     public function checkRoomNumber(Request $request)
     {
-        $roomNumber = $request->input('room_number');
+        $roomNumber = $request->input('room_name');
         $roomId = $request->input('room_id');
 
-        $query = Room::where('room_number', $roomNumber);
+        $query = Room::where('room_name', $roomNumber);
 
         if ($roomId) {
             $query->where('id', '!=', $roomId);
@@ -46,7 +46,7 @@ class RoomController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'room_number' => 'required|string|unique:tbl_room,room_number',
+            'room_name' => 'required|string|unique:tbl_room,room_name',
             'capacity' => 'required|integer|min:1',
             'status' => 'required|in:Available,Vacant,Occupied',
         ]);
@@ -61,7 +61,7 @@ class RoomController extends Controller
         $room = Room::findOrFail($id);
 
         $validated = $request->validate([
-            'room_number' => 'required|string|unique:tbl_room,room_number,' . $id,
+            'room_name' => 'required|string|unique:tbl_room,room_name,' . $id,
             'capacity' => 'required|integer|min:1',
             'status' => 'required|in:Available,Vacant,Occupied',
         ]);
@@ -80,7 +80,7 @@ class RoomController extends Controller
             'archivable_type' => Room::class,
             'archivable_id' => $room->id,
             'data' => json_encode([
-                'room_number' => $room->room_number,
+                'room_name' => $room->room_name,
                 'capacity' => $room->capacity,
                 'status' => $room->status,
             ]),

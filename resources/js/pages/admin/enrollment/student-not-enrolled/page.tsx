@@ -28,7 +28,7 @@ type Section = {
     id: number
     name: string
     grade_level_id: number
-    room_number: string
+    room_name: string
     capacity: number
     current_students: number
     available_slots: number

@@ -42,7 +42,7 @@ export default function EditRoomModal({ open, onOpenChange, room }: EditRoomModa
         }
     }, [room])
 
-    // Check room number availability (only if changed from initial)
+    // Check room name availability (only if changed from initial)
     useEffect(() => {
         if (!data.room_number || data.room_number === initialRoomNumber) {
             setRoomNumberError('')
@@ -63,7 +63,7 @@ export default function EditRoomModal({ open, onOpenChange, room }: EditRoomModa
                     setRoomNumberError('')
                 }
             } catch (error) {
-                console.error('Error checking room number:', error)
+                console.error('Error checking room name:', error)
             } finally {
                 setIsCheckingRoomNumber(false)
             }
@@ -101,7 +101,7 @@ export default function EditRoomModal({ open, onOpenChange, room }: EditRoomModa
                 <form onSubmit={handleSubmit} className="space-y-4 mt-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Room Number <span className="text-red-500">*</span>
+                            Room Name <span className="text-red-500">*</span>
                         </label>
                         <Input
                             required
@@ -118,7 +118,7 @@ export default function EditRoomModal({ open, onOpenChange, room }: EditRoomModa
                         {errors.room_number && (
                             <p className="text-xs text-red-500 mt-1">{errors.room_number}</p>
                         )}
-                        <p className="text-xs text-gray-500 mt-1">Enter the room number or identifier</p>
+                        <p className="text-xs text-gray-500 mt-1">Enter the room name or identifier</p>
                     </div>
 
                     <div>

@@ -18,7 +18,7 @@ class ClassSectionController extends Controller
                 'grade_level_id' => $section->grade_level_id,
                 'grade_level' => $section->gradeLevel ? $section->gradeLevel->name : null,
                 'room_id' => $section->room_id,
-                'room' => $section->room ? $section->room->room_number : null,
+                'room' => $section->room ? $section->room->room_name : null,
             ];
         });
 
@@ -29,10 +29,10 @@ class ClassSectionController extends Controller
             ];
         });
 
-        $rooms = \App\Models\Room::where('status', 'Active')->get()->map(function ($room) {
+        $rooms = \App\Models\Room::where('status', 'Available')->get()->map(function ($room) {
             return [
                 'id' => $room->id,
-                'room_number' => $room->room_number,
+                'room_name' => $room->room_name,
                 'capacity' => $room->capacity,
             ];
         });
@@ -50,16 +50,16 @@ class ClassSectionController extends Controller
     {
         $sectionName = $request->input('section_name');
         $sectionId = $request->input('section_id'); // For edit mode
-        
+
         $query = ClassSection::whereRaw('LOWER(section_name) = ?', [strtolower($sectionName)]);
-        
+
         // Exclude current section when editing
         if ($sectionId) {
             $query->where('id', '!=', $sectionId);
         }
-        
+
         $exists = $query->exists();
-        
+
         return response()->json([
             'available' => !$exists,
             'message' => $exists ? 'This section name already exists.' : 'Section name is available.'
@@ -70,16 +70,16 @@ class ClassSectionController extends Controller
     {
         $roomId = $request->input('room_id');
         $sectionId = $request->input('section_id'); // For edit mode
-        
+
         $query = ClassSection::where('room_id', $roomId);
-        
+
         // Exclude current section when editing
         if ($sectionId) {
             $query->where('id', '!=', $sectionId);
         }
-        
+
         $exists = $query->exists();
-        
+
         return response()->json([
             'available' => !$exists,
             'message' => $exists ? 'This room is already assigned to another section.' : 'Room is available.'
@@ -96,7 +96,7 @@ class ClassSectionController extends Controller
 
         // Check for case-insensitive duplicate across all grade levels
         $exists = ClassSection::whereRaw('LOWER(section_name) = ?', [strtolower($request->section_name)])
-                              ->exists();
+            ->exists();
 
         if ($exists) {
             return back()->withErrors(['section_name' => 'This section name already exists.']);
@@ -129,8 +129,8 @@ class ClassSectionController extends Controller
 
         // Check for case-insensitive duplicate across all grade levels (excluding current section)
         $exists = ClassSection::whereRaw('LOWER(section_name) = ?', [strtolower($request->section_name)])
-                              ->where('id', '!=', $classSection->id)
-                              ->exists();
+            ->where('id', '!=', $classSection->id)
+            ->exists();
 
         if ($exists) {
             return back()->withErrors(['section_name' => 'This section name already exists.']);
@@ -139,8 +139,8 @@ class ClassSectionController extends Controller
         // Check if room is already assigned to another section (excluding current section)
         if ($request->room_id) {
             $roomTaken = ClassSection::where('room_id', $request->room_id)
-                                    ->where('id', '!=', $classSection->id)
-                                    ->exists();
+                ->where('id', '!=', $classSection->id)
+                ->exists();
             if ($roomTaken) {
                 return back()->withErrors(['room_id' => 'This room is already assigned to another section.']);
             }

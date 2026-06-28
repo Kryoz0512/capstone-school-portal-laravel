@@ -28,7 +28,7 @@ type Section = {
     id: number
     name: string
     grade_level_id: number
-    room_number: string
+    room_name: string
     capacity: number
     current_students: number
     available_slots: number
@@ -264,7 +264,7 @@ export default function EditStudentAssignmentModal({
                                                         <Users className="w-3 h-3" />
                                                         {section.current_students}/{section.capacity}
                                                     </span>
-                                                    <span>Room: {section.room_number}</span>
+                                                    <span>Room: {section.room_name}</span>
                                                 </div>
                                             </div>
                                             <div className="ml-3">
@@ -300,7 +300,7 @@ export default function EditStudentAssignmentModal({
                                                 <Users className="w-3 h-3" />
                                                 {selectedSection.current_students + 1}/{selectedSection.capacity} (after assignment)
                                             </span>
-                                            <span>Room: {selectedSection.room_number}</span>
+                                            <span>Room: {selectedSection.room_name}</span>
                                         </div>
                                     </div>
                                 </div>

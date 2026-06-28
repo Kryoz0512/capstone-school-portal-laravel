@@ -11,7 +11,7 @@ import { useState, useMemo } from 'react'
 
 type Room = {
     id: number
-    room_number: string
+    room_name: string
     capacity: number
     status: 'Available' | 'Vacant' | 'Occupied'
     students_count: number
@@ -38,7 +38,7 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
     const [selectedRoom, setSelectedRoom] = useState<Room | null>(null)
-    const [roomToDelete, setRoomToDelete] = useState<{ id: number; room_number: string } | null>(null)
+    const [roomToDelete, setRoomToDelete] = useState<{ id: number; room_name: string } | null>(null)
     const [searchTerm, setSearchTerm] = useState('')
     const [capacityFilter, setCapacityFilter] = useState('')
     const [statusFilter, setStatusFilter] = useState('All')
@@ -48,7 +48,7 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
     const [itemsPerPage, setItemsPerPage] = useState(10)
 
     const filteredRooms = rooms.filter(room => {
-        const matchesSearch = room.room_number.toLowerCase().includes(searchTerm.toLowerCase())
+        const matchesSearch = room.room_name.toLowerCase().includes(searchTerm.toLowerCase())
         const matchesCapacity = capacityFilter === '' || room.capacity.toString() === capacityFilter
         const matchesStatus = statusFilter === 'All' || room.status === statusFilter
         return matchesSearch && matchesCapacity && matchesStatus
@@ -74,7 +74,7 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
     }
 
     const handleDelete = (room: Room) => {
-        setRoomToDelete({ id: room.id, room_number: room.room_number })
+        setRoomToDelete({ id: room.id, room_name: room.room_name })
         setIsDeleteModalOpen(true)
     }
 
@@ -105,7 +105,7 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
                     open={isDeleteModalOpen}
                     onOpenChange={setIsDeleteModalOpen}
                     roomId={roomToDelete?.id || null}
-                    roomNumber={roomToDelete?.room_number || ''}
+                    roomNumber={roomToDelete?.room_name || ''}
                 />
 
                 {/* Filters Section */}
@@ -182,7 +182,7 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
                                     paginatedRooms.map((room) => (
                                         <tr key={room.id} className="hover:bg-gray-50">
                                             <td className="px-6 py-4 text-sm text-gray-900">
-                                                {room.room_number}
+                                                {room.room_name}
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-900">
                                                 {room.capacity}

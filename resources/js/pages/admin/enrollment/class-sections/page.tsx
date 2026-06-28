@@ -25,7 +25,7 @@ type GradeLevel = {
 
 type Room = {
     id: number
-    room_number: string
+    room_name: string
     capacity: number
 }
 

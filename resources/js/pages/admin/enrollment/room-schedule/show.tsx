@@ -7,7 +7,7 @@ import { useState, useMemo } from 'react'
 
 type Room = {
     id: number
-    room_number: string
+    room_name: string
     capacity: number
 }
 
@@ -74,7 +74,7 @@ export default function RoomScheduleShow({ auth, room, schedules = [] }: Props) 
 
     return (
         <AdminLayout user={auth?.user} admin={auth?.admin}>
-            <Head title={`Room ${room.room_number} - Schedule`} />
+            <Head title={`Room ${room.room_name} - Schedule`} />
 
             <div className="space-y-6">
                 {/* Header */}
@@ -99,7 +99,7 @@ export default function RoomScheduleShow({ auth, room, schedules = [] }: Props) 
                             </svg>
                         </div>
                         <div className="flex-1">
-                            <h1 className="text-2xl font-bold text-gray-900">Room {room.room_number}</h1>
+                            <h1 className="text-2xl font-bold text-gray-900">Room {room.room_name}</h1>
                             <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <p className="text-sm text-gray-600">Capacity</p>

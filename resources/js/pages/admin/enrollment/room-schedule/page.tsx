@@ -8,7 +8,7 @@ import { useState, useMemo } from 'react'
 
 type Room = {
     id: number
-    room_number: string
+    room_name: string
     capacity: number
     schedules_count: number
 }
@@ -37,7 +37,7 @@ export default function RoomSchedule({ auth, rooms = [] }: Props) {
     // Filter rooms
     const filteredRooms = useMemo(() => {
         return rooms.filter(room =>
-            room.room_number.toLowerCase().includes(searchTerm.toLowerCase())
+            room.room_name.toLowerCase().includes(searchTerm.toLowerCase())
         )
     }, [rooms, searchTerm])
 
@@ -111,7 +111,7 @@ export default function RoomSchedule({ auth, rooms = [] }: Props) {
                                     paginatedRooms.map((room) => (
                                         <tr key={room.id} className="hover:bg-gray-50">
                                             <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                                                {room.room_number}
+                                                {room.room_name}
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-900">
                                                 {room.capacity} students

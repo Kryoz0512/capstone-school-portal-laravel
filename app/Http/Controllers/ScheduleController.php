@@ -51,7 +51,7 @@ class ScheduleController extends Controller
                     'day' => $schedule->day_of_week,
                     'start_time' => Carbon::parse($schedule->start_time)->format('g:i A'),
                     'end_time' => Carbon::parse($schedule->end_time)->format('g:i A'),
-                    'room' => $schedule->room ? $schedule->room->room_number : 'N/A',
+                    'room' => $schedule->room ? $schedule->room->room_name : 'N/A',
                     'room_id' => $schedule->room_id,
                     'subject' => $schedule->subject->name ?? 'N/A',
                     'subject_id' => $schedule->subject_id,
@@ -89,7 +89,7 @@ class ScheduleController extends Controller
         $rooms = Room::all()->map(function ($room) {
             return [
                 'id' => $room->id,
-                'name' => $room->room_number,
+                'name' => $room->room_name,
             ];
         });
 
@@ -144,7 +144,7 @@ class ScheduleController extends Controller
         $rooms = Room::all()->map(function ($room) {
             return [
                 'id' => $room->id,
-                'name' => $room->room_number,
+                'name' => $room->room_name,
             ];
         });
 
@@ -193,7 +193,7 @@ class ScheduleController extends Controller
         $rooms = Room::all()->map(function ($room) {
             return [
                 'id' => $room->id,
-                'name' => $room->room_number,
+                'name' => $room->room_name,
             ];
         });
 
@@ -208,7 +208,7 @@ class ScheduleController extends Controller
                 'subject_name' => $schedule->subject->name ?? '',
                 'teacher_id' => $schedule->teacher_id,
                 'room_id' => $schedule->room_id,
-                'room_name' => $schedule->room ? $schedule->room->room_number : '',
+                'room_name' => $schedule->room ? $schedule->room->room_name : '',
                 'grade_level_id' => $schedule->classSection->grade_level_id ?? null,
                 'day' => $schedule->day_of_week,
                 'start_time' => $schedule->start_time ? Carbon::parse($schedule->start_time)->format('H:i') : '',
@@ -283,7 +283,7 @@ class ScheduleController extends Controller
             if ($roomConflict) {
                 $conflictTime = \Carbon\Carbon::parse($roomConflict->start_time)->format('g:i A') . ' - ' . \Carbon\Carbon::parse($roomConflict->end_time)->format('g:i A');
                 return redirect()->back()->withErrors([
-                    'start_time' => "Room {$roomConflict->room->room_number} is already occupied on {$validated['day_of_week']} at {$conflictTime} ({$roomConflict->subject->name} - {$roomConflict->classSection->gradeLevel->name} {$roomConflict->classSection->section_name})."
+                    'start_time' => "Room {$roomConflict->room->room_name} is already occupied on {$validated['day_of_week']} at {$conflictTime} ({$roomConflict->subject->name} - {$roomConflict->classSection->gradeLevel->name} {$roomConflict->classSection->section_name})."
                 ])->withInput();
             }
         }
@@ -375,7 +375,7 @@ class ScheduleController extends Controller
             if ($roomConflict) {
                 $conflictTime = \Carbon\Carbon::parse($roomConflict->start_time)->format('g:i A') . ' - ' . \Carbon\Carbon::parse($roomConflict->end_time)->format('g:i A');
                 return redirect()->back()->withErrors([
-                    'start_time' => "Room {$roomConflict->room->room_number} is already occupied on {$validated['day_of_week']} at {$conflictTime} ({$roomConflict->subject->name} - {$roomConflict->classSection->gradeLevel->name} {$roomConflict->classSection->section_name})."
+                    'start_time' => "Room {$roomConflict->room->room_name} is already occupied on {$validated['day_of_week']} at {$conflictTime} ({$roomConflict->subject->name} - {$roomConflict->classSection->gradeLevel->name} {$roomConflict->classSection->section_name})."
                 ])->withInput();
             }
         }
@@ -432,7 +432,7 @@ class ScheduleController extends Controller
         $rooms = Room::withCount('schedules')->get()->map(function ($room) {
             return [
                 'id' => $room->id,
-                'room_number' => $room->room_number,
+                'room_name' => $room->room_name,
                 'capacity' => $room->capacity,
                 'schedules_count' => $room->schedules_count,
             ];
@@ -458,7 +458,7 @@ class ScheduleController extends Controller
             ])->get()->map(function ($schedule) {
                 return [
                     'id' => $schedule->id,
-                    'room' => $schedule->room ? $schedule->room->room_number : 'N/A',
+                    'room' => $schedule->room ? $schedule->room->room_name : 'N/A',
                     'subject' => $schedule->subject->name ?? 'N/A',
                     'teacher' => $schedule->teacher->name ?? 'N/A',
                     'day' => $schedule->day_of_week,
@@ -473,7 +473,7 @@ class ScheduleController extends Controller
         return Inertia::render('admin/enrollment/room-schedule/show', [
             'room' => [
                 'id' => $room->id,
-                'room_number' => $room->room_number,
+                'room_name' => $room->room_name,
                 'capacity' => $room->capacity,
             ],
             'schedules' => $schedules,

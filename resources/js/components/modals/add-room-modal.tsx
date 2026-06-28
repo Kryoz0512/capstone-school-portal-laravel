@@ -14,7 +14,7 @@ type AddRoomModalProps = {
 
 export default function AddRoomModal({ open, onOpenChange }: AddRoomModalProps) {
     const { data, setData, post, processing, errors, reset } = useForm({
-        room_number: '',
+        room_name: '',
         capacity: '',
         status: 'Available' as 'Available' | 'Vacant' | 'Occupied'
     })
@@ -22,9 +22,9 @@ export default function AddRoomModal({ open, onOpenChange }: AddRoomModalProps) 
     const [roomNumberError, setRoomNumberError] = useState('')
     const [isCheckingRoomNumber, setIsCheckingRoomNumber] = useState(false)
 
-    // Check room number availability
+    // Check room name availability
     useEffect(() => {
-        if (!data.room_number) {
+        if (!data.room_name) {
             setRoomNumberError('')
             return
         }
@@ -33,7 +33,7 @@ export default function AddRoomModal({ open, onOpenChange }: AddRoomModalProps) 
             setIsCheckingRoomNumber(true)
             try {
                 const response = await axios.post('/admin/enrollment/rooms/check-room-number', {
-                    room_number: data.room_number
+                    room_name: data.room_name
                 })
                 
                 if (!response.data.available) {
@@ -42,14 +42,14 @@ export default function AddRoomModal({ open, onOpenChange }: AddRoomModalProps) 
                     setRoomNumberError('')
                 }
             } catch (error) {
-                console.error('Error checking room number:', error)
+                console.error('Error checking room name:', error)
             } finally {
                 setIsCheckingRoomNumber(false)
             }
         }, 500)
 
         return () => clearTimeout(timeoutId)
-    }, [data.room_number])
+    }, [data.room_name])
 
     const handleSubmit = (e: React.ChangeEvent<HTMLFormElement>) => {
         e.preventDefault()
@@ -79,12 +79,12 @@ export default function AddRoomModal({ open, onOpenChange }: AddRoomModalProps) 
                 <form onSubmit={handleSubmit} className="space-y-4 mt-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Room Number <span className="text-red-500">*</span>
+                            Room Name <span className="text-red-500">*</span>
                         </label>
                         <Input
                             // required
-                            value={data.room_number}
-                            onChange={(e) => setData('room_number', e.target.value)}
+                            value={data.room_name}
+                            onChange={(e) => setData('room_name', e.target.value)}
                             placeholder="e.g., 101, 102, Lab-1"
                         />
                         {isCheckingRoomNumber && (
@@ -93,11 +93,11 @@ export default function AddRoomModal({ open, onOpenChange }: AddRoomModalProps) 
                         {roomNumberError && (
                             <p className="text-xs text-red-500 mt-1">{roomNumberError}</p>
                         )}
-                        <InputError message={errors.room_number}/>
-                        {/* {errors.room_number && (
-                            <p className="text-xs text-red-500 mt-1">{errors.room_number}</p>
+                        <InputError message={errors.room_name}/>
+                        {/* {errors.room_name && (
+                            <p className="text-xs text-red-500 mt-1">{errors.room_name}</p>
                         )} */}
-                        <p className="text-xs text-gray-500 mt-1">Enter the room number or identifier</p>
+                        <p className="text-xs text-gray-500 mt-1">Enter the room name or identifier</p>
                     </div>
 
                     <div>

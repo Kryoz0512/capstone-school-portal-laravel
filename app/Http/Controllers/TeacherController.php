@@ -586,7 +586,7 @@ class TeacherController extends Controller
                 'tbl_schedules.day_of_week',
                 'tbl_schedules.start_time',
                 'tbl_schedules.end_time',
-                'tbl_room.room_number as room',
+                'tbl_room.room_name as room',
                 'tbl_subjects.name as subject_name',
                 'tbl_class_sections.section_name',
                 'tbl_grade_levels.name as grade_level_name'

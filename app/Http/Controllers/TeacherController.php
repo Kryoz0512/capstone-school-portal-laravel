@@ -563,19 +563,14 @@ class TeacherController extends Controller
                 ->value('school_year') ?? date('Y') . '-' . (date('Y') + 1);
         }
 
-        // Get available school years
+        // Available school years
         $schoolYears = Student::select('school_year')
             ->distinct()
             ->orderBy('school_year', 'desc')
             ->pluck('school_year')
-            ->map(function ($year) {
-                return [
-                    'value' => $year,
-                    'label' => $year,
-                ];
-            });
+            ->map(fn($year) => ['value' => $year, 'label' => $year]);
 
-        // Get teacher's schedules
+        // Teacher's schedules
         $schedules = DB::table('tbl_schedules')
             ->join('tbl_subjects', 'tbl_schedules.subject_id', '=', 'tbl_subjects.id')
             ->join('tbl_class_sections', 'tbl_schedules.class_section_id', '=', 'tbl_class_sections.id')
@@ -594,7 +589,7 @@ class TeacherController extends Controller
             ->orderBy('tbl_schedules.start_time')
             ->get();
 
-        // Group schedules by time slots
+        // Group schedules by time slot
         $timeSlots = [];
         foreach ($schedules as $schedule) {
             $timeKey = $schedule->start_time . ' - ' . $schedule->end_time;
@@ -611,24 +606,35 @@ class TeacherController extends Controller
             }
 
             $dayKey = strtolower($schedule->day_of_week);
-            $timeSlots[$timeKey][$dayKey] = $schedule->subject_name . ' ' .
+            $timeSlots[$timeKey][$dayKey] =
+                $schedule->subject_name . ' ' .
                 $schedule->grade_level_name . '-' .
                 $schedule->section_name .
                 ($schedule->room ? "\n" . $schedule->room : '');
         }
 
-        // Convert to array and sort by time
         $scheduleData = array_values($timeSlots);
+
+        // Schedule pictures uploaded by admin
+        $schedulePictures = \App\Models\SchedulePicture::with('uploadedBy')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(fn($pic) => [
+                'id' => $pic->id,
+                'url' => asset('storage/' . $pic->file_path),
+                'label' => $pic->label,
+                'file_name' => $pic->file_name,
+                'uploaded_by' => $pic->uploadedBy?->name,
+                'uploaded_at' => $pic->created_at->timezone('Asia/Manila')->format('M d, Y h:i A'),
+            ]);
 
         return Inertia::render('teacher/schedule/page', [
             'schedules' => $scheduleData,
             'schoolYears' => $schoolYears,
-            'filters' => [
-                'school_year' => $schoolYear,
-            ],
+            'schedulePictures' => $schedulePictures,
+            'filters' => ['school_year' => $schoolYear],
         ]);
     }
-
     public function profile()
     {
         $user = Auth::user();

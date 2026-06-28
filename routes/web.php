@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\DB;
 use Laravel\Fortify\Features;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\SchedulePictureController;
 
 Route::get('/', function () {
     $slides = \App\Models\LoginSlide::where('is_active', true)
@@ -173,6 +174,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('admin/enrollment/schedules', [ScheduleController::class, 'store'])->name('admin.enrollment.schedules.store');
     Route::put('admin/enrollment/schedules/{schedule}', [ScheduleController::class, 'update'])->name('admin.enrollment.schedules.update');
     Route::delete('admin/enrollment/schedules/{schedule}', [ScheduleController::class, 'destroy'])->name('admin.enrollment.schedules.destroy');
+
+    Route::get('admin/enrollment/schedule-pictures', [SchedulePictureController::class, 'index'])
+        ->name('admin.enrollment.schedule-pictures.index');
+    Route::post('admin/enrollment/schedule-pictures', [SchedulePictureController::class, 'store'])
+        ->name('admin.enrollment.schedule-pictures.store');
+    Route::delete('admin/enrollment/schedule-pictures/{schedulePicture}', [SchedulePictureController::class, 'destroy'])
+        ->name('admin.enrollment.schedule-pictures.destroy');
 
     Route::get('admin/enrollment/adviser-management', [AdviserSectionController::class, 'index'])->name('admin.enrollment.adviser-management');
     Route::post('admin/enrollment/adviser-sections', [AdviserSectionController::class, 'store'])->name('admin.enrollment.adviser-sections.store');

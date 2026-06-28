@@ -882,7 +882,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                     </div>
 
                                     {/* Requirements notice */}
-                                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-xl p-4 mb-4">
+                                    {/* <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-xl p-4 mb-4">
                                         <div className="flex items-start gap-3">
                                             <div className="flex-shrink-0 w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center mt-0.5">
                                                 <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -918,50 +918,43 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    </div> */}
 
                                     <div className="space-y-4">
                                         {/* PSA Birth Certificate */}
-                                        <div className={`bg-white border-2 rounded-xl p-4 transition-colors ${activeTab === 'old' ? 'border-red-300 bg-gradient-to-br from-red-50 to-pink-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                                        <div className="bg-white border-2 border-gray-200 hover:border-gray-300 rounded-xl p-4 transition-colors">
                                             <div className="flex items-start gap-3">
                                                 <input
                                                     type="checkbox"
                                                     id="psa_birth_certificate"
                                                     checked={data.has_psa_birth_certificate}
                                                     onChange={(e) => setData('has_psa_birth_certificate', e.target.checked)}
-                                                    className={`mt-1 h-5 w-5 rounded border-gray-300 cursor-pointer ${activeTab === 'old' ? 'text-red-600 focus:ring-red-500' : 'text-gray-600 focus:ring-gray-500'}`}
+                                                    className="mt-1 h-5 w-5 rounded border-gray-300 text-gray-600 focus:ring-gray-500 cursor-pointer"
                                                 />
                                                 <label htmlFor="psa_birth_certificate" className="flex-1 cursor-pointer">
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <span className="text-sm font-semibold text-gray-900">PSA Birth Certificate</span>
-                                                        {activeTab === 'old' && (
-                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Required</span>
-                                                        )}
                                                     </div>
                                                     <p className="text-xs text-gray-600">
-                                                        {activeTab === 'old'
-                                                            ? 'Original or certified true copy from PSA'
-                                                            : 'Original or certified true copy from PSA (can be submitted as follow-up)'}
+                                                        Original or certified true copy from PSA (can be submitted as follow-up)
                                                     </p>
                                                 </label>
                                             </div>
-                                            {errors.has_psa_birth_certificate && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_psa_birth_certificate}</p>}
                                         </div>
 
-                                        {/* Form 138 (SF9) */}
-                                        <div className="bg-white border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl p-4 transition-colors">
+                                        {/* Form 137 (SF9) */}
+                                        <div className="bg-white border-2 border-gray-200 hover:border-gray-300 rounded-xl p-4 transition-colors">
                                             <div className="flex items-start gap-3">
                                                 <input
                                                     type="checkbox"
                                                     id="sf9"
                                                     checked={data.has_sf9}
                                                     onChange={(e) => setData('has_sf9', e.target.checked)}
-                                                    className="mt-1 h-5 w-5 rounded border-gray-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+                                                    className="mt-1 h-5 w-5 rounded border-gray-300 text-gray-600 focus:ring-gray-500 cursor-pointer"
                                                 />
                                                 <label htmlFor="sf9" className="flex-1 cursor-pointer">
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <span className="text-sm font-semibold text-gray-900">Form 137 (SF9)</span>
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Optional But Submit ASAP</span>
                                                     </div>
                                                     <p className="text-xs text-gray-600">Learner's Permanent Academic Record — not required at enrollment but must be submitted as soon as possible</p>
                                                 </label>
@@ -969,20 +962,20 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                             {errors.has_sf9 && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_sf9}</p>}
                                         </div>
 
+                                        {/* Form 138 (Report Card) */}
                                         {/* Form 137 (Report Card) */}
-                                        <div className="bg-white border-2 border-red-300 bg-gradient-to-br from-red-50 to-pink-50 rounded-xl p-4 transition-colors">
+                                        <div className="bg-white border-2 border-gray-200 hover:border-gray-300 rounded-xl p-4 transition-colors">
                                             <div className="flex items-start gap-3">
                                                 <input
                                                     type="checkbox"
                                                     id="report_card"
                                                     checked={data.has_report_card}
                                                     onChange={(e) => setData('has_report_card', e.target.checked)}
-                                                    className="mt-1 h-5 w-5 rounded border-gray-300 text-red-600 focus:ring-red-500 cursor-pointer"
+                                                    className="mt-1 h-5 w-5 rounded border-gray-300 text-gray-600 focus:ring-gray-500 cursor-pointer"
                                                 />
                                                 <label htmlFor="report_card" className="flex-1 cursor-pointer">
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <span className="text-sm font-semibold text-gray-900">Form 138 (Report Card)</span>
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Required</span>
                                                     </div>
                                                     <p className="text-xs text-gray-600">Official learner's permanent academic record / report card</p>
                                                 </label>
@@ -991,30 +984,24 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                         </div>
 
                                         {/* Good Moral Certificate */}
-                                        <div className={`bg-white border-2 rounded-xl p-4 transition-colors ${activeTab === 'transferee' || activeTab === 'old' ? 'border-purple-300 bg-gradient-to-br from-purple-50 to-pink-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                                        <div className="bg-white border-2 border-gray-200 hover:border-gray-300 rounded-xl p-4 transition-colors">
                                             <div className="flex items-start gap-3">
                                                 <input
                                                     type="checkbox"
                                                     id="good_moral"
                                                     checked={data.has_good_moral}
                                                     onChange={(e) => setData('has_good_moral', e.target.checked)}
-                                                    className={`mt-1 h-5 w-5 rounded border-gray-300 cursor-pointer ${activeTab === 'transferee' || activeTab === 'old' ? 'text-purple-600 focus:ring-purple-500' : 'text-gray-600 focus:ring-gray-500'}`}
+                                                    className="mt-1 h-5 w-5 rounded border-gray-300 text-gray-600 focus:ring-gray-500 cursor-pointer"
                                                 />
                                                 <label htmlFor="good_moral" className="flex-1 cursor-pointer">
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <span className="text-sm font-semibold text-gray-900">Good Moral Certificate</span>
-                                                        {(activeTab === 'transferee' || activeTab === 'old') && (
-                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Required</span>
-                                                        )}
                                                     </div>
                                                     <p className="text-xs text-gray-600">
-                                                        {(activeTab === 'transferee' || activeTab === 'old')
-                                                            ? 'Certificate of Good Moral Character from previous school'
-                                                            : 'Certificate of Good Moral Character from previous school (can be submitted as follow-up)'}
+                                                        Certificate of Good Moral Character from previous school (can be submitted as follow-up)
                                                     </p>
                                                 </label>
                                             </div>
-                                            {errors.has_good_moral && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_good_moral}</p>}
                                         </div>
                                     </div>
                                 </div>

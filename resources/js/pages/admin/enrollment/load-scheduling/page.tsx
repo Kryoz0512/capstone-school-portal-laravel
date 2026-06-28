@@ -1,10 +1,10 @@
-import { Head, router } from '@inertiajs/react'
+import { Head, router, useForm } from '@inertiajs/react'
 import AdminLayout from '@/layouts/admin-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ChevronRight, ChevronLeft, Search } from 'lucide-react'
-import { useState, useMemo } from 'react'
+import { ChevronRight, ChevronLeft, Search, Upload, Trash2, Image, X } from 'lucide-react'
+import { useState, useMemo, useRef } from 'react'
 
 type Teacher = {
     id: number
@@ -13,6 +13,15 @@ type Teacher = {
     subject: string
     position: string
     schedules_count: number
+}
+
+type SchedulePicture = {
+    id: number
+    url: string
+    label: string | null
+    file_name: string
+    uploaded_by: string | null
+    uploaded_at: string
 }
 
 type Props = {
@@ -29,14 +38,26 @@ type Props = {
         }
     }
     teachers: Teacher[]
+    schedulePictures: SchedulePicture[]
 }
 
-export default function LoadScheduling({ auth, teachers = [] }: Props) {
+export default function LoadScheduling({ auth, teachers = [], schedulePictures = [] }: Props) {
     const [searchQuery, setSearchQuery] = useState('')
     const [specializationFilter, setSpecializationFilter] = useState('all')
     const [positionFilter, setPositionFilter] = useState('all')
     const [currentPage, setCurrentPage] = useState(1)
     const [itemsPerPage, setItemsPerPage] = useState(10)
+    const [showUploadPanel, setShowUploadPanel] = useState(false)
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+    const fileInputRef = useRef<HTMLInputElement>(null)
+
+    const { data, setData, post, processing, reset, errors } = useForm<{
+        schedule_picture: File | null
+        label: string
+    }>({
+        schedule_picture: null,
+        label: '',
+    })
 
     // Get unique specializations
     const specializations = useMemo(() => {
@@ -53,7 +74,7 @@ export default function LoadScheduling({ auth, teachers = [] }: Props) {
     // Filter teachers
     const filteredTeachers = useMemo(() => {
         return teachers.filter(teacher => {
-            const matchesSearch = 
+            const matchesSearch =
                 teacher.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 teacher.employee_number.toLowerCase().includes(searchQuery.toLowerCase())
             const matchesSpecialization = specializationFilter === 'all' || teacher.subject === specializationFilter
@@ -68,13 +89,51 @@ export default function LoadScheduling({ auth, teachers = [] }: Props) {
     const endIndex = startIndex + itemsPerPage
     const paginatedTeachers = filteredTeachers.slice(startIndex, endIndex)
 
-    // Reset to page 1 when filters or itemsPerPage change
     useMemo(() => {
         setCurrentPage(1)
     }, [searchQuery, specializationFilter, positionFilter, itemsPerPage])
 
     const handleTeacherClick = (teacherId: number) => {
         router.visit(`/admin/enrollment/load-scheduling/${teacherId}`)
+    }
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        setData('schedule_picture', file)
+        const reader = new FileReader()
+        reader.onloadend = () => setPreviewUrl(reader.result as string)
+        reader.readAsDataURL(file)
+    }
+
+    const handleUploadSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        const formData = new FormData()
+        if (data.schedule_picture) formData.append('schedule_picture', data.schedule_picture)
+        formData.append('label', data.label)
+
+        post('/admin/enrollment/schedule-pictures', {
+            forceFormData: true,
+            onSuccess: () => {
+                reset()
+                setPreviewUrl(null)
+                if (fileInputRef.current) fileInputRef.current.value = ''
+                setShowUploadPanel(false)
+            },
+        })
+    }
+
+    const handleDelete = (pictureId: number) => {
+        if (!confirm('Are you sure you want to delete this schedule picture?')) return
+        router.delete(`/admin/enrollment/schedule-pictures/${pictureId}`, {
+            preserveScroll: true,
+        })
+    }
+
+    const clearPreview = () => {
+        setData('schedule_picture', null)
+        setPreviewUrl(null)
+        if (fileInputRef.current) fileInputRef.current.value = ''
     }
 
     return (
@@ -89,7 +148,163 @@ export default function LoadScheduling({ auth, teachers = [] }: Props) {
                             Select a teacher to view and manage their class schedules
                         </p>
                     </div>
+                    {/* Upload Schedule Picture button */}
+                    <Button
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                        onClick={() => setShowUploadPanel(prev => !prev)}
+                    >
+                        <Image className="w-4 h-4 mr-2" />
+                        {showUploadPanel ? 'Hide Upload Panel' : 'Upload Schedule Picture'}
+                    </Button>
                 </div>
+
+                {/* ── Schedule Picture Upload Panel ── */}
+                {showUploadPanel && (
+                    <div className="bg-white rounded-lg border border-green-200 shadow-sm overflow-hidden">
+                        <div className="px-6 py-4 bg-gradient-to-r from-green-50 to-white border-b border-green-200 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Image className="w-5 h-5 text-green-600" />
+                                <h2 className="text-lg font-semibold text-gray-900">Schedule Pictures</h2>
+                            </div>
+                            <button onClick={() => setShowUploadPanel(false)} className="text-gray-400 hover:text-gray-600">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-6">
+                            {/* Upload Form */}
+                            <form onSubmit={handleUploadSubmit} className="space-y-4">
+                                <p className="text-sm text-gray-600">
+                                    Upload a schedule picture that all teachers will be able to view on their Schedule page under the <strong>Photo</strong> tab.
+                                </p>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                                    {/* File picker */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Picture <span className="text-red-500">*</span>
+                                        </label>
+                                        <div
+                                            className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-green-400 transition-colors"
+                                            onClick={() => fileInputRef.current?.click()}
+                                        >
+                                            {previewUrl ? (
+                                                <div className="relative">
+                                                    <img
+                                                        src={previewUrl}
+                                                        alt="Preview"
+                                                        className="max-h-48 mx-auto rounded object-contain"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={e => { e.stopPropagation(); clearPreview() }}
+                                                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600"
+                                                    >
+                                                        <X className="w-3 h-3" />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="py-4">
+                                                    <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                                                    <p className="text-sm text-gray-500">Click to select image</p>
+                                                    <p className="text-xs text-gray-400 mt-1">JPEG, PNG, WebP · max 5 MB</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <input
+                                            ref={fileInputRef}
+                                            type="file"
+                                            accept="image/jpeg,image/jpg,image/png,image/webp"
+                                            className="hidden"
+                                            onChange={handleFileChange}
+                                        />
+                                        {errors.schedule_picture && (
+                                            <p className="text-xs text-red-500 mt-1">{errors.schedule_picture}</p>
+                                        )}
+                                    </div>
+
+                                    {/* Label */}
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Label <span className="text-gray-400">(optional)</span>
+                                            </label>
+                                            <Input
+                                                value={data.label}
+                                                onChange={e => setData('label', e.target.value)}
+                                                placeholder="e.g. SY 2025-2026 Schedule"
+                                                className="h-11"
+                                            />
+                                        </div>
+
+                                        <Button
+                                            type="submit"
+                                            className="w-full bg-green-600 hover:bg-green-700 text-white h-11"
+                                            disabled={processing || !data.schedule_picture}
+                                        >
+                                            {processing ? (
+                                                <>
+                                                    <svg className="animate-spin w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                                    </svg>
+                                                    Uploading...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Upload className="w-4 h-4 mr-2" />
+                                                    Upload Picture
+                                                </>
+                                            )}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </form>
+
+                            {/* Existing Pictures */}
+                            {schedulePictures.length > 0 && (
+                                <div>
+                                    <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                                        Uploaded Pictures ({schedulePictures.length})
+                                    </h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {schedulePictures.map(pic => (
+                                            <div
+                                                key={pic.id}
+                                                className="border border-gray-200 rounded-lg overflow-hidden group relative"
+                                            >
+                                                <img
+                                                    src={pic.url}
+                                                    alt={pic.label ?? pic.file_name}
+                                                    className="w-full h-40 object-cover"
+                                                />
+                                                <div className="p-2 bg-white">
+                                                    <p className="text-xs font-medium text-gray-800 truncate">
+                                                        {pic.label || pic.file_name}
+                                                    </p>
+                                                    <p className="text-xs text-gray-400">{pic.uploaded_at}</p>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleDelete(pic.id)}
+                                                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                                                    title="Delete"
+                                                >
+                                                    <Trash2 className="w-3 h-3" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {schedulePictures.length === 0 && (
+                                <p className="text-sm text-gray-400 text-center py-4">
+                                    No schedule pictures uploaded yet.
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                )}
 
                 {/* Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -155,9 +370,7 @@ export default function LoadScheduling({ auth, teachers = [] }: Props) {
                     {filteredTeachers.length === 0 ? (
                         <div className="p-8 text-center">
                             <p className="text-lg font-medium text-gray-900 mb-2">No Teachers Found</p>
-                            <p className="text-sm text-gray-500">
-                                No teachers match your search criteria.
-                            </p>
+                            <p className="text-sm text-gray-500">No teachers match your search criteria.</p>
                         </div>
                     ) : (
                         <>
@@ -208,8 +421,8 @@ export default function LoadScheduling({ auth, teachers = [] }: Props) {
                                     <div className="flex items-center gap-4">
                                         <div className="flex items-center gap-2">
                                             <span className="text-sm text-gray-600">Show</span>
-                                            <Select 
-                                                value={itemsPerPage.toString()} 
+                                            <Select
+                                                value={itemsPerPage.toString()}
                                                 onValueChange={(value) => setItemsPerPage(Number(value))}
                                             >
                                                 <SelectTrigger className="w-20">
@@ -237,7 +450,7 @@ export default function LoadScheduling({ auth, teachers = [] }: Props) {
                                         >
                                             <ChevronLeft className="w-4 h-4" />
                                         </Button>
-                                        
+
                                         <div className="flex items-center gap-1">
                                             {Array.from({ length: totalPages || 1 }, (_, i) => i + 1).map((page) => {
                                                 if (
@@ -248,18 +461,15 @@ export default function LoadScheduling({ auth, teachers = [] }: Props) {
                                                     return (
                                                         <Button
                                                             key={page}
-                                                            variant={currentPage === page ? "default" : "outline"}
+                                                            variant={currentPage === page ? 'default' : 'outline'}
                                                             size="sm"
                                                             onClick={() => setCurrentPage(page)}
-                                                            className={currentPage === page ? "bg-green-600 hover:bg-green-700" : ""}
+                                                            className={currentPage === page ? 'bg-green-600 hover:bg-green-700' : ''}
                                                         >
                                                             {page}
                                                         </Button>
                                                     )
-                                                } else if (
-                                                    page === currentPage - 2 ||
-                                                    page === currentPage + 2
-                                                ) {
+                                                } else if (page === currentPage - 2 || page === currentPage + 2) {
                                                     return <span key={page} className="px-2">...</span>
                                                 }
                                                 return null

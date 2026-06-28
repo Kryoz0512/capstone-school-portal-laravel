@@ -1,67 +1,61 @@
 import { Link } from '@inertiajs/react'
 import {
     LayoutDashboard,
-    Calendar,
-    BookOpen,
-    FileText,
     FileSpreadsheet,
-    GraduationCap
+    Users,
+    FileText,
+    Calendar,
+    File,
+    GraduationCap,
+    BookOpen,
 } from 'lucide-react'
 
-type SidebarProps = {
-    currentPath?: string
-    user?: {
-        name: string
-        email: string
-        role: string
-    }
-    student?: {
-        first_name: string
-        last_name: string
-        grade_level?: string
-    }
-}
-
 const navItems = [
-    { href: '/student/dashboard',         label: 'Dashboard',         Icon: LayoutDashboard },
-    { href: '/student/clearance',         label: 'Student Clearance', Icon: FileText },
-    { href: '/student/enrolled-subjects', label: 'Enrolled Subjects', Icon: BookOpen },
-    { href: '/student/schedule',          label: 'Student Schedule',  Icon: Calendar },
-    { href: '/student/report-card',       label: 'Report Card',       Icon: FileSpreadsheet },
+    { href: '/teacher/dashboard',         label: 'Dashboard',         Icon: LayoutDashboard },
+    { href: '/teacher/grade-sheets',      label: 'Grade Sheets',      Icon: FileSpreadsheet },
+    { href: '/teacher/class-list',        label: 'Class List',        Icon: Users },
+    { href: '/teacher/final-report',      label: 'Final Report',      Icon: FileText },
+    { href: '/teacher/schedule',          label: 'Schedule',          Icon: Calendar },
+    { href: '/teacher/documents',         label: 'Documents',         Icon: File },
+    { href: '/teacher/student-clearance', label: 'Student Clearance', Icon: GraduationCap },
 ]
 
 export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
-    const getCurrentPath = () =>
-        typeof window !== 'undefined' ? window.location.pathname : ''
-    const isActive = (path: string) => getCurrentPath() === path
+    const currentPath = typeof window !== 'undefined' ? window.location.pathname : ''
+    const isActive = (path: string) => currentPath === path
 
     return (
-        <div className="flex flex-col h-full text-white bg-gradient-to-b from-purple-900 via-purple-800 to-purple-900">
-            <div className="p-6 bg-gradient-to-r from-purple-800/50 to-purple-700/30 border-b border-purple-700/50">
+        <div className="flex flex-col h-full text-white bg-gradient-to-b from-blue-900 via-blue-800 to-blue-900">
+            {/* Logo / Brand */}
+            <div className="p-6 bg-gradient-to-r from-blue-800/50 to-blue-700/30 border-b border-blue-700/50">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shrink-0">
-                        <GraduationCap className="w-5 h-5 text-white" />
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shrink-0">
+                        <BookOpen className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                        <h2 className="text-lg font-bold text-white tracking-wide">Student Portal</h2>
-                        <p className="text-xs text-purple-200">Learning System</p>
+                        <h2 className="text-lg font-bold tracking-wide">Teacher Portal</h2>
+                        <p className="text-xs text-blue-200">Education System</p>
                     </div>
                 </div>
             </div>
-            <nav className="flex-1 py-4 overflow-y-auto px-3 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-purple-900/20">
+
+            {/* Nav */}
+            <nav className="flex-1 py-4 px-3 overflow-y-auto">
                 {navItems.map(({ href, label, Icon }) => (
                     <Link
                         key={href}
                         href={href}
                         onClick={onNavigate}
-                        className={`flex items-center gap-3 px-4 py-3 mb-1 rounded-xl transition-all duration-300 group ${
+                        className={`flex items-center gap-3 px-4 py-3 mb-1 rounded-xl transition-all duration-200 group ${
                             isActive(href)
-                                ? 'bg-gradient-to-r from-purple-600 to-purple-500 text-white shadow-lg shadow-purple-500/30 scale-[1.02]'
-                                : 'text-purple-100 hover:bg-purple-700/50 hover:translate-x-1'
+                                ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/30 scale-[1.02]'
+                                : 'text-blue-100 hover:bg-blue-700/50 hover:translate-x-1'
                         }`}
                     >
-                        <div className={`p-2 rounded-lg transition-all duration-300 ${
-                            isActive(href) ? 'bg-white/20' : 'bg-purple-700/30 group-hover:bg-purple-600/40'
+                        <div className={`p-2 rounded-lg transition-all duration-200 ${
+                            isActive(href)
+                                ? 'bg-white/20'
+                                : 'bg-blue-700/30 group-hover:bg-blue-600/40'
                         }`}>
                             <Icon className="w-4 h-4" />
                         </div>
@@ -73,10 +67,10 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
     )
 }
 
-export default function StudentSidebar({ user, student }: SidebarProps) {
-    // Desktop-only sidebar. Mobile navigation is handled by StudentHeader's Sheet.
+export default function TeacherSidebar() {
+    // Desktop-only. Mobile navigation is handled by the Sheet inside TeacherHeader.
     return (
-        <aside className="hidden lg:flex w-72 shrink-0 fixed left-0 top-0 h-screen flex-col shadow-2xl border-r border-purple-700/50 z-30">
+        <aside className="hidden lg:flex w-72 shrink-0 fixed left-0 top-0 h-screen flex-col shadow-2xl border-r border-blue-700/50 z-30">
             <SidebarContent />
         </aside>
     )

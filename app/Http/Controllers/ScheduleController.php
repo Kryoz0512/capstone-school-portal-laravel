@@ -28,17 +28,31 @@ class ScheduleController extends Controller
             ];
         });
 
-        $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
+        // Pass schedule pictures so admin can manage them on this page
+        $schedulePictures = \App\Models\SchedulePicture::with('uploadedBy')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($pic) {
+                return [
+                    'id' => $pic->id,
+                    'url' => asset('storage/' . $pic->file_path),
+                    'label' => $pic->label,
+                    'file_name' => $pic->file_name,
+                    'uploaded_by' => $pic->uploadedBy?->name,
+                    'uploaded_at' => $pic->created_at->timezone('Asia/Manila')->format('M d, Y h:i A'),
+                ];
+            });
 
         return Inertia::render('admin/enrollment/load-scheduling/page', [
             'teachers' => $teachers,
+            'schedulePictures' => $schedulePictures,
         ]);
     }
 
     public function show($id)
     {
         $teacher = Teacher::findOrFail($id);
-        
+
         // Get teacher's schedules
         $schedules = Schedule::where('teacher_id', $id)
             ->with(['classSection.gradeLevel', 'subject', 'room'])
@@ -114,7 +128,7 @@ class ScheduleController extends Controller
     public function create($teacherId)
     {
         $teacher = Teacher::findOrFail($teacherId);
-        
+
         $classSections = ClassSection::with('gradeLevel')->get()->map(function ($section) {
             return [
                 'id' => $section->id,
@@ -165,7 +179,7 @@ class ScheduleController extends Controller
     public function edit($scheduleId)
     {
         $schedule = Schedule::with(['teacher', 'classSection.gradeLevel', 'subject', 'room'])->findOrFail($scheduleId);
-        
+
         $classSections = ClassSection::with('gradeLevel')->get()->map(function ($section) {
             return [
                 'id' => $section->id,
@@ -256,7 +270,7 @@ class ScheduleController extends Controller
                 // Check if new schedule overlaps with existing schedule
                 // Overlap occurs if: (new_start < existing_end) AND (new_end > existing_start)
                 $query->where('start_time', '<', $validated['end_time'])
-                      ->where('end_time', '>', $validated['start_time']);
+                    ->where('end_time', '>', $validated['start_time']);
             })
             ->with(['teacher', 'classSection.gradeLevel', 'subject'])
             ->first();
@@ -275,7 +289,7 @@ class ScheduleController extends Controller
                 ->where(function ($query) use ($validated) {
                     // Check if new schedule overlaps with existing schedule
                     $query->where('start_time', '<', $validated['end_time'])
-                          ->where('end_time', '>', $validated['start_time']);
+                        ->where('end_time', '>', $validated['start_time']);
                 })
                 ->with(['room', 'classSection.gradeLevel', 'subject'])
                 ->first();
@@ -294,7 +308,7 @@ class ScheduleController extends Controller
             ->where(function ($query) use ($validated) {
                 // Check if new schedule overlaps with existing schedule
                 $query->where('start_time', '<', $validated['end_time'])
-                      ->where('end_time', '>', $validated['start_time']);
+                    ->where('end_time', '>', $validated['start_time']);
             })
             ->with(['classSection.gradeLevel', 'subject', 'teacher'])
             ->first();
@@ -344,7 +358,7 @@ class ScheduleController extends Controller
                 // Check if new schedule overlaps with existing schedule
                 $query->where(function ($q) use ($validated) {
                     $q->where('start_time', '<', $validated['end_time'])
-                      ->where('end_time', '>', $validated['start_time']);
+                        ->where('end_time', '>', $validated['start_time']);
                 });
             })
             ->with(['teacher', 'classSection.gradeLevel', 'subject'])
@@ -366,7 +380,7 @@ class ScheduleController extends Controller
                     // Check if new schedule overlaps with existing schedule
                     $query->where(function ($q) use ($validated) {
                         $q->where('start_time', '<', $validated['end_time'])
-                          ->where('end_time', '>', $validated['start_time']);
+                            ->where('end_time', '>', $validated['start_time']);
                     });
                 })
                 ->with(['room', 'classSection.gradeLevel', 'subject'])
@@ -388,7 +402,7 @@ class ScheduleController extends Controller
                 // Check if new schedule overlaps with existing schedule
                 $query->where(function ($q) use ($validated) {
                     $q->where('start_time', '<', $validated['end_time'])
-                      ->where('end_time', '>', $validated['start_time']);
+                        ->where('end_time', '>', $validated['start_time']);
                 });
             })
             ->with(['classSection.gradeLevel', 'subject', 'teacher'])
@@ -448,7 +462,7 @@ class ScheduleController extends Controller
     public function showRoomSchedule($roomId)
     {
         $room = Room::findOrFail($roomId);
-        
+
         $schedules = Schedule::where('room_id', $roomId)
             ->with([
                 'classSection.gradeLevel',

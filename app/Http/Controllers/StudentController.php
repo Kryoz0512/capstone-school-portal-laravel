@@ -630,37 +630,34 @@ class StudentController extends Controller
             'grade_level_id' => 'nullable|exists:tbl_grade_levels,id',
             'has_psa_birth_certificate' => 'nullable|boolean',
             'has_sf9' => 'nullable|boolean',
-            'has_report_card' => 'required|accepted',
+            'has_report_card' => 'nullable|boolean',
             'has_good_moral' => 'nullable|boolean',
-        ];
-
-        $messages = [
-            'has_report_card.required' => 'Form 138 (Report Card) is required when enrolling.',
-            'has_report_card.accepted' => 'Form 138 (Report Card) must be submitted.',
         ];
 
         // Conditional validation based on student status
         $studentStatus = $request->input('student_status');
 
         // For returning students (old): PSA Birth Certificate and Good Moral are required
-        if ($studentStatus === 'returning') {
-            $rules['has_psa_birth_certificate'] = 'required|accepted';
-            $rules['has_good_moral'] = 'required|accepted';
-            $messages['has_psa_birth_certificate.required'] = 'PSA Birth Certificate is required for returning students.';
-            $messages['has_psa_birth_certificate.accepted'] = 'PSA Birth Certificate must be submitted for returning students.';
-            $messages['has_good_moral.required'] = 'Good Moral Certificate is required for returning students.';
-            $messages['has_good_moral.accepted'] = 'Good Moral Certificate must be submitted for returning students.';
-        }
+        // if ($studentStatus === 'returning') {
+        //     $rules['has_psa_birth_certificate'] = 'required|accepted';
+        //     $rules['has_good_moral'] = 'required|accepted';
+        //     $messages['has_psa_birth_certificate.required'] = 'PSA Birth Certificate is required for returning students.';
+        //     $messages['has_psa_birth_certificate.accepted'] = 'PSA Birth Certificate must be submitted for returning students.';
+        //     $messages['has_good_moral.required'] = 'Good Moral Certificate is required for returning students.';
+        //     $messages['has_good_moral.accepted'] = 'Good Moral Certificate must be submitted for returning students.';
+        // }
 
-        // For transferees: Good Moral is required
-        if ($studentStatus === 'transferee') {
-            $rules['has_good_moral'] = 'required|accepted';
-            $messages['has_good_moral.required'] = 'Good Moral Certificate is required for transferee students.';
-            $messages['has_good_moral.accepted'] = 'Good Moral Certificate must be submitted for transferee students.';
-        }
+        // // For transferees: Good Moral is required
+        // if ($studentStatus === 'transferee') {
+        //     $rules['has_good_moral'] = 'required|accepted';
+        //     $messages['has_good_moral.required'] = 'Good Moral Certificate is required for transferee students.';
+        //     $messages['has_good_moral.accepted'] = 'Good Moral Certificate must be submitted for transferee students.';
+        // }
 
-        $validated = $request->validate($rules, $messages);
+        // $validated = $request->validate($rules, $messages);
 
+        $validated = $request->validate($rules);
+        
         DB::beginTransaction();
         try {
             // Check if student with this LRN already exists
@@ -1222,11 +1219,11 @@ class StudentController extends Controller
                     continue;
                 }
 
-                if (!$hasReportCard) {
-                    $errors[] = "Row {$rowNum}: Form 138 (Report Card) is required.";
-                    $errorCount++;
-                    continue;
-                }
+                // if (!$hasReportCard) {
+                //     $errors[] = "Row {$rowNum}: Form 138 (Report Card) is required.";
+                //     $errorCount++;
+                //     continue;
+                // }
 
                 if (strlen($lrn) !== 12 || !ctype_digit($lrn)) {
                     $errors[] = "Row {$rowNum}: LRN '{$lrn}' must be exactly 12 digits.";

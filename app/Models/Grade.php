@@ -9,6 +9,10 @@ class Grade extends Model
 {
     use HasFactory;
 
+    public const TERM_COUNT = 3;
+
+    public const TERM_COLUMNS = ['term_1', 'term_2', 'term_3'];
+
     protected $table = 'tbl_grades';
 
     protected $fillable = [
@@ -17,10 +21,9 @@ class Grade extends Model
         'school_year',
         'subject_id',
         'teacher_id',
-        'quarter_1',
-        'quarter_2',
-        'quarter_3',
-        'quarter_4',
+        'term_1',
+        'term_2',
+        'term_3',
         'final_grade',
         'remarks',
     ];
@@ -28,11 +31,24 @@ class Grade extends Model
     protected function casts(): array
     {
         return [
-            'quarter_1'   => 'decimal:2',
-            'quarter_2'   => 'decimal:2',
-            'quarter_3'   => 'decimal:2',
-            'quarter_4'   => 'decimal:2',
+            'term_1'      => 'decimal:2',
+            'term_2'      => 'decimal:2',
+            'term_3'      => 'decimal:2',
             'final_grade' => 'decimal:2',
+        ];
+    }
+
+    public static function termColumn(int|string $term): string
+    {
+        return 'term_' . $term;
+    }
+
+    public static function termValues(self $grade): array
+    {
+        return [
+            $grade->term_1,
+            $grade->term_2,
+            $grade->term_3,
         ];
     }
 

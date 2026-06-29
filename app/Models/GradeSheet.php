@@ -21,7 +21,7 @@ class GradeSheet extends Model
         'subject_id',
         'teacher_id',
         'school_year',
-        'quarter',
+        'term',
         'grade',
         'remarks',
         'notes',
@@ -83,11 +83,11 @@ class GradeSheet extends Model
     }
 
     /**
-     * Scope to filter by quarter.
+     * Scope to filter by term.
      */
-    public function scopeQuarter($query, $quarter)
+    public function scopeTerm($query, $term)
     {
-        return $query->where('quarter', $quarter);
+        return $query->where('term', $term);
     }
 
     /**

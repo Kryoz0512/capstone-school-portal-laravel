@@ -302,10 +302,9 @@ class StudentController extends Controller
                     'tbl_grades.id',
                     'tbl_subjects.name as subject',
                     'tbl_teachers.name as teacher',
-                    'tbl_grades.quarter_1',
-                    'tbl_grades.quarter_2',
-                    'tbl_grades.quarter_3',
-                    'tbl_grades.quarter_4',
+                    'tbl_grades.term_1',
+                    'tbl_grades.term_2',
+                    'tbl_grades.term_3',
                     'tbl_grades.final_grade'
                 )
                 ->get()
@@ -321,10 +320,9 @@ class StudentController extends Controller
                         'id' => $grade->id,
                         'subject' => $grade->subject,
                         'teacher' => $grade->teacher,
-                        'quarter1' => $formatGrade($grade->quarter_1),
-                        'quarter2' => $formatGrade($grade->quarter_2),
-                        'quarter3' => $formatGrade($grade->quarter_3),
-                        'quarter4' => $formatGrade($grade->quarter_4),
+                        'term1' => $formatGrade($grade->term_1),
+                        'term2' => $formatGrade($grade->term_2),
+                        'term3' => $formatGrade($grade->term_3),
                         'finalGrade' => $formatGrade($grade->final_grade),
                     ];
                 });

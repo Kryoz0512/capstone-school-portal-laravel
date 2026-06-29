@@ -11,10 +11,9 @@ type SubjectGrade = {
     subject_code: string | null
     subject_name: string
     teacher_name: string
-    quarter_1: number | null
-    quarter_2: number | null
-    quarter_3: number | null
-    quarter_4: number | null
+    term_1: number | null
+    term_2: number | null
+    term_3: number | null
     final_grade: number | null
     remarks: string | null
 }
@@ -117,10 +116,9 @@ export default function StudentAcademicRecord({ student, academic_record, grade_
         const total = subjects.length
         const completed = subjects.filter(
             s =>
-                s.quarter_1 !== null &&
-                s.quarter_2 !== null &&
-                s.quarter_3 !== null &&
-                s.quarter_4 !== null &&
+                s.term_1 !== null &&
+                s.term_2 !== null &&
+                s.term_3 !== null &&
                 s.final_grade !== null
         ).length
         return { completed, total }
@@ -147,7 +145,7 @@ export default function StudentAcademicRecord({ student, academic_record, grade_
     // Derive a human-readable reason why promotion is blocked
     const getBlockReason = (record: GradeLevelRecord): string => {
         if (!record.all_grades_complete) {
-            return 'Complete all quarterly and final grades for every subject to enable promotion.'
+            return 'Complete all term and final grades for every subject to enable promotion.'
         }
         if (record.remarks === 'Failed') {
             return 'Student must pass this grade level before promotion.'
@@ -343,10 +341,9 @@ export default function StudentAcademicRecord({ student, academic_record, grade_
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Code</th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Subject</th>
                                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">Teacher</th>
-                                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">Q1</th>
-                                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">Q2</th>
-                                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">Q3</th>
-                                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">Q4</th>
+                                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">T1</th>
+                                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">T2</th>
+                                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">T3</th>
                                             <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">Final Grade</th>
                                             <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider">Remarks</th>
                                         </tr>
@@ -357,10 +354,9 @@ export default function StudentAcademicRecord({ student, academic_record, grade_
                                                 <td className="px-6 py-4 text-sm text-gray-600">{subject.subject_code ?? '-'}</td>
                                                 <td className="px-6 py-4 text-sm font-medium text-gray-900">{subject.subject_name}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-600">{subject.teacher_name}</td>
-                                                <td className="px-6 py-4 text-sm text-center text-gray-900">{subject.quarter_1 ?? '-'}</td>
-                                                <td className="px-6 py-4 text-sm text-center text-gray-900">{subject.quarter_2 ?? '-'}</td>
-                                                <td className="px-6 py-4 text-sm text-center text-gray-900">{subject.quarter_3 ?? '-'}</td>
-                                                <td className="px-6 py-4 text-sm text-center text-gray-900">{subject.quarter_4 ?? '-'}</td>
+                                                <td className="px-6 py-4 text-sm text-center text-gray-900">{subject.term_1 ?? '-'}</td>
+                                                <td className="px-6 py-4 text-sm text-center text-gray-900">{subject.term_2 ?? '-'}</td>
+                                                <td className="px-6 py-4 text-sm text-center text-gray-900">{subject.term_3 ?? '-'}</td>
                                                 <td className="px-6 py-4 text-sm text-center font-bold text-gray-900">{subject.final_grade ?? '-'}</td>
                                                 <td className="px-6 py-4 text-center">
                                                     {subject.remarks ? (

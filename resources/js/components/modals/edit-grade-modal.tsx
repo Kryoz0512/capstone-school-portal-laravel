@@ -21,7 +21,7 @@ type EditGradeModalProps = {
     filters: {
         section_id: number | null
         subject_id: number | null
-        quarter: string
+        term: string
         school_year: string
     }
 }
@@ -31,7 +31,7 @@ export default function EditGradeModal({ open, onOpenChange, student, filters }:
         student_id: 0,
         class_section_id: 0,
         subject_id: 0,
-        quarter: '',
+        term: '',
         school_year: '',
         grade: ''
     })
@@ -43,7 +43,7 @@ export default function EditGradeModal({ open, onOpenChange, student, filters }:
                 student_id: student.id,
                 class_section_id: filters.section_id,
                 subject_id: filters.subject_id,
-                quarter: filters.quarter,
+                term: filters.term,
                 school_year: filters.school_year,
                 grade: student.grade?.toString() || ''
             })

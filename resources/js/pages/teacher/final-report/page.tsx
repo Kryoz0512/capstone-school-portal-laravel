@@ -9,7 +9,7 @@ import { useClientPagination } from '@/hooks/use-client-pagination'
 
 type Student = {
     id: number; lrn: string; studentName: string; gradeLevel: string; section: string
-    quarter1: number | null; quarter2: number | null; quarter3: number | null; quarter4: number | null
+    term1: number | null; term2: number | null; term3: number | null
     finalAverage: number | null; remarks: 'Passed' | 'Failed' | null; readyToGraduate: boolean
 }
 type GradeLevel = { id: number; name: string }
@@ -139,10 +139,9 @@ export default function FinalReport({ gradeLevels, sections, subjects, schoolYea
                                             <th className={teacherTableHeaderCellClass}>Student Name</th>
                                             <th className={teacherTableHeaderCellClass}>Grade</th>
                                             <th className={teacherTableHeaderCellClass}>Section</th>
-                                            <th className={teacherTableHeaderCellCenterClass}>Q1</th>
-                                            <th className={teacherTableHeaderCellCenterClass}>Q2</th>
-                                            <th className={teacherTableHeaderCellCenterClass}>Q3</th>
-                                            <th className={teacherTableHeaderCellCenterClass}>Q4</th>
+                                            <th className={teacherTableHeaderCellCenterClass}>T1</th>
+                                            <th className={teacherTableHeaderCellCenterClass}>T2</th>
+                                            <th className={teacherTableHeaderCellCenterClass}>T3</th>
                                             <th className={teacherTableHeaderCellCenterClass}>Final</th>
                                             <th className={teacherTableHeaderCellClass}>Remarks</th>
                                         </tr>
@@ -155,10 +154,9 @@ export default function FinalReport({ gradeLevels, sections, subjects, schoolYea
                                                 <td className="px-2 sm:px-4 py-3 sm:py-4 text-sm text-gray-900">{student.studentName}</td>
                                                 <td className="px-2 sm:px-4 py-3 sm:py-4 text-sm text-gray-900">{student.gradeLevel}</td>
                                                 <td className="px-2 sm:px-4 py-3 sm:py-4 text-sm text-gray-900">{student.section}</td>
-                                                <td className="px-2 sm:px-4 py-3 sm:py-4 text-sm text-gray-900 text-center">{student.quarter1 ?? '-'}</td>
-                                                <td className="px-2 sm:px-4 py-3 sm:py-4 text-sm text-gray-900 text-center">{student.quarter2 ?? '-'}</td>
-                                                <td className="px-2 sm:px-4 py-3 sm:py-4 text-sm text-gray-900 text-center">{student.quarter3 ?? '-'}</td>
-                                                <td className="px-2 sm:px-4 py-3 sm:py-4 text-sm text-gray-900 text-center">{student.quarter4 ?? '-'}</td>
+                                                <td className="px-2 sm:px-4 py-3 sm:py-4 text-sm text-gray-900 text-center">{student.term1 ?? '-'}</td>
+                                                <td className="px-2 sm:px-4 py-3 sm:py-4 text-sm text-gray-900 text-center">{student.term2 ?? '-'}</td>
+                                                <td className="px-2 sm:px-4 py-3 sm:py-4 text-sm text-gray-900 text-center">{student.term3 ?? '-'}</td>
                                                 <td className="px-2 sm:px-4 py-3 sm:py-4 text-sm font-medium text-gray-900 text-center">{student.finalAverage ?? '-'}</td>
                                                 <td className="px-2 sm:px-4 py-3 sm:py-4">
                                                     {student.remarks ? (
@@ -167,7 +165,7 @@ export default function FinalReport({ gradeLevels, sections, subjects, schoolYea
                                                 </td>
                                             </tr>
                                         )) : (
-                                            <tr><td colSpan={11} className="px-6 py-8 text-center text-sm text-gray-500">No students found or no final grades available</td></tr>
+                                            <tr><td colSpan={10} className="px-6 py-8 text-center text-sm text-gray-500">No students found or no final grades available</td></tr>
                                         )}
                                     </tbody>
                                 </table>

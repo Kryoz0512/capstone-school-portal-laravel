@@ -66,7 +66,7 @@ class GradeController extends Controller
         $gradeLevelId = $request->input('grade_level_id');
         $sectionId = $request->input('section_id');
         $subjectId = $request->input('subject_id');
-        $quarter = $request->input('quarter', '1');
+        $term = $request->input('term', $request->input('quarter', '1'));
         $schoolYear = $request->input('school_year');
 
         // Get current school year if not provided
@@ -117,7 +117,7 @@ class GradeController extends Controller
         // Get students with their grades
         $students = [];
         if ($sectionId && $subjectId) {
-            $quarterColumn = 'quarter_' . $quarter;
+            $termColumn = Grade::termColumn($term);
 
             $studentRecords = Student::where('current_section_id', $sectionId)
                 ->where('school_year', $schoolYear)
@@ -151,9 +151,9 @@ class GradeController extends Controller
             // Use keyBy to get one record per student (most recent if duplicates exist)
             $gradeRecords = $gradeRecords->keyBy('student_id');
 
-            $students = $studentRecords->map(function ($student) use ($gradeRecords, $quarterColumn) {
+            $students = $studentRecords->map(function ($student) use ($gradeRecords, $termColumn) {
                 $gradeRecord = $gradeRecords->get($student->id);
-                $grade = $gradeRecord ? $gradeRecord->$quarterColumn : null;
+                $grade = $gradeRecord ? $gradeRecord->$termColumn : null;
 
                 // Format grade to remove unnecessary decimals
                 $formattedGrade = null;
@@ -165,7 +165,7 @@ class GradeController extends Controller
                     }
                 }
 
-                // Only show remarks if this specific quarter has a grade
+                // Only show remarks if this specific term has a grade
                 $remarks = null;
                 if ($grade !== null) {
                     $remarks = $formattedGrade >= 75 ? 'Passed' : 'Failed';
@@ -195,7 +195,7 @@ class GradeController extends Controller
                 'grade_level_id' => $gradeLevelId,
                 'section_id' => $sectionId,
                 'subject_id' => $subjectId,
-                'quarter' => $quarter,
+                'term' => $term,
                 'school_year' => $schoolYear,
             ],
         ]);
@@ -215,12 +215,12 @@ class GradeController extends Controller
             'student_id' => 'required|exists:tbl_students,id',
             'class_section_id' => 'required|exists:tbl_class_sections,id',
             'subject_id' => 'required|exists:tbl_subjects,id',
-            'quarter' => 'required|in:1,2,3,4',
+            'term' => 'required|in:1,2,3',
             'school_year' => 'required|string',
             'grade' => 'required|numeric|min:75|max:100',
         ]);
 
-        $quarterColumn = 'quarter_' . $validated['quarter'];
+        $termColumn = Grade::termColumn($validated['term']);
 
         // First, get or create the grade record
         $grade = Grade::firstOrCreate([
@@ -231,24 +231,19 @@ class GradeController extends Controller
             'teacher_id' => $teacher->id,
         ]);
 
-        // Update the specific quarter grade
-        $grade->$quarterColumn = (string) $validated['grade'];
+        // Update the specific term grade
+        $grade->$termColumn = (string) $validated['grade'];
 
-        // Recalculate final grade and remarks based on all available quarters
-        $quarters = [
-            $grade->quarter_1,
-            $grade->quarter_2,
-            $grade->quarter_3,
-            $grade->quarter_4
-        ];
+        // Recalculate final grade and remarks based on all available terms
+        $terms = Grade::termValues($grade);
 
-        $availableQuarters = array_filter($quarters, function ($q) {
-            return $q !== null;
+        $availableTerms = array_filter($terms, function ($t) {
+            return $t !== null;
         });
 
-        if (count($availableQuarters) > 0) {
-            $sum = array_sum($availableQuarters);
-            $count = count($availableQuarters);
+        if (count($availableTerms) > 0) {
+            $sum = array_sum($availableTerms);
+            $count = count($availableTerms);
             $finalGradeValue = $sum / $count;
             $grade->final_grade = (string) $finalGradeValue;
             $grade->remarks = $finalGradeValue >= 75 ? 'Passed' : 'Failed';
@@ -262,8 +257,8 @@ class GradeController extends Controller
         Log::info('Grade Save Result', [
             'saved' => $saved,
             'grade_id' => $grade->id,
-            'quarter_column' => $quarterColumn,
-            'grade_value' => $grade->$quarterColumn,
+            'term_column' => $termColumn,
+            'grade_value' => $grade->$termColumn,
             'remarks' => $grade->remarks
         ]);
 
@@ -273,32 +268,27 @@ class GradeController extends Controller
     public function update(Request $request, Grade $grade)
     {
         $validated = $request->validate([
-            'quarter' => 'required|in:1,2,3,4',
+            'term' => 'required|in:1,2,3',
             'grade' => 'required|numeric|min:75|max:100',
         ]);
 
-        $quarterColumn = 'quarter_' . $validated['quarter'];
-        $grade->$quarterColumn = (string) $validated['grade'];
+        $termColumn = Grade::termColumn($validated['term']);
+        $grade->$termColumn = (string) $validated['grade'];
 
-        $quarters = [
-            $grade->quarter_1,
-            $grade->quarter_2,
-            $grade->quarter_3,
-            $grade->quarter_4
-        ];
+        $terms = Grade::termValues($grade);
 
-        $availableQuarters = array_filter($quarters, function ($q) {
-            return $q !== null;
+        $availableTerms = array_filter($terms, function ($t) {
+            return $t !== null;
         });
 
-        if (count($availableQuarters) > 0) {
-            $sum = array_sum($availableQuarters);
-            $count = count($availableQuarters);
+        if (count($availableTerms) > 0) {
+            $sum = array_sum($availableTerms);
+            $count = count($availableTerms);
             $finalGradeValue = $sum / $count;
             $grade->final_grade = (string) $finalGradeValue;
             $grade->remarks = $finalGradeValue >= 75 ? 'Passed' : 'Failed';
         } else {
-            // Set remarks based on current quarter grade if no quarters available yet
+            // Set remarks based on current term grade if no terms available yet
             $currentGrade = (float) $validated['grade'];
             $grade->remarks = $currentGrade >= 75 ? 'Passed' : 'Failed';
         }
@@ -437,7 +427,7 @@ class GradeController extends Controller
     }
 
     /**
-     * Check if every subject has all quarterly and final grades recorded.
+     * Check if every subject has all term and final grades recorded.
      */
     private function allSubjectsHaveCompleteGrades($subjects): bool
     {
@@ -446,10 +436,9 @@ class GradeController extends Controller
         }
 
         return $subjects->every(function ($subject) {
-            return $subject['quarter_1'] !== null
-                && $subject['quarter_2'] !== null
-                && $subject['quarter_3'] !== null
-                && $subject['quarter_4'] !== null
+            return $subject['term_1'] !== null
+                && $subject['term_2'] !== null
+                && $subject['term_3'] !== null
                 && $subject['final_grade'] !== null;
         });
     }
@@ -555,10 +544,9 @@ class GradeController extends Controller
                     'subject_code' => $subject->code ?? null,
                     'subject_name' => $subject->name ?? 'N/A',
                     'teacher_name' => $grade?->teacher?->name ?? $schedule?->teacher?->name ?? '-',
-                    'quarter_1' => $grade?->quarter_1,
-                    'quarter_2' => $grade?->quarter_2,
-                    'quarter_3' => $grade?->quarter_3,
-                    'quarter_4' => $grade?->quarter_4,
+                    'term_1' => $grade?->term_1,
+                    'term_2' => $grade?->term_2,
+                    'term_3' => $grade?->term_3,
                     'final_grade' => $grade?->final_grade,
                     'remarks' => $grade?->remarks,
                 ];
@@ -674,17 +662,16 @@ class GradeController extends Controller
             $grade = $gradesForLevel->get($subject->id);
 
             return [
-                'quarter_1' => $grade?->quarter_1,
-                'quarter_2' => $grade?->quarter_2,
-                'quarter_3' => $grade?->quarter_3,
-                'quarter_4' => $grade?->quarter_4,
+                'term_1' => $grade?->term_1,
+                'term_2' => $grade?->term_2,
+                'term_3' => $grade?->term_3,
                 'final_grade' => $grade?->final_grade,
             ];
         });
 
         if (!$this->allSubjectsHaveCompleteGrades($subjects)) {
             return back()->withErrors([
-                'error' => 'All subjects must have complete quarterly and final grades before promotion.',
+                'error' => 'All subjects must have complete term and final grades before promotion.',
             ]);
         }
 

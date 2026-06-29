@@ -41,25 +41,43 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
+        $gradeLevelRows = [
+            [
+                'name' => 'Grade 7',
+                'description' => 'First year of junior high school. Students begin their secondary education with foundational subjects.',
+            ],
+            [
+                'name' => 'Grade 8',
+                'description' => 'Second year of junior high school. Students continue building on core academic skills and knowledge.',
+            ],
+            [
+                'name' => 'Grade 9',
+                'description' => 'Third year of junior high school. Students prepare for more advanced topics and develop critical thinking skills.',
+            ],
+            [
+                'name' => 'Grade 10',
+                'description' => 'Fourth and final year of junior high school. Students complete their basic education and prepare for senior high school.',
+            ],
+            [
+                'name' => 'Grade 11',
+                'description' => 'First year of senior high school. Students begin their senior high school education with foundational subjects.',
+            ],
+            [
+                'name' => 'Grade 12',
+                'description' => 'Final year of senior high school. Students complete their senior high school education and prepare for college.',
+            ],
+        ];
+
+        $existingGradeLevels = DB::table('tbl_grade_levels')->pluck('name')->all();
+        $missingGradeLevels = array_filter(
+            $gradeLevelRows,
+            fn (array $row) => ! in_array($row['name'], $existingGradeLevels, true)
+        );
+
         if (DB::table('tbl_grade_levels')->count() === 0) {
-            DB::table('tbl_grade_levels')->insert([
-                [
-                    'name' => 'Grade 7',
-                    'description' => 'First year of junior high school. Students begin their secondary education with foundational subjects.',
-                ],
-                [
-                    'name' => 'Grade 8',
-                    'description' => 'Second year of junior high school. Students continue building on core academic skills and knowledge.',
-                ],
-                [
-                    'name' => 'Grade 9',
-                    'description' => 'Third year of junior high school. Students prepare for more advanced topics and develop critical thinking skills.',
-                ],
-                [
-                    'name' => 'Grade 10',
-                    'description' => 'Fourth and final year of junior high school. Students complete their basic education and prepare for senior high school.',
-                ],
-            ]);
+            DB::table('tbl_grade_levels')->insert($gradeLevelRows);
+        } elseif ($missingGradeLevels !== []) {
+            DB::table('tbl_grade_levels')->insert(array_values($missingGradeLevels));
         }
 
         if (!User::where('email', 'SNHS-BAYUDANG-MARK')->exists()) {
@@ -85,58 +103,64 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        // Seed subjects for Grade 7-10
-        if (DB::table('tbl_subjects')->count() === 0) {
-            $gradeLevels = DB::table('tbl_grade_levels')->get();
-            $subjects = [
-                [
-                    'name' => 'English',
-                    'code' => 'ENG',
-                    'description' => 'English language and literature',
-                ],
-                [
-                    'name' => 'Filipino',
-                    'code' => 'FIL',
-                    'description' => 'Filipino language and literature',
-                ],
-                [
-                    'name' => 'Mathematics',
-                    'code' => 'MATH',
-                    'description' => 'Mathematics',
-                ],
-                [
-                    'name' => 'Science',
-                    'code' => 'SCI',
-                    'description' => 'General Science',
-                ],
-                [
-                    'name' => 'Araling Panlipunan',
-                    'code' => 'AP',
-                    'description' => 'Social Studies',
-                ],
-                [
-                    'name' => 'MAPEH',
-                    'code' => 'MAPEH',
-                    'description' => 'Music, Arts, Physical Education, and Health',
-                ],
-                [
-                    'name' => 'TLE',
-                    'code' => 'TLE',
-                    'description' => 'Technology and Livelihood Education',
-                ],
-            ];
+        // Seed subjects for all grade levels (JHS + SHS)
+        $gradeLevels = DB::table('tbl_grade_levels')->get();
+        $subjects = [
+            [
+                'name' => 'English',
+                'code' => 'ENG',
+                'description' => 'English language and literature',
+            ],
+            [
+                'name' => 'Filipino',
+                'code' => 'FIL',
+                'description' => 'Filipino language and literature',
+            ],
+            [
+                'name' => 'Mathematics',
+                'code' => 'MATH',
+                'description' => 'Mathematics',
+            ],
+            [
+                'name' => 'Science',
+                'code' => 'SCI',
+                'description' => 'General Science',
+            ],
+            [
+                'name' => 'Araling Panlipunan',
+                'code' => 'AP',
+                'description' => 'Social Studies',
+            ],
+            [
+                'name' => 'MAPEH',
+                'code' => 'MAPEH',
+                'description' => 'Music, Arts, Physical Education, and Health',
+            ],
+            [
+                'name' => 'TLE',
+                'code' => 'TLE',
+                'description' => 'Technology and Livelihood Education',
+            ],
+        ];
 
-            foreach ($gradeLevels as $gradeLevel) {
-                foreach ($subjects as $subject) {
-                    DB::table('tbl_subjects')->insert([
-                        'code' => $subject['code'] . '-' . $gradeLevel->id,
-                        'name' => $subject['name'],
-                        'description' => $subject['description'] . ' for ' . $gradeLevel->name,
-                        'grade_level_id' => $gradeLevel->id,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                }
+        foreach ($gradeLevels as $gradeLevel) {
+            $hasSubjects = DB::table('tbl_subjects')
+                ->where('grade_level_id', $gradeLevel->id)
+                ->exists();
+
+            if ($hasSubjects) {
+                continue;
+            }
+
+            foreach ($subjects as $subject) {
+                DB::table('tbl_subjects')->insert([
+                    'code' => $subject['code'] . '-' . $gradeLevel->id,
+                    'name' => $subject['name'],
+                    'description' => $subject['description'] . ' for ' . $gradeLevel->name,
+                    'grade_level_id' => $gradeLevel->id,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
             }
         }
 
@@ -271,49 +295,49 @@ class DatabaseSeeder extends Seeder
             }
         }
 
-        // Seed class sections with Philippine national heroes
-        if (DB::table('tbl_class_sections')->count() === 0) {
-            $gradeLevels = DB::table('tbl_grade_levels')->get();
-            $rooms = DB::table('tbl_room')->get();
+        // Seed class sections with Philippine national heroes (4 sections per grade level)
+        $heroesByGrade = [
+            'Grade 7'  => ['Rizal', 'Bonifacio', 'Mabini', 'Luna'],
+            'Grade 8'  => ['Del Pilar', 'Jacinto', 'Aguinaldo', 'Silang'],
+            'Grade 9'  => ['Burgos', 'Gomez', 'Zamora', 'Dagohoy'],
+            'Grade 10' => ['Lakandula', 'Sulayman', 'Lapulapu', 'Gabriela'],
+            'Grade 11' => ['Quezon', 'Osmena', 'Roxas', 'Magsaysay'],
+            'Grade 12' => ['Marcela', 'Melchora', 'Tandang Sora', 'Arevalo'],
+        ];
 
-            // Philippine national heroes for section names - one per section
-            $heroNames = [
-                // Grade 7 sections
-                'Rizal',
-                'Bonifacio',
-                'Mabini',
-                'Luna',
-                // Grade 8 sections
-                'Del Pilar',
-                'Jacinto',
-                'Aguinaldo',
-                'Silang',
-                // Grade 9 sections
-                'Burgos',
-                'Gomez',
-                'Zamora',
-                'Dagohoy',
-                // Grade 10 sections
-                'Lakandula',
-                'Sulayman',
-                'Lapulapu',
-                'Gabriela',
-            ];
+        $gradeLevels = DB::table('tbl_grade_levels')->get();
+        $rooms = DB::table('tbl_room')->get();
 
-            $sectionIndex = 0;
-            $roomIndex = 0;
+        if ($rooms->isEmpty()) {
+            $this->command->warn('No rooms found; skipping class section seeding.');
+        } else {
+            $roomIndex = DB::table('tbl_class_sections')->count();
 
             foreach ($gradeLevels as $gradeLevel) {
-                // Create 4 sections per grade level
-                for ($i = 0; $i < 4; $i++) {
+                $sectionNames = $heroesByGrade[$gradeLevel->name] ?? [];
+
+                if ($sectionNames === []) {
+                    $this->command->warn("No section names defined for {$gradeLevel->name}, skipping.");
+                    continue;
+                }
+
+                $existingSectionNames = DB::table('tbl_class_sections')
+                    ->where('grade_level_id', $gradeLevel->id)
+                    ->pluck('section_name')
+                    ->all();
+
+                foreach ($sectionNames as $sectionName) {
+                    if (in_array($sectionName, $existingSectionNames, true)) {
+                        continue;
+                    }
+
                     DB::table('tbl_class_sections')->insert([
                         'grade_level_id' => $gradeLevel->id,
-                        'section_name' => $heroNames[$sectionIndex],
+                        'section_name' => $sectionName,
                         'room_id' => $rooms[$roomIndex % $rooms->count()]->id,
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
-                    $sectionIndex++;
                     $roomIndex++;
                 }
             }
@@ -700,7 +724,7 @@ class DatabaseSeeder extends Seeder
             }
         }
 
-        // Seed student grades for Grade 7-10
+        // Seed student grades for Grade 7–12
         $this->call(StudentGradesSeeder::class);
         // Seed clearance records (most cleared, 1-2 pending per student)
         $this->call(ClearanceSeeder::class);

@@ -25,7 +25,7 @@ type Props = {
     subjects: Subject[]
     students: Student[]
     schoolYears: SchoolYear[]
-    filters: { grade_level_id: number | null; section_id: number | null; subject_id: number | null; quarter: string; school_year: string }
+    filters: { grade_level_id: number | null; section_id: number | null; subject_id: number | null; term: string; school_year: string }
     auth?: { user: { id: number; name: string; email: string; role: string } }
 }
 
@@ -33,7 +33,7 @@ export default function GradeSheets({ gradeLevels, sections, subjects, students,
     const [gradeLevel, setGradeLevel] = useState(filters.grade_level_id?.toString() || '')
     const [section, setSection] = useState(filters.section_id?.toString() || '')
     const [subject, setSubject] = useState(filters.subject_id?.toString() || '')
-    const [quarter, setQuarter] = useState(filters.quarter || '1')
+    const [term, setTerm] = useState(filters.term || '1')
     const [schoolYear, setSchoolYear] = useState(filters.school_year || '')
     const [editModalOpen, setEditModalOpen] = useState(false)
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
@@ -47,10 +47,10 @@ export default function GradeSheets({ gradeLevels, sections, subjects, students,
         if (gradeLevel) params.set('grade_level_id', gradeLevel)
         if (section) params.set('section_id', section)
         if (subject) params.set('subject_id', subject)
-        if (quarter) params.set('quarter', quarter)
+        if (term) params.set('term', term)
         if (schoolYear) params.set('school_year', schoolYear)
         router.get(`/teacher/grade-sheets?${params.toString()}`, {}, { preserveState: true, preserveScroll: true })
-    }, [gradeLevel, section, subject, quarter, schoolYear])
+    }, [gradeLevel, section, subject, term, schoolYear])
 
     return (
         <TeacherLayout user={auth?.user}>
@@ -91,14 +91,13 @@ export default function GradeSheets({ gradeLevels, sections, subjects, students,
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <label className="block text-sm font-medium text-gray-700">Quarter <span className="text-red-500">*</span></label>
-                                <Select value={quarter} onValueChange={setQuarter}>
+                                <label className="block text-sm font-medium text-gray-700">Term <span className="text-red-500">*</span></label>
+                                <Select value={term} onValueChange={setTerm}>
                                     <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="1">1st Quarter</SelectItem>
-                                        <SelectItem value="2">2nd Quarter</SelectItem>
-                                        <SelectItem value="3">3rd Quarter</SelectItem>
-                                        <SelectItem value="4">4th Quarter</SelectItem>
+                                        <SelectItem value="1">1st Term</SelectItem>
+                                        <SelectItem value="2">2nd Term</SelectItem>
+                                        <SelectItem value="3">3rd Term</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -167,7 +166,7 @@ export default function GradeSheets({ gradeLevels, sections, subjects, students,
                     </div>
                 )}
             </div>
-            <EditGradeModal open={editModalOpen} onOpenChange={setEditModalOpen} student={selectedStudent} filters={{ section_id: section ? parseInt(section) : null, subject_id: subject ? parseInt(subject) : null, quarter, school_year: schoolYear }} />
+            <EditGradeModal open={editModalOpen} onOpenChange={setEditModalOpen} student={selectedStudent} filters={{ section_id: section ? parseInt(section) : null, subject_id: subject ? parseInt(subject) : null, term, school_year: schoolYear }} />
         </TeacherLayout>
     )
 }

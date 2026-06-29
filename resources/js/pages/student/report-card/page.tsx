@@ -7,10 +7,9 @@ type Grade = {
     id: number
     subject: string
     teacher: string
-    quarter1: number | null
-    quarter2: number | null
-    quarter3: number | null
-    quarter4: number | null
+    term1: number | null
+    term2: number | null
+    term3: number | null
     finalGrade: number | null
 }
 
@@ -131,10 +130,9 @@ export default function ReportCard({ grades, schoolYears, studentInfo, filters, 
                                     <tr>
                                         <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium">Subject</th>
                                         <th className="px-3 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium">Teacher</th>
-                                        <th className="px-2 sm:px-6 py-3 text-center text-xs sm:text-sm font-medium">Q1</th>
-                                        <th className="px-2 sm:px-6 py-3 text-center text-xs sm:text-sm font-medium">Q2</th>
-                                        <th className="px-2 sm:px-6 py-3 text-center text-xs sm:text-sm font-medium">Q3</th>
-                                        <th className="px-2 sm:px-6 py-3 text-center text-xs sm:text-sm font-medium">Q4</th>
+                                        <th className="px-2 sm:px-6 py-3 text-center text-xs sm:text-sm font-medium">T1</th>
+                                        <th className="px-2 sm:px-6 py-3 text-center text-xs sm:text-sm font-medium">T2</th>
+                                        <th className="px-2 sm:px-6 py-3 text-center text-xs sm:text-sm font-medium">T3</th>
                                         <th className="px-2 sm:px-6 py-3 text-center text-xs sm:text-sm font-medium">Final</th>
                                     </tr>
                                 </thead>
@@ -144,16 +142,13 @@ export default function ReportCard({ grades, schoolYears, studentInfo, filters, 
                                             <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-900">{grade.subject}</td>
                                             <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-900">{grade.teacher}</td>
                                             <td className="px-2 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-900 text-center">
-                                                {grade.quarter1 ?? '—'}
+                                                {grade.term1 ?? '—'}
                                             </td>
                                             <td className="px-2 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-900 text-center">
-                                                {grade.quarter2 ?? '—'}
+                                                {grade.term2 ?? '—'}
                                             </td>
                                             <td className="px-2 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-900 text-center">
-                                                {grade.quarter3 ?? '—'}
-                                            </td>
-                                            <td className="px-2 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-900 text-center">
-                                                {grade.quarter4 ?? '—'}
+                                                {grade.term3 ?? '—'}
                                             </td>
                                             <td className="px-2 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-gray-900 text-center">
                                                 {grade.finalGrade ?? '—'}
@@ -166,11 +161,11 @@ export default function ReportCard({ grades, schoolYears, studentInfo, filters, 
                                         <tr className="bg-gray-50 border-t-2 border-gray-300">
                                             {/*
                                               FIX: colSpan was 5 — misaligned. Table has 7 cols total.
-                                              "General Average" label spans cols 1–6 (subject, teacher, Q1–Q4),
-                                              leaving col 7 (final grade) for the average value.
+                                              "General Average" label spans cols 1–5 (subject, teacher, T1–T3),
+                                              leaving col 6 (final grade) for the average value.
                                               pass/fail badge moved into the label cell to avoid a dangling empty col.
                                             */}
-                                            <td colSpan={6} className="px-3 sm:px-6 py-4 text-xs sm:text-sm text-gray-500 font-medium">
+                                            <td colSpan={5} className="px-3 sm:px-6 py-4 text-xs sm:text-sm text-gray-500 font-medium">
                                                 <div className="flex items-center gap-3">
                                                     <span>General Average</span>
                                                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${

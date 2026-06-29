@@ -1,6 +1,6 @@
 import { Head } from '@inertiajs/react'
 import TeacherLayout from '@/layouts/teacher-layout'
-import { Users, BookOpen, UserCheck, Calendar, Megaphone } from 'lucide-react'
+import { Users, BookOpen, UserCheck, Calendar, Megaphone, X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useEffect, useState } from 'react'
 import axios from 'axios'
@@ -9,6 +9,8 @@ type Announcement = {
     id: number
     title: string
     content: string
+    image_url: string | null
+    display_type: 'text' | 'banner'
     created_by: string
     created_at: string
 }
@@ -26,6 +28,7 @@ type Props = {
 export default function TeacherDashboard({ stats, auth }: Props) {
     const [announcements, setAnnouncements] = useState<Announcement[]>([])
     const [loading, setLoading] = useState(true)
+    const [lightboxImage, setLightboxImage] = useState<string | null>(null)
 
     useEffect(() => {
         axios.get('/api/announcements/approved')
@@ -112,12 +115,32 @@ export default function TeacherDashboard({ stats, auth }: Props) {
                             {announcements.map(a => (
                                 <div key={a.id}>
                                     <p className="text-sm text-gray-500 mb-2">Posted by {a.created_by} on {a.created_at}</p>
-                                    <Card className="border-blue-200 hover:shadow-md transition-shadow">
+                                    <Card className="border-blue-200 hover:shadow-md transition-shadow overflow-hidden">
+                                        {a.display_type === 'banner' && a.image_url && (
+                                            <img
+                                                src={a.image_url}
+                                                alt={a.title}
+                                                onClick={() => setLightboxImage(a.image_url)}
+                                                className="w-full max-h-80 object-cover cursor-zoom-in"
+                                            />
+                                        )}
                                         <CardHeader>
                                             <CardTitle className="text-lg sm:text-xl text-blue-700">{a.title}</CardTitle>
                                         </CardHeader>
                                         <CardContent>
-                                            <p className="text-gray-700 whitespace-pre-wrap text-sm sm:text-base">{a.content}</p>
+                                            <div className="flex gap-4">
+                                                {a.display_type === 'text' && a.image_url && (
+                                                    <img
+                                                        src={a.image_url}
+                                                        alt={a.title}
+                                                        onClick={() => setLightboxImage(a.image_url)}
+                                                        className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-md border shrink-0 cursor-zoom-in"
+                                                    />
+                                                )}
+                                                {a.content && (
+                                                    <p className="text-gray-700 whitespace-pre-wrap text-sm sm:text-base">{a.content}</p>
+                                                )}
+                                            </div>
                                         </CardContent>
                                     </Card>
                                 </div>
@@ -126,6 +149,29 @@ export default function TeacherDashboard({ stats, auth }: Props) {
                     )}
                 </div>
             </div>
+
+            {/* Image Lightbox */}
+            {lightboxImage && (
+                <div
+                    className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-zoom-out"
+                    onClick={() => setLightboxImage(null)}
+                >
+                    <button
+                        type="button"
+                        onClick={() => setLightboxImage(null)}
+                        className="absolute top-4 right-4 text-white/80 hover:text-white"
+                        aria-label="Close"
+                    >
+                        <X className="w-8 h-8" />
+                    </button>
+                    <img
+                        src={lightboxImage}
+                        alt="Enlarged announcement"
+                        onClick={(e) => e.stopPropagation()}
+                        className="max-w-full max-h-full object-contain rounded-md cursor-default"
+                    />
+                </div>
+            )}
         </TeacherLayout>
     )
 }

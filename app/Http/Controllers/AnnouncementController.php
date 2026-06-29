@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class AnnouncementController extends Controller
@@ -30,6 +31,8 @@ class AnnouncementController extends Controller
                     'id' => $announcement->id,
                     'title' => $announcement->title,
                     'content' => $announcement->content,
+                    'image_url' => $announcement->image_url,
+                    'display_type' => $announcement->display_type,
                     'status' => $announcement->status,
                     'is_active' => $announcement->is_active,
                     'created_by' => $announcement->creator->name,
@@ -56,8 +59,18 @@ class AnnouncementController extends Controller
     {
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'content' => 'required|string',
+            'content' => 'nullable|string',
+            'display_type' => 'required|in:text,banner',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120', // 5MB
         ]);
+
+        // Banner posts can be image-only; text posts still require content
+        if ($validated['display_type'] === 'text' && empty($validated['content'])) {
+            return redirect()->back()->withErrors(['content' => 'Content is required for text announcements.']);
+        }
+        if (empty($validated['content']) && !$request->hasFile('image')) {
+            return redirect()->back()->withErrors(['content' => 'Provide content or an image.']);
+        }
 
         $user = Auth::user();
         $admin = Admin::where('user_id', $user->id)->first();
@@ -68,9 +81,16 @@ class AnnouncementController extends Controller
         $approvedBy = $isSuperAdmin ? $user->id : null;
         $approvedAt = $isSuperAdmin ? now() : null;
 
-        Announcement::create([
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('announcements', 'public');
+        }
+
+        $announcement = Announcement::create([
             'title' => $validated['title'],
-            'content' => $validated['content'],
+            'content' => $validated['content'] ?? '',
+            'display_type' => $validated['display_type'],
+            'image_path' => $imagePath,
             'status' => $status,
             'created_by' => $user->id,
             'approved_by' => $approvedBy,
@@ -79,11 +99,11 @@ class AnnouncementController extends Controller
 
         // If auto-approved (Super Admin), create notifications for all users
         if ($isSuperAdmin) {
-            $this->createNotificationsForAllUsers($validated['title'], $validated['content']);
+            $this->createNotificationsForAllUsers($announcement->title, $announcement->content, $announcement->id);
         }
 
-        return redirect()->back()->with('success', $isSuperAdmin 
-            ? 'Announcement created and published successfully!' 
+        return redirect()->back()->with('success', $isSuperAdmin
+            ? 'Announcement created and published successfully!'
             : 'Announcement created and pending approval.');
     }
 
@@ -91,7 +111,10 @@ class AnnouncementController extends Controller
     {
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'content' => 'required|string',
+            'content' => 'nullable|string',
+            'display_type' => 'required|in:text,banner',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'remove_image' => 'nullable|boolean',
         ]);
 
         // Only creator can edit, and only if pending
@@ -99,9 +122,24 @@ class AnnouncementController extends Controller
             return redirect()->back()->withErrors(['error' => 'Cannot edit this announcement.']);
         }
 
+        $imagePath = $announcement->image_path;
+
+        if ($request->hasFile('image')) {
+            // Replace: delete old file, store new one
+            if ($imagePath) {
+                Storage::disk('public')->delete($imagePath);
+            }
+            $imagePath = $request->file('image')->store('announcements', 'public');
+        } elseif ($request->boolean('remove_image') && $imagePath) {
+            Storage::disk('public')->delete($imagePath);
+            $imagePath = null;
+        }
+
         $announcement->update([
             'title' => $validated['title'],
-            'content' => $validated['content'],
+            'content' => $validated['content'] ?? '',
+            'display_type' => $validated['display_type'],
+            'image_path' => $imagePath,
         ]);
 
         return redirect()->back()->with('success', 'Announcement updated successfully!');
@@ -116,6 +154,10 @@ class AnnouncementController extends Controller
         // Only creator or Super Admin can delete
         if ($announcement->created_by !== $user->id && !$isSuperAdmin) {
             return redirect()->back()->withErrors(['error' => 'Unauthorized action.']);
+        }
+
+        if ($announcement->image_path) {
+            Storage::disk('public')->delete($announcement->image_path);
         }
 
         $announcement->delete();
@@ -141,7 +183,7 @@ class AnnouncementController extends Controller
 
         // Create notifications for all users when announcement is approved
         $this->createNotificationsForAllUsers(
-            $announcement->title, 
+            $announcement->title,
             $announcement->content,
             $announcement->id
         );
@@ -192,7 +234,7 @@ class AnnouncementController extends Controller
         return redirect()->back()->with('success', 'Announcement ' . ($announcement->is_active ? 'activated' : 'deactivated') . ' successfully!');
     }
 
-    // Get approved announcements for dashboard
+    // Get approved announcements for dashboard (used by Admin, Teacher, Student dashboards)
     public function getApproved()
     {
         $announcements = Announcement::approved()
@@ -205,6 +247,8 @@ class AnnouncementController extends Controller
                     'id' => $announcement->id,
                     'title' => $announcement->title,
                     'content' => $announcement->content,
+                    'image_url' => $announcement->image_url,
+                    'display_type' => $announcement->display_type,
                     'created_by' => $announcement->creator->name,
                     'created_at' => $announcement->created_at->format('M d, Y'),
                 ];

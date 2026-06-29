@@ -23,13 +23,17 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Megaphone, Plus, Edit, Trash2, Check, X, Eye, EyeOff, Clock } from 'lucide-react'
-import { useState } from 'react'
+import { Megaphone, Plus, Edit, Trash2, Check, X, Eye, EyeOff, Clock, Image as ImageIcon, Rows, Square } from 'lucide-react'
+import { useRef, useState } from 'react'
+
+type DisplayType = 'text' | 'banner'
 
 type Announcement = {
     id: number
     title: string
     content: string
+    image_url: string | null
+    display_type: DisplayType
     status: 'pending' | 'approved' | 'rejected'
     is_active: boolean
     created_by: string
@@ -59,20 +63,62 @@ export default function AnnouncementsPage({ announcements, isSuperAdmin, pending
     const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null)
     const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
 
-    const { data, setData, post, put, processing, errors, reset } = useForm({
+    const createFileInputRef = useRef<HTMLInputElement>(null)
+    const editFileInputRef = useRef<HTMLInputElement>(null)
+    const [createPreview, setCreatePreview] = useState<string | null>(null)
+    const [editPreview, setEditPreview] = useState<string | null>(null)
+    const [removeExistingImage, setRemoveExistingImage] = useState(false)
+
+    const { data, setData, post, processing, errors, reset } = useForm<{
+        title: string
+        content: string
+        display_type: DisplayType
+        image: File | null
+    }>({
         title: '',
         content: '',
+        display_type: 'text',
+        image: null,
+    })
+
+    const editForm = useForm<{
+        title: string
+        content: string
+        display_type: DisplayType
+        image: File | null
+        remove_image: boolean
+        _method: string
+    }>({
+        title: '',
+        content: '',
+        display_type: 'text',
+        image: null,
+        remove_image: false,
+        _method: 'put',
     })
 
     const rejectForm = useForm({
         rejection_reason: '',
     })
 
+    const resetCreateImage = () => {
+        setCreatePreview(null)
+        if (createFileInputRef.current) createFileInputRef.current.value = ''
+    }
+
+    const resetEditImage = () => {
+        setEditPreview(null)
+        setRemoveExistingImage(false)
+        if (editFileInputRef.current) editFileInputRef.current.value = ''
+    }
+
     const handleCreate = (e: React.FormEvent) => {
         e.preventDefault()
         post('/admin/maintenance/announcements', {
+            forceFormData: true,
             onSuccess: () => {
                 reset()
+                resetCreateImage()
                 setIsCreateOpen(false)
             },
         })
@@ -81,9 +127,12 @@ export default function AnnouncementsPage({ announcements, isSuperAdmin, pending
     const handleEdit = (e: React.FormEvent) => {
         e.preventDefault()
         if (selectedAnnouncement) {
-            put(`/admin/maintenance/announcements/${selectedAnnouncement.id}`, {
+            // Use POST + _method spoof so the multipart image upload works
+            editForm.post(`/admin/maintenance/announcements/${selectedAnnouncement.id}`, {
+                forceFormData: true,
                 onSuccess: () => {
-                    reset()
+                    editForm.reset()
+                    resetEditImage()
                     setIsEditOpen(false)
                     setSelectedAnnouncement(null)
                 },
@@ -122,16 +171,35 @@ export default function AnnouncementsPage({ announcements, isSuperAdmin, pending
 
     const openEditDialog = (announcement: Announcement) => {
         setSelectedAnnouncement(announcement)
-        setData({
+        editForm.setData({
             title: announcement.title,
             content: announcement.content,
+            display_type: announcement.display_type,
+            image: null,
+            remove_image: false,
+            _method: 'put',
         })
+        setEditPreview(announcement.image_url)
+        setRemoveExistingImage(false)
         setIsEditOpen(true)
     }
 
     const openRejectDialog = (announcement: Announcement) => {
         setSelectedAnnouncement(announcement)
         setIsRejectOpen(true)
+    }
+
+    const onCreateImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0] ?? null
+        setData('image', file)
+        setCreatePreview(file ? URL.createObjectURL(file) : null)
+    }
+
+    const onEditImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0] ?? null
+        editForm.setData('image', file)
+        setRemoveExistingImage(false)
+        setEditPreview(file ? URL.createObjectURL(file) : selectedAnnouncement?.image_url ?? null)
     }
 
     const filteredAnnouncements = announcements.filter((announcement) => {
@@ -234,7 +302,15 @@ export default function AnnouncementsPage({ announcements, isSuperAdmin, pending
                         </Card>
                     ) : (
                         filteredAnnouncements.map((announcement) => (
-                            <Card key={announcement.id} className="hover:shadow-md transition-shadow">
+                            <Card key={announcement.id} className="hover:shadow-md transition-shadow overflow-hidden">
+                                {/* Banner image renders full width at the top of the card */}
+                                {announcement.display_type === 'banner' && announcement.image_url && (
+                                    <img
+                                        src={announcement.image_url}
+                                        alt={announcement.title}
+                                        className="w-full max-h-80 object-cover"
+                                    />
+                                )}
                                 <CardHeader>
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1">
@@ -246,6 +322,14 @@ export default function AnnouncementsPage({ announcements, isSuperAdmin, pending
                                                         {announcement.is_active ? 'Active' : 'Inactive'}
                                                     </Badge>
                                                 )}
+                                                <Badge variant="outline" className="gap-1">
+                                                    {announcement.display_type === 'banner' ? (
+                                                        <Rows className="w-3 h-3" />
+                                                    ) : (
+                                                        <Square className="w-3 h-3" />
+                                                    )}
+                                                    {announcement.display_type === 'banner' ? 'Banner' : 'Text'}
+                                                </Badge>
                                             </div>
                                             <CardDescription>
                                                 Created by {announcement.created_by} ({announcement.created_by_role}) on{' '}
@@ -324,7 +408,19 @@ export default function AnnouncementsPage({ announcements, isSuperAdmin, pending
                                     </div>
                                 </CardHeader>
                                 <CardContent>
-                                    <p className="text-gray-700 whitespace-pre-wrap">{announcement.content}</p>
+                                    <div className="flex gap-4">
+                                        {/* Text type image renders as a smaller thumbnail beside the content */}
+                                        {announcement.display_type === 'text' && announcement.image_url && (
+                                            <img
+                                                src={announcement.image_url}
+                                                alt={announcement.title}
+                                                className="w-28 h-28 object-cover rounded-md border shrink-0"
+                                            />
+                                        )}
+                                        {announcement.content && (
+                                            <p className="text-gray-700 whitespace-pre-wrap">{announcement.content}</p>
+                                        )}
+                                    </div>
                                 </CardContent>
                             </Card>
                         ))
@@ -354,17 +450,102 @@ export default function AnnouncementsPage({ announcements, isSuperAdmin, pending
                             />
                             {errors.title && <p className="text-sm text-red-600 mt-1">{errors.title}</p>}
                         </div>
+
+                        {/* Display type picker */}
                         <div>
-                            <label className="text-sm font-medium">Content</label>
+                            <label className="text-sm font-medium mb-2 block">Display Style</label>
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setData('display_type', 'text')}
+                                    className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-colors ${
+                                        data.display_type === 'text'
+                                            ? 'border-green-600 bg-green-50'
+                                            : 'border-gray-200 hover:border-gray-300'
+                                    }`}
+                                >
+                                    <Square className="w-5 h-5" />
+                                    <span className="text-sm font-medium">Text Post</span>
+                                    <span className="text-xs text-gray-500 text-center">Optional small image alongside text</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setData('display_type', 'banner')}
+                                    className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-colors ${
+                                        data.display_type === 'banner'
+                                            ? 'border-green-600 bg-green-50'
+                                            : 'border-gray-200 hover:border-gray-300'
+                                    }`}
+                                >
+                                    <Rows className="w-5 h-5" />
+                                    <span className="text-sm font-medium">Banner</span>
+                                    <span className="text-xs text-gray-500 text-center">Full-width image at the top</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-sm font-medium">Content {data.display_type === 'banner' && '(optional)'}</label>
                             <Textarea
                                 value={data.content}
                                 onChange={(e) => setData('content', e.target.value)}
                                 placeholder="Enter announcement content"
                                 rows={6}
-                                required
+                                required={data.display_type === 'text'}
                             />
                             {errors.content && <p className="text-sm text-red-600 mt-1">{errors.content}</p>}
                         </div>
+
+                        {/* Image upload */}
+                        <div>
+                            <label className="text-sm font-medium">
+                                Image {data.display_type === 'banner' ? '' : '(optional)'}
+                            </label>
+                            <div className="mt-1 flex items-center gap-3">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => createFileInputRef.current?.click()}
+                                >
+                                    <ImageIcon className="w-4 h-4 mr-2" />
+                                    {createPreview ? 'Change Image' : 'Upload Image'}
+                                </Button>
+                                {createPreview && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                            setData('image', null)
+                                            resetCreateImage()
+                                        }}
+                                    >
+                                        Remove
+                                    </Button>
+                                )}
+                            </div>
+                            <input
+                                ref={createFileInputRef}
+                                type="file"
+                                accept="image/png,image/jpeg,image/jpg,image/webp"
+                                className="hidden"
+                                onChange={onCreateImageChange}
+                            />
+                            {createPreview && (
+                                <img
+                                    src={createPreview}
+                                    alt="Preview"
+                                    className={
+                                        data.display_type === 'banner'
+                                            ? 'mt-3 w-full max-h-56 object-cover rounded-md border'
+                                            : 'mt-3 w-28 h-28 object-cover rounded-md border'
+                                    }
+                                />
+                            )}
+                            {errors.image && <p className="text-sm text-red-600 mt-1">{errors.image}</p>}
+                        </div>
+
                         <DialogFooter>
                             <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>
                                 Cancel
@@ -388,30 +569,119 @@ export default function AnnouncementsPage({ announcements, isSuperAdmin, pending
                         <div>
                             <label className="text-sm font-medium">Title</label>
                             <Input
-                                value={data.title}
-                                onChange={(e) => setData('title', e.target.value)}
+                                value={editForm.data.title}
+                                onChange={(e) => editForm.setData('title', e.target.value)}
                                 placeholder="Enter announcement title"
                                 required
                             />
-                            {errors.title && <p className="text-sm text-red-600 mt-1">{errors.title}</p>}
+                            {editForm.errors.title && <p className="text-sm text-red-600 mt-1">{editForm.errors.title}</p>}
                         </div>
+
                         <div>
-                            <label className="text-sm font-medium">Content</label>
+                            <label className="text-sm font-medium mb-2 block">Display Style</label>
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => editForm.setData('display_type', 'text')}
+                                    className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-colors ${
+                                        editForm.data.display_type === 'text'
+                                            ? 'border-green-600 bg-green-50'
+                                            : 'border-gray-200 hover:border-gray-300'
+                                    }`}
+                                >
+                                    <Square className="w-5 h-5" />
+                                    <span className="text-sm font-medium">Text Post</span>
+                                    <span className="text-xs text-gray-500 text-center">Optional small image alongside text</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => editForm.setData('display_type', 'banner')}
+                                    className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-colors ${
+                                        editForm.data.display_type === 'banner'
+                                            ? 'border-green-600 bg-green-50'
+                                            : 'border-gray-200 hover:border-gray-300'
+                                    }`}
+                                >
+                                    <Rows className="w-5 h-5" />
+                                    <span className="text-sm font-medium">Banner</span>
+                                    <span className="text-xs text-gray-500 text-center">Full-width image at the top</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-sm font-medium">
+                                Content {editForm.data.display_type === 'banner' && '(optional)'}
+                            </label>
                             <Textarea
-                                value={data.content}
-                                onChange={(e) => setData('content', e.target.value)}
+                                value={editForm.data.content}
+                                onChange={(e) => editForm.setData('content', e.target.value)}
                                 placeholder="Enter announcement content"
                                 rows={6}
-                                required
+                                required={editForm.data.display_type === 'text'}
                             />
-                            {errors.content && <p className="text-sm text-red-600 mt-1">{errors.content}</p>}
+                            {editForm.errors.content && <p className="text-sm text-red-600 mt-1">{editForm.errors.content}</p>}
                         </div>
+
+                        {/* Image upload / replace / remove */}
+                        <div>
+                            <label className="text-sm font-medium">
+                                Image {editForm.data.display_type === 'banner' ? '' : '(optional)'}
+                            </label>
+                            <div className="mt-1 flex items-center gap-3">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => editFileInputRef.current?.click()}
+                                >
+                                    <ImageIcon className="w-4 h-4 mr-2" />
+                                    {editPreview ? 'Change Image' : 'Upload Image'}
+                                </Button>
+                                {editPreview && !removeExistingImage && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
+                                            editForm.setData('image', null)
+                                            editForm.setData('remove_image', true)
+                                            setRemoveExistingImage(true)
+                                            setEditPreview(null)
+                                            if (editFileInputRef.current) editFileInputRef.current.value = ''
+                                        }}
+                                    >
+                                        Remove
+                                    </Button>
+                                )}
+                            </div>
+                            <input
+                                ref={editFileInputRef}
+                                type="file"
+                                accept="image/png,image/jpeg,image/jpg,image/webp"
+                                className="hidden"
+                                onChange={onEditImageChange}
+                            />
+                            {editPreview && (
+                                <img
+                                    src={editPreview}
+                                    alt="Preview"
+                                    className={
+                                        editForm.data.display_type === 'banner'
+                                            ? 'mt-3 w-full max-h-56 object-cover rounded-md border'
+                                            : 'mt-3 w-28 h-28 object-cover rounded-md border'
+                                    }
+                                />
+                            )}
+                            {editForm.errors.image && <p className="text-sm text-red-600 mt-1">{editForm.errors.image}</p>}
+                        </div>
+
                         <DialogFooter>
                             <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>
                                 Cancel
                             </Button>
-                            <Button type="submit" disabled={processing} className="bg-green-600 hover:bg-green-700">
-                                {processing ? 'Updating...' : 'Update Announcement'}
+                            <Button type="submit" disabled={editForm.processing} className="bg-green-600 hover:bg-green-700">
+                                {editForm.processing ? 'Updating...' : 'Update Announcement'}
                             </Button>
                         </DialogFooter>
                     </form>

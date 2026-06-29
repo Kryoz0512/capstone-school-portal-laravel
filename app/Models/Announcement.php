@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 
 class Announcement extends Model
 {
@@ -16,6 +17,8 @@ class Announcement extends Model
         'approved_at',
         'rejection_reason',
         'is_active',
+        'image_path',
+        'display_type',
     ];
 
     protected $casts = [
@@ -41,5 +44,10 @@ class Announcement extends Model
     public function scopePending($query)
     {
         return $query->where('status', 'pending');
+    }
+
+    public function getImageUrlAttribute(): ?string
+    {
+        return $this->image_path ? Storage::url($this->image_path) : null;
     }
 }

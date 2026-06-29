@@ -1,7 +1,7 @@
 import { Head } from '@inertiajs/react'
 import StudentLayout from '@/layouts/student-layout'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { User, Phone, Smartphone, Megaphone } from 'lucide-react'
+import { User, Phone, Smartphone, Megaphone, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import axios from 'axios'
 
@@ -9,6 +9,8 @@ type Announcement = {
     id: number
     title: string
     content: string
+    image_url: string | null
+    display_type: 'text' | 'banner'
     created_by: string
     created_at: string
 }
@@ -35,6 +37,7 @@ type Props = {
 export default function StudentDashboard({ studentInfo, auth }: Props) {
     const [announcements, setAnnouncements] = useState<Announcement[]>([])
     const [loading, setLoading] = useState(true)
+    const [lightboxImage, setLightboxImage] = useState<string | null>(null)
 
     useEffect(() => {
         axios.get('/api/announcements/approved')
@@ -149,12 +152,32 @@ export default function StudentDashboard({ studentInfo, auth }: Props) {
                                     <p className="text-sm text-gray-500 mb-2">
                                         Posted by {announcement.created_by} on {announcement.created_at}
                                     </p>
-                                    <Card className="border-purple-200 hover:shadow-md transition-shadow">
+                                    <Card className="border-purple-200 hover:shadow-md transition-shadow overflow-hidden">
+                                        {announcement.display_type === 'banner' && announcement.image_url && (
+                                            <img
+                                                src={announcement.image_url}
+                                                alt={announcement.title}
+                                                onClick={() => setLightboxImage(announcement.image_url)}
+                                                className="w-full max-h-72 object-cover cursor-zoom-in"
+                                            />
+                                        )}
                                         <CardHeader className="pb-2">
                                             <CardTitle className="text-lg sm:text-xl text-purple-700">{announcement.title}</CardTitle>
                                         </CardHeader>
                                         <CardContent>
-                                            <p className="text-gray-700 whitespace-pre-wrap text-sm sm:text-base">{announcement.content}</p>
+                                            <div className="flex gap-4">
+                                                {announcement.display_type === 'text' && announcement.image_url && (
+                                                    <img
+                                                        src={announcement.image_url}
+                                                        alt={announcement.title}
+                                                        onClick={() => setLightboxImage(announcement.image_url)}
+                                                        className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-md border shrink-0 cursor-zoom-in"
+                                                    />
+                                                )}
+                                                {announcement.content && (
+                                                    <p className="text-gray-700 whitespace-pre-wrap text-sm sm:text-base">{announcement.content}</p>
+                                                )}
+                                            </div>
                                         </CardContent>
                                     </Card>
                                 </div>
@@ -163,6 +186,29 @@ export default function StudentDashboard({ studentInfo, auth }: Props) {
                     )}
                 </div>
             </div>
+
+            {/* Image Lightbox */}
+            {lightboxImage && (
+                <div
+                    className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 cursor-zoom-out"
+                    onClick={() => setLightboxImage(null)}
+                >
+                    <button
+                        type="button"
+                        onClick={() => setLightboxImage(null)}
+                        className="absolute top-4 right-4 text-white/80 hover:text-white"
+                        aria-label="Close"
+                    >
+                        <X className="w-8 h-8" />
+                    </button>
+                    <img
+                        src={lightboxImage}
+                        alt="Enlarged announcement"
+                        onClick={(e) => e.stopPropagation()}
+                        className="max-w-full max-h-full object-contain rounded-md cursor-default"
+                    />
+                </div>
+            )}
         </StudentLayout>
     )
 }

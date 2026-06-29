@@ -1,12 +1,10 @@
-import { Head } from '@inertiajs/react'
+import { Head, Link, router } from '@inertiajs/react'
 import AdminLayout from '@/layouts/admin-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import AddTeacherModal from '@/components/modals/add-teacher-modal'
-import EditTeacherModal from '@/components/modals/edit-teacher-modal'
 import DeleteTeacherModal from '@/components/modals/delete-teacher-modal'
-import { Pencil, Trash2, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Pencil, Trash2, Search, ChevronLeft, ChevronRight, UserPlus } from 'lucide-react'
 import { useState, useMemo } from 'react'
 
 type Teacher = {
@@ -18,17 +16,6 @@ type Teacher = {
     position: string
     updated_by: string | null
     updated_at: string | null
-}
-
-type GradeLevel = {
-    id: number
-    name: string
-}
-
-type Subject = {
-    id: number
-    name: string
-    grade_level_id: number
 }
 
 type Props = {
@@ -45,14 +32,10 @@ type Props = {
         }
     }
     teachers: Teacher[]
-    gradeLevels: GradeLevel[]
-    subjects: Subject[]
     canAddTeacher?: boolean
 }
 
-export default function TeacherManagement({ auth, teachers = [], gradeLevels = [], subjects = [], canAddTeacher = true }: Props) {
-    const [isModalOpen, setIsModalOpen] = useState(false)
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+export default function TeacherManagement({ auth, teachers = [], canAddTeacher = true }: Props) {
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
     const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null)
     
@@ -108,8 +91,7 @@ export default function TeacherManagement({ auth, teachers = [], gradeLevels = [
     const filteredCount = filteredTeachers.length
 
     const handleEdit = (teacher: Teacher) => {
-        setSelectedTeacher(teacher)
-        setIsEditModalOpen(true)
+        router.visit(`/admin/user-management/teacher/${teacher.id}/edit`)
     }
 
     const handleDelete = (teacher: Teacher) => {
@@ -129,14 +111,26 @@ export default function TeacherManagement({ auth, teachers = [], gradeLevels = [
                             Create and manage teacher accounts with assignment tracking
                         </p>
                     </div>
-                    <Button 
-                        className="bg-green-600 hover:bg-green-700 text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        onClick={() => setIsModalOpen(true)}
-                        disabled={!canAddTeacher}
-                        title={!canAddTeacher ? 'You do not have permission to add teachers' : ''}
-                    >
-                        + New Teacher
-                    </Button>
+                    {canAddTeacher ? (
+                        <Button
+                            asChild
+                            className="bg-green-600 hover:bg-green-700 text-white shadow-sm"
+                        >
+                            <Link href="/admin/user-management/teacher/create">
+                                <UserPlus className="w-4 h-4 mr-2" />
+                                New Teacher
+                            </Link>
+                        </Button>
+                    ) : (
+                        <Button
+                            className="bg-green-600 hover:bg-green-700 text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled
+                            title="You do not have permission to add teachers"
+                        >
+                            <UserPlus className="w-4 h-4 mr-2" />
+                            New Teacher
+                        </Button>
+                    )}
                 </div>
 
                 {!canAddTeacher && (
@@ -147,19 +141,6 @@ export default function TeacherManagement({ auth, teachers = [], gradeLevels = [
                     </div>
                 )}
 
-                <AddTeacherModal 
-                    open={isModalOpen} 
-                    onOpenChange={setIsModalOpen} 
-                    gradeLevels={gradeLevels}
-                    subjects={subjects} 
-                />
-                <EditTeacherModal 
-                    open={isEditModalOpen} 
-                    onOpenChange={setIsEditModalOpen} 
-                    teacher={selectedTeacher}
-                    gradeLevels={gradeLevels}
-                    subjects={subjects}
-                />
                 <DeleteTeacherModal
                     open={isDeleteModalOpen}
                     onOpenChange={setIsDeleteModalOpen}
@@ -314,7 +295,7 @@ export default function TeacherManagement({ auth, teachers = [], gradeLevels = [
                                                 <p className="text-sm text-gray-500">
                                                     {searchQuery || subjectFilter !== 'all' || positionFilter !== 'all' 
                                                         ? 'Try adjusting your filters to find what you\'re looking for.'
-                                                        : 'Click "+ New Teacher" to add your first teacher.'
+                                                        : 'Click "New Teacher" to add your first teacher.'
                                                     }
                                                 </p>
                                             </div>

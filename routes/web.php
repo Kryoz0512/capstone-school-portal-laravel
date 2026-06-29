@@ -276,6 +276,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Teacher Management routes
     Route::get('admin/user-management/teacher', [TeacherController::class, 'index'])->name('admin.user-management.teacher');
+    Route::get('admin/user-management/teacher/create', [TeacherController::class, 'create'])->name('admin.user-management.teacher.create');
+    Route::get('admin/user-management/teacher/{teacher}/edit', [TeacherController::class, 'edit'])->name('admin.user-management.teacher.edit');
     Route::post('admin/user-management/teachers', [TeacherController::class, 'store'])->name('admin.user-management.teachers.store');
     Route::put('admin/user-management/teachers/{teacher}', [TeacherController::class, 'update'])->name('admin.user-management.teachers.update');
     Route::delete('admin/user-management/teachers/{teacher}', [TeacherController::class, 'destroy'])->name('admin.user-management.teachers.destroy');

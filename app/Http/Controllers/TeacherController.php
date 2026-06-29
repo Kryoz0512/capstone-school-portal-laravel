@@ -59,49 +59,40 @@ class TeacherController extends Controller
 
     public function index()
     {
-        $teachers = Teacher::with(['user', 'updatedBy'])->get()->map(function ($teacher) {
-            return [
-                'id' => $teacher->id,
-                'employee_no' => $teacher->employee_number,
-                'name' => $teacher->name,
-                'email' => $teacher->user->email,
-                'subject' => $teacher->subject,
-                'position' => $teacher->position,
-                'phone' => $teacher->phone,
-                'address' => $teacher->address,
-                'hire_date' => $this->formatHireDate($teacher->hire_date),
-                'updated_by' => $teacher->updatedBy ? $teacher->updatedBy->name : null,
-                'updated_at' => $teacher->updated_at ? $teacher->updated_at->timezone('Asia/Manila')->format('M d, Y h:i A') : null,
-            ];
-        });
-
-        $gradeLevels = \App\Models\GradeLevel::all()->map(function ($gradeLevel) {
-            return [
-                'id' => $gradeLevel->id,
-                'name' => $gradeLevel->name,
-            ];
-        });
-
-        $subjects = \App\Models\Subject::select('name')
-            ->distinct()
-            ->orderBy('name')
-            ->get()
-            ->map(function ($subject) {
-                return [
-                    'name' => $subject->name,
-                ];
-            });
-
-        // $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
+        $teachers = Teacher::with(['user', 'updatedBy'])->get()->map(
+            fn ($teacher) => $this->mapTeacherForForm($teacher)
+        );
 
         $admin = Auth::user()->admin;
-        //eto ung way ata
 
         return Inertia::render('admin/user-management/teacher/page', [
             'teachers' => $teachers,
-            'gradeLevels' => $gradeLevels,
-            'subjects' => $subjects,
             'canAddTeacher' => $admin ? $admin->can_add_teacher : true,
+        ]);
+    }
+
+    public function create()
+    {
+        $admin = Auth::user()->admin;
+
+        if ($admin && !$admin->can_add_teacher) {
+            return redirect()->route('admin.user-management.teacher')
+                ->withErrors(['error' => 'You do not have permission to add teachers. Please contact the Super Admin.']);
+        }
+
+        return Inertia::render('admin/user-management/teacher/create/page', [
+            'subjects' => $this->getSubjectOptions(),
+            'canAddTeacher' => $admin ? $admin->can_add_teacher : true,
+        ]);
+    }
+
+    public function edit(Teacher $teacher)
+    {
+        $teacher->load(['user', 'updatedBy']);
+
+        return Inertia::render('admin/user-management/teacher/edit/page', [
+            'teacher' => $this->mapTeacherForForm($teacher),
+            'subjects' => $this->getSubjectOptions(),
         ]);
     }
 
@@ -323,6 +314,36 @@ class TeacherController extends Controller
         $exists = $query->exists();
 
         return response()->json(['exists' => $exists]);
+    }
+
+    private function getSubjectOptions(): array
+    {
+        return \App\Models\Subject::select('name')
+            ->distinct()
+            ->orderBy('name')
+            ->get()
+            ->map(fn ($subject) => ['name' => $subject->name])
+            ->values()
+            ->all();
+    }
+
+    private function mapTeacherForForm(Teacher $teacher): array
+    {
+        return [
+            'id' => $teacher->id,
+            'employee_no' => $teacher->employee_number,
+            'name' => $teacher->name,
+            'email' => $teacher->user->email,
+            'subject' => $teacher->subject,
+            'position' => $teacher->position,
+            'phone' => $teacher->phone,
+            'address' => $teacher->address,
+            'hire_date' => $this->formatHireDate($teacher->hire_date),
+            'updated_by' => $teacher->updatedBy ? $teacher->updatedBy->name : null,
+            'updated_at' => $teacher->updated_at
+                ? $teacher->updated_at->timezone('Asia/Manila')->format('M d, Y h:i A')
+                : null,
+        ];
     }
 
     /**

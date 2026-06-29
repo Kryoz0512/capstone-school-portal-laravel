@@ -58,11 +58,13 @@ export default function StudentSchedule({ auth, students, gradeLevels, filters }
 
     useEffect(() => {
         const timer = setTimeout(() => {
-            router.get('/admin/enrollment/student-schedule', 
-                { 
-                    search: searchTerm, 
+            router.get(
+                '/admin/enrollment/student-schedule',
+                {
+                    search: searchTerm,
                     grade_level: gradeLevel || undefined,
-                    per_page: perPage 
+                    per_page: perPage,
+                    page: 1,
                 },
                 { preserveState: true, replace: true }
             )
@@ -77,7 +79,19 @@ export default function StudentSchedule({ auth, students, gradeLevels, filters }
 
     const handlePageChange = (url: string | null) => {
         if (url) {
-            router.visit(url)
+            const urlObj = new URL(url)
+            const page = urlObj.searchParams.get('page')
+
+            router.get(
+                '/admin/enrollment/student-schedule',
+                {
+                    search: searchTerm,
+                    grade_level: gradeLevel || undefined,
+                    per_page: perPage,
+                    page: page,
+                },
+                { preserveState: true, replace: true }
+            )
         }
     }
 
@@ -166,8 +180,8 @@ export default function StudentSchedule({ auth, students, gradeLevels, filters }
                             <tbody className="divide-y divide-gray-200">
                                 {students.data.length > 0 ? (
                                     students.data.map((student) => (
-                                        <tr 
-                                            key={student.id} 
+                                        <tr
+                                            key={student.id}
                                             className="hover:bg-gray-50 cursor-pointer"
                                             onClick={() => handleStudentClick(student.id)}
                                         >

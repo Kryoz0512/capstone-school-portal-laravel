@@ -8,6 +8,8 @@ use App\Models\Subject;
 use App\Models\TeacherSubject;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use App\Models\Admin;
 use Inertia\Inertia;
 
 class TeacherSubjectController extends Controller
@@ -43,7 +45,7 @@ public function index()
             'grade_level' => $subject->gradeLevel->name ?? null,
         ]);
 
-    $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
+    $admin = Admin::where('user_id', Auth::id())->first();
 
     return Inertia::render('admin/enrollment/faculty-subjects/page', [
         'teachers' => $teachers,

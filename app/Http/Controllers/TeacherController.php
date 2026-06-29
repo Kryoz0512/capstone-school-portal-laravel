@@ -67,6 +67,9 @@ class TeacherController extends Controller
                 'email' => $teacher->user->email,
                 'subject' => $teacher->subject,
                 'position' => $teacher->position,
+                'phone' => $teacher->phone,
+                'address' => $teacher->address,
+                'hire_date' => $this->formatHireDate($teacher->hire_date),
                 'updated_by' => $teacher->updatedBy ? $teacher->updatedBy->name : null,
                 'updated_at' => $teacher->updated_at ? $teacher->updated_at->timezone('Asia/Manila')->format('M d, Y h:i A') : null,
             ];
@@ -117,6 +120,9 @@ class TeacherController extends Controller
             'employeeNumber' => 'required|string|digits:6|unique:tbl_teachers,employee_number',
             'subject' => 'required|string',
             'position' => 'required|string',
+            'phone' => 'nullable|string|max:20',
+            'address' => 'nullable|string|max:255',
+            'hireDate' => 'nullable|date',
             'password' => 'required|string|min:8',
         ]);
 
@@ -147,6 +153,9 @@ class TeacherController extends Controller
                 'employee_number' => $validated['employeeNumber'],
                 'subject' => $validated['subject'],
                 'position' => $validated['position'],
+                'phone' => $validated['phone'] ?? null,
+                'address' => $validated['address'] ?? null,
+                'hire_date' => $validated['hireDate'] ?? null,
                 'updated_by' => Auth::id(),
             ]);
 
@@ -174,6 +183,9 @@ class TeacherController extends Controller
             'employeeNumber' => 'required|string|digits:6|unique:tbl_teachers,employee_number,' . $teacher->id,
             'subject' => 'required|string',
             'position' => 'required|string',
+            'phone' => 'nullable|string|max:20',
+            'address' => 'nullable|string|max:255',
+            'hireDate' => 'nullable|date',
             'password' => 'nullable|string|min:8',
         ]);
 
@@ -206,6 +218,15 @@ class TeacherController extends Controller
             if ($teacher->position !== $validated['position']) {
                 $changes['position'] = ['old' => $teacher->position, 'new' => $validated['position']];
             }
+            if ($teacher->phone !== ($validated['phone'] ?? null)) {
+                $changes['phone'] = ['old' => $teacher->phone, 'new' => $validated['phone'] ?? null];
+            }
+            if ($teacher->address !== ($validated['address'] ?? null)) {
+                $changes['address'] = ['old' => $teacher->address, 'new' => $validated['address'] ?? null];
+            }
+            if ($this->formatHireDate($teacher->hire_date) !== ($validated['hireDate'] ?? null)) {
+                $changes['hire_date'] = ['old' => $this->formatHireDate($teacher->hire_date), 'new' => $validated['hireDate'] ?? null];
+            }
 
             $userData = [
                 'name' => $fullName,
@@ -225,6 +246,9 @@ class TeacherController extends Controller
                 'employee_number' => $validated['employeeNumber'],
                 'subject' => $validated['subject'],
                 'position' => $validated['position'],
+                'phone' => $validated['phone'] ?? null,
+                'address' => $validated['address'] ?? null,
+                'hire_date' => $validated['hireDate'] ?? null,
                 'updated_by' => Auth::id(),
             ]);
 
@@ -299,6 +323,29 @@ class TeacherController extends Controller
         $exists = $query->exists();
 
         return response()->json(['exists' => $exists]);
+    }
+
+    /**
+     * Safely format hire_date for the frontend regardless of whether the
+     * Teacher model casts it to Carbon or leaves it as a raw string/null.
+     * The 'tbl_teachers.hire_date' column currently has no cast and most
+     * existing rows are null, so this must not throw on either case.
+     */
+    private function formatHireDate($hireDate): ?string
+    {
+        if (empty($hireDate)) {
+            return null;
+        }
+
+        if ($hireDate instanceof \Carbon\Carbon || $hireDate instanceof \DateTimeInterface) {
+            return $hireDate->format('Y-m-d');
+        }
+
+        try {
+            return \Carbon\Carbon::parse($hireDate)->format('Y-m-d');
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 
     public function classList(Request $request)
@@ -697,6 +744,11 @@ class TeacherController extends Controller
         $firstName = $nameParts[0] ?? '';
         $lastName = $nameParts[1] ?? '';
 
+        $subjects = \App\Models\Subject::select('id', 'name')
+            ->distinct()
+            ->orderBy('name')
+            ->get();
+
         return Inertia::render('teacher/profile-settings/page', [
             'teacher' => [
                 'firstName' => $firstName,
@@ -704,8 +756,13 @@ class TeacherController extends Controller
                 'email' => $teacher->user->email,
                 'phone' => $teacher->phone ?? '',
                 'address' => $teacher->address ?? '',
+                'employeeNumber' => $teacher->employee_number ?? '',
+                'subject' => $teacher->subject ?? '',
+                'position' => $teacher->position ?? '',
+                'hireDate' => $this->formatHireDate($teacher->hire_date),
                 'profile_picture' => $teacher->profilePicture && $teacher->profilePicture->file_path ? asset('storage/' . $teacher->profilePicture->file_path) : null,
             ],
+            'subjects' => $subjects,
         ]);
     }
 
@@ -723,6 +780,9 @@ class TeacherController extends Controller
             'lastName' => 'required|string|max:255',
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string|max:255',
+            'employeeNumber' => 'required|string|digits:6|unique:tbl_teachers,employee_number,' . $teacher->id,
+            'subject' => 'required|string',
+            'position' => 'required|string',
         ]);
 
         DB::beginTransaction();
@@ -730,15 +790,43 @@ class TeacherController extends Controller
         try {
             $fullName = $validated['firstName'] . ' ' . $validated['lastName'];
 
+            // Track changes for the activity log, same as the admin-side edit flow
+            $changes = [];
+            if ($teacher->name !== $fullName) {
+                $changes['name'] = ['old' => $teacher->name, 'new' => $fullName];
+            }
+            if ($teacher->employee_number !== $validated['employeeNumber']) {
+                $changes['employee_number'] = ['old' => $teacher->employee_number, 'new' => $validated['employeeNumber']];
+            }
+            if ($teacher->subject !== $validated['subject']) {
+                $changes['subject'] = ['old' => $teacher->subject, 'new' => $validated['subject']];
+            }
+            if ($teacher->position !== $validated['position']) {
+                $changes['position'] = ['old' => $teacher->position, 'new' => $validated['position']];
+            }
+
             $teacher->update([
                 'name' => $fullName,
-                'phone' => $validated['phone'],
-                'address' => $validated['address'],
+                'phone' => $validated['phone'] ?? null,
+                'address' => $validated['address'] ?? null,
+                'employee_number' => $validated['employeeNumber'],
+                'subject' => $validated['subject'],
+                'position' => $validated['position'],
+                'updated_by' => Auth::id(),
             ]);
 
             $user->update([
                 'name' => $fullName,
             ]);
+
+            if (!empty($changes)) {
+                ActivityLog::create([
+                    'user_id' => Auth::id(),
+                    'action' => 'updated',
+                    'description' => 'Teacher updated own profile: ' . $teacher->name,
+                    'changes' => $changes,
+                ]);
+            }
 
             DB::commit();
 

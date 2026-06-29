@@ -22,6 +22,7 @@ use Laravel\Fortify\Features;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\SchedulePictureController;
+use App\Http\Controllers\PortalContentController;
 
 Route::get('/', function () {
     $slides = \App\Models\LoginSlide::where('is_active', true)
@@ -31,9 +32,12 @@ Route::get('/', function () {
             return \Illuminate\Support\Facades\Storage::url($slide->image_path);
         })
         ->toArray();
-
+ 
+    $content = \App\Models\PortalContent::instance();
+ 
     return \Inertia\Inertia::render('portal', [
-        'slides' => $slides
+        'slides'  => $slides,
+        'content' => $content,
     ]);
 })->name('home');
 
@@ -307,6 +311,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('admin/maintenance/announcements/{announcement}/approve', [AnnouncementController::class, 'approve'])->name('admin.maintenance.announcements.approve');
     Route::post('admin/maintenance/announcements/{announcement}/reject', [AnnouncementController::class, 'reject'])->name('admin.maintenance.announcements.reject');
     Route::post('admin/maintenance/announcements/{announcement}/toggle', [AnnouncementController::class, 'toggleActive'])->name('admin.maintenance.announcements.toggle');
+
+    Route::get('admin/maintenance/portal-content',  [PortalContentController::class, 'index'])
+        ->name('admin.maintenance.portal-content');
+    Route::put('admin/maintenance/portal-content',  [PortalContentController::class, 'update'])
+        ->name('admin.maintenance.portal-content.update');
 
     // API route for getting approved announcements
     Route::get('api/announcements/approved', [AnnouncementController::class, 'getApproved'])->name('api.announcements.approved');

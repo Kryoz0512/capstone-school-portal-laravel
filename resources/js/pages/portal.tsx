@@ -2,11 +2,75 @@ import { Head, Link } from '@inertiajs/react'
 import { GraduationCap, BookOpen, Target, Eye, Heart, ChevronDown, ArrowRight, Shield, BarChart3, Calendar } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
-type Props = {
-    slides?: string[]
+type PortalContent = {
+    hero_badge_text: string
+    hero_headline_top: string
+    hero_headline_bottom: string
+    hero_description: string
+    hero_cta_label: string
+    about_section_label: string
+    about_headline: string
+    about_description: string
+    mission_title: string
+    mission_body: string
+    vision_title: string
+    vision_body: string
+    values_title: string
+    values_body: string
+    features_section_label: string
+    features_headline: string
+    features_subheadline: string
+    footer_description: string
+    footer_address_line1: string
+    footer_address_line2: string
+    footer_email: string
+    footer_phone: string
+    footer_copyright: string
+    footer_powered_by: string
 }
 
-export default function Portal({ slides = [] }: Props) {
+type Props = {
+    slides?: string[]
+    content?: PortalContent
+}
+
+// Fallback defaults so the page still renders if content is missing
+const defaultContent: PortalContent = {
+    hero_badge_text: 'Santor National High School — Digital Platform',
+    hero_headline_top: 'Empowering',
+    hero_headline_bottom: 'Education',
+    hero_description:
+        'A comprehensive digital platform built to streamline school operations, elevate student outcomes, and connect every part of your school community.',
+    hero_cta_label: 'Learn More',
+    about_section_label: 'Who We Are',
+    about_headline: 'Built for schools that believe in better',
+    about_description:
+        'DIGISTAR is an integrated digital platform developed specifically for the purpose of upgrading and modernizing the educational and administrative experience at Santor National High School (SNHS) to an efficient and reliable digital format. As the official student portal, DIGISTAR provides a replacement for traditional paper processes utilizing a secure centralized environment that supports a more efficient, reliable and sustainable campus.',
+    mission_title: 'Our Mission',
+    mission_body:
+        'To provide quality education through innovative digital solutions, fostering academic excellence and holistic development for every student in our care.',
+    vision_title: 'Our Vision',
+    vision_body:
+        'To become the leading institution in digital education, equipping every student with knowledge and 21st-century skills for a successful future.',
+    values_title: 'Our Values',
+    values_body:
+        'Excellence, Integrity, Innovation, Collaboration, and Compassion. These principles guide every decision we make in shaping future leaders.',
+    features_section_label: 'Platform Features',
+    features_headline: 'Everything your school needs',
+    features_subheadline: 'Powerful tools that make administration effortless and learning meaningful.',
+    footer_description:
+        'Empowering the Santor National High School community through thoughtful digital innovation and academic excellence.',
+    footer_address_line1: 'Bongabon, Nueva Ecija',
+    footer_address_line2: 'Philippines 3128',
+    footer_email: 'info@snhs.edu.ph',
+    footer_phone: '(123) 456-7890',
+    footer_copyright: '2026 Santor National High School. All rights reserved.',
+    footer_powered_by: 'Powered by SNHS DigiStar',
+}
+
+export default function Portal({ slides = [], content }: Props) {
+    const c: PortalContent = { ...defaultContent, ...content }
+
     const [currentSlide, setCurrentSlide] = useState(0)
     const [scrolled, setScrolled] = useState(false)
     const [activeSection, setActiveSection] = useState('home')
@@ -87,14 +151,6 @@ export default function Portal({ slides = [] }: Props) {
             bg: 'bg-rose-50',
             border: 'border-rose-100',
         },
-        // {
-        //     icon: <Trophy className="w-6 h-6" />,
-        //     title: 'Accreditation Support',
-        //     desc: 'Built-in tools and compliance features designed to support school accreditation requirements seamlessly.',
-        //     color: 'from-teal-500 to-teal-600',
-        //     bg: 'bg-teal-50',
-        //     border: 'border-teal-100',
-        // },
     ]
 
     return (
@@ -315,7 +371,7 @@ export default function Portal({ slides = [] }: Props) {
                         <div className="animate-fade-up mb-8">
                             <span className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 text-green-200 text-xs font-medium px-4 py-2 rounded-full">
                                 <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                                Santor National High School — Digital Platform
+                                {c.hero_badge_text}
                             </span>
                         </div>
 
@@ -327,13 +383,12 @@ export default function Portal({ slides = [] }: Props) {
                                 className="w-auto h-32 md:h-44 mx-auto object-contain mb-8 drop-shadow-2xl"
                             />
                             <h1 className="font-display text-5xl md:text-7xl lg:text-8xl leading-[1.05] mb-6">
-                                <span className="gradient-text">Empowering</span>
+                                <span className="gradient-text">{c.hero_headline_top}</span>
                                 <br />
-                                <span className="text-white">Education</span>
+                                <span className="text-white">{c.hero_headline_bottom}</span>
                             </h1>
                             <p className="text-green-100/80 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed mb-10">
-                                A comprehensive digital platform built to streamline school operations,
-                                elevate student outcomes, and connect every part of your school community.
+                                {c.hero_description}
                             </p>
                         </div>
 
@@ -343,7 +398,7 @@ export default function Portal({ slides = [] }: Props) {
                                 onClick={() => scrollToSection('about')}
                                 className="flex items-center gap-2 bg-white text-green-800 px-8 py-4 rounded-2xl font-semibold text-base hover:bg-green-50 transition-all shadow-xl shadow-black/20 hover:shadow-2xl hover:scale-[1.02]"
                             >
-                                Learn More
+                                {c.hero_cta_label}
                                 <ArrowRight className="w-5 h-5" />
                             </button>
                         </div>
@@ -375,17 +430,12 @@ export default function Portal({ slides = [] }: Props) {
                 <section id="about" className="bg-white py-24 lg:py-32">
                     <div className="max-w-7xl mx-auto px-6 lg:px-8">
                         <div className="max-w-2xl mb-16">
-                            <p className="section-label mb-4">Who We Are</p>
+                            <p className="section-label mb-4">{c.about_section_label}</p>
                             <h2 className="font-display text-4xl md:text-5xl text-gray-900 leading-tight mb-6">
-                                Built for schools that believe in better
+                                {c.about_headline}
                             </h2>
                             <p className="text-gray-500 text-lg leading-relaxed">
-                                DIGISTAR is an integrated digital platform developed
-                                specifically for the purpose of upgrading and modernizing
-                                the educational and administrative experience at Santor National High School (SNHS)
-                                to an efficient and reliable digital format. As the official student portal, 
-                                DIGISTAR provides a replacement for traditional paper processes utilizing a secure 
-                                centralized environment that supports a more efficient, reliable and sustainable campus.
+                                {c.about_description}
                             </p>
                         </div>
 
@@ -394,28 +444,25 @@ export default function Portal({ slides = [] }: Props) {
                                 {
                                     icon: <Target className="w-6 h-6 text-violet-600" />,
                                     iconBg: 'bg-violet-50',
-                                    title: 'Our Mission',
-                                    body: 'To provide quality education through innovative digital solutions, fostering academic excellence and holistic development for every student in our care.',
-                                    accent: 'border-violet-200',
+                                    title: c.mission_title,
+                                    body: c.mission_body,
                                 },
                                 {
                                     icon: <Eye className="w-6 h-6 text-sky-600" />,
                                     iconBg: 'bg-sky-50',
-                                    title: 'Our Vision',
-                                    body: 'To become the leading institution in digital education, equipping every student with knowledge and 21st-century skills for a successful future.',
-                                    accent: 'border-sky-200',
+                                    title: c.vision_title,
+                                    body: c.vision_body,
                                 },
                                 {
                                     icon: <Heart className="w-6 h-6 text-emerald-600" />,
                                     iconBg: 'bg-emerald-50',
-                                    title: 'Our Values',
-                                    body: 'Excellence, Integrity, Innovation, Collaboration, and Compassion. These principles guide every decision we make in shaping future leaders.',
-                                    accent: 'border-emerald-200',
+                                    title: c.values_title,
+                                    body: c.values_body,
                                 },
                             ].map((card) => (
                                 <div
                                     key={card.title}
-                                    className={`card-hover bg-white border border-stone-200 rounded-2xl p-8 hover:border-stone-300 hover:shadow-lg`}
+                                    className="card-hover bg-white border border-stone-200 rounded-2xl p-8 hover:border-stone-300 hover:shadow-lg"
                                 >
                                     <div className={`${card.iconBg} w-12 h-12 rounded-xl flex items-center justify-center mb-5`}>
                                         {card.icon}
@@ -432,12 +479,12 @@ export default function Portal({ slides = [] }: Props) {
                 <section id="features" className="bg-stone-50 py-24 lg:py-32">
                     <div className="max-w-7xl mx-auto px-6 lg:px-8">
                         <div className="text-center max-w-2xl mx-auto mb-16">
-                            <p className="section-label mb-4">Platform Features</p>
+                            <p className="section-label mb-4">{c.features_section_label}</p>
                             <h2 className="font-display text-4xl md:text-5xl text-gray-900 leading-tight mb-4">
-                                Everything your school needs
+                                {c.features_headline}
                             </h2>
                             <p className="text-gray-500 text-lg">
-                                Powerful tools that make administration effortless and learning meaningful.
+                                {c.features_subheadline}
                             </p>
                         </div>
 
@@ -468,7 +515,7 @@ export default function Portal({ slides = [] }: Props) {
                             <div className="md:col-span-2">
                                 <img src="/SNHS-logo-2.png" alt="SNHS DigiStar" className="h-16 w-auto mb-4 opacity-90" />
                                 <p className="text-gray-400 text-sm leading-relaxed max-w-xs">
-                                    Empowering the Santor National High School community through thoughtful digital innovation and academic excellence.
+                                    {c.footer_description}
                                 </p>
                             </div>
 
@@ -493,16 +540,16 @@ export default function Portal({ slides = [] }: Props) {
                             <div>
                                 <h4 className="text-xs font-semibold uppercase tracking-widest text-gray-500 mb-5">Contact</h4>
                                 <ul className="space-y-3 text-sm text-gray-400">
-                                    <li>Bongabon, Nueva Ecija</li>
-                                    <li>Philippines 3128</li>
+                                    <li>{c.footer_address_line1}</li>
+                                    <li>{c.footer_address_line2}</li>
                                     <li>
-                                        <a href="mailto:info@snhs.edu.ph" className="hover:text-white transition-colors">
-                                            info@snhs.edu.ph
+                                        <a href={`mailto:${c.footer_email}`} className="hover:text-white transition-colors">
+                                            {c.footer_email}
                                         </a>
                                     </li>
                                     <li>
-                                        <a href="tel:+631234567890" className="hover:text-white transition-colors">
-                                            (123) 456-7890
+                                        <a href={`tel:${c.footer_phone}`} className="hover:text-white transition-colors">
+                                            {c.footer_phone}
                                         </a>
                                     </li>
                                 </ul>
@@ -510,8 +557,8 @@ export default function Portal({ slides = [] }: Props) {
                         </div>
 
                         <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-gray-600 text-xs">
-                            <p>&copy; 2026 Santor National High School. All rights reserved.</p>
-                            <p>Powered by SNHS DigiStar</p>
+                            <p>&copy; {c.footer_copyright}</p>
+                            <p>{c.footer_powered_by}</p>
                         </div>
                     </div>
                 </footer>

@@ -29,7 +29,7 @@ type SidebarProps = {
 
 export default function AdminSidebar({ currentPath, user, admin }: SidebarProps) {
     const { url } = usePage()
-    
+
     // Determine which menu should be open based on current URL
     const getCurrentPath = () => {
         return url
@@ -90,7 +90,8 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
 
             {/* Navigation - Scrollable */}
             <nav className="flex-1 py-4 overflow-y-auto px-3 scrollbar-hide">
-                <style dangerouslySetInnerHTML={{__html: `
+                <style dangerouslySetInnerHTML={{
+                    __html: `
                     .scrollbar-hide::-webkit-scrollbar {
                         display: none;
                     }
@@ -102,17 +103,15 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                 {/* Dashboard */}
                 <Link
                     href="/admin/dashboard"
-                    className={`flex items-center gap-3 px-4 py-3 mb-1 rounded-xl transition-all duration-300 group ${
-                        isActive('/admin/dashboard') 
-                            ? 'bg-gradient-to-r from-green-500 to-green-400 text-white shadow-lg shadow-green-400/30 scale-[1.02]' 
+                    className={`flex items-center gap-3 px-4 py-3 mb-1 rounded-xl transition-all duration-300 group ${isActive('/admin/dashboard')
+                            ? 'bg-gradient-to-r from-green-500 to-green-400 text-white shadow-lg shadow-green-400/30 scale-[1.02]'
                             : 'text-green-50 hover:bg-green-500/50 hover:translate-x-1'
-                    }`}
+                        }`}
                 >
-                    <div className={`p-2 rounded-lg transition-all duration-300 ${
-                        isActive('/admin/dashboard')
+                    <div className={`p-2 rounded-lg transition-all duration-300 ${isActive('/admin/dashboard')
                             ? 'bg-white/20'
                             : 'bg-green-500/30 group-hover:bg-green-400/40'
-                    }`}>
+                        }`}>
                         <LayoutDashboard className="w-4 h-4" />
                     </div>
                     <span className="font-medium">Dashboard</span>
@@ -354,17 +353,15 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                 {/* Documents */}
                 <Link
                     href="/admin/documents"
-                    className={`flex items-center gap-3 px-4 py-3 mb-1 rounded-xl transition-all duration-300 group ${
-                        isActive('/admin/documents') 
-                            ? 'bg-gradient-to-r from-green-500 to-green-400 text-white shadow-lg shadow-green-400/30 scale-[1.02]' 
+                    className={`flex items-center gap-3 px-4 py-3 mb-1 rounded-xl transition-all duration-300 group ${isActive('/admin/documents')
+                            ? 'bg-gradient-to-r from-green-500 to-green-400 text-white shadow-lg shadow-green-400/30 scale-[1.02]'
                             : 'text-green-50 hover:bg-green-500/50 hover:translate-x-1'
-                    }`}
+                        }`}
                 >
-                    <div className={`p-2 rounded-lg transition-all duration-300 ${
-                        isActive('/admin/documents')
+                    <div className={`p-2 rounded-lg transition-all duration-300 ${isActive('/admin/documents')
                             ? 'bg-white/20'
                             : 'bg-green-500/30 group-hover:bg-green-400/40'
-                    }`}>
+                        }`}>
                         <FileText className="w-4 h-4" />
                     </div>
                     <span className="font-medium">Documents</span>
@@ -373,17 +370,15 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                 {/* Archive */}
                 <Link
                     href="/admin/archive"
-                    className={`flex items-center gap-3 px-4 py-3 mb-1 rounded-xl transition-all duration-300 group ${
-                        isActive('/admin/archive') 
-                            ? 'bg-gradient-to-r from-green-500 to-green-400 text-white shadow-lg shadow-green-400/30 scale-[1.02]' 
+                    className={`flex items-center gap-3 px-4 py-3 mb-1 rounded-xl transition-all duration-300 group ${isActive('/admin/archive')
+                            ? 'bg-gradient-to-r from-green-500 to-green-400 text-white shadow-lg shadow-green-400/30 scale-[1.02]'
                             : 'text-green-50 hover:bg-green-500/50 hover:translate-x-1'
-                    }`}
+                        }`}
                 >
-                    <div className={`p-2 rounded-lg transition-all duration-300 ${
-                        isActive('/admin/archive')
+                    <div className={`p-2 rounded-lg transition-all duration-300 ${isActive('/admin/archive')
                             ? 'bg-white/20'
                             : 'bg-green-500/30 group-hover:bg-green-400/40'
-                    }`}>
+                        }`}>
                         <Archive className="w-4 h-4" />
                     </div>
                     <span className="font-medium">Archive</span>
@@ -417,6 +412,12 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                                 <span className="flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
                                     Announcements
+                                </span>
+                            </Link>
+                            <Link href="/admin/maintenance/portal-content" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
+                                <span className="flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
+                                    Portal Content
                                 </span>
                             </Link>
                         </div>

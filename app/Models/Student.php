@@ -13,6 +13,7 @@ class Student extends Model
 
     protected $fillable = [
         'user_id',
+        'program',           // 'jhs' | 'shs'
         'student_status',
         'lrn',
         'school_year',
@@ -24,6 +25,8 @@ class Student extends Model
         'current_grade_level_id',
         'current_section_id',
         'birth_date',
+        'strand_id',         // SHS only
+        'shs_year_level',    // SHS only: 11 or 12
         'has_psa_birth_certificate',
         'has_sf9',
         'has_report_card',
@@ -34,12 +37,13 @@ class Student extends Model
     protected function casts(): array
     {
         return [
-            'birth_date' => 'date',
+            'birth_date'               => 'date',
             'has_psa_birth_certificate' => 'boolean',
-            'has_sf9' => 'boolean',
-            'has_report_card' => 'boolean',
-            'has_good_moral' => 'boolean',
-            'ready_to_graduate' => 'boolean',
+            'has_sf9'                  => 'boolean',
+            'has_report_card'          => 'boolean',
+            'has_good_moral'           => 'boolean',
+            'ready_to_graduate'        => 'boolean',
+            'shs_year_level'           => 'integer',
         ];
     }
 
@@ -59,24 +63,34 @@ class Student extends Model
         return $this->belongsTo(ClassSection::class, 'current_section_id');
     }
 
+    public function strand()
+    {
+        return $this->belongsTo(Strand::class, 'strand_id');
+    }
+
     public function enrollments()
     {
         return $this->hasMany(Enrollment::class, 'student_id');
     }
 
-    /**
-     * Get the student's profile.
-     */
     public function profile()
     {
         return $this->hasOne(StudentProfile::class, 'profileable_id');
     }
 
-    /**
-     * Get the student's profile picture.
-     */
     public function profilePicture()
     {
         return $this->morphOne(ProfilePicture::class, 'profileable');
+    }
+
+    // Helpers
+    public function isJhs(): bool
+    {
+        return $this->program === 'jhs';
+    }
+
+    public function isShs(): bool
+    {
+        return $this->program === 'shs';
     }
 }

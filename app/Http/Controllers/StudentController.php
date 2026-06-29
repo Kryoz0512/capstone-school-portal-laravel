@@ -19,6 +19,8 @@ use Illuminate\Support\Carbon;
 use App\Models\ActivityLog;
 use App\Jobs\ImportStudentsJob;
 use Illuminate\Support\Str;
+use App\Models\Strand;
+
 
 class StudentController extends Controller
 {
@@ -456,7 +458,7 @@ class StudentController extends Controller
                 ];
             });
 
-        $gradeLevels = \App\Models\GradeLevel::all()->map(function ($gradeLevel) {
+        $gradeLevels = GradeLevel::all()->map(function ($gradeLevel) {
             return [
                 'id' => $gradeLevel->id,
                 'name' => $gradeLevel->name,
@@ -657,7 +659,7 @@ class StudentController extends Controller
         // $validated = $request->validate($rules, $messages);
 
         $validated = $request->validate($rules);
-        
+
         DB::beginTransaction();
         try {
             // Check if student with this LRN already exists
@@ -676,7 +678,7 @@ class StudentController extends Controller
                 // If student exists and status is 'returning', validate grade level progression
                 if ($validated['student_status'] === 'returning') {
                     $currentGradeLevel = $existingStudent->gradeLevel;
-                    $newGradeLevel = \App\Models\GradeLevel::find($validated['grade_level_id']);
+                    $newGradeLevel = GradeLevel::find($validated['grade_level_id']);
 
                     if ($currentGradeLevel && $newGradeLevel) {
                         // Extract grade numbers (e.g., "Grade 7" -> 7)
@@ -737,7 +739,7 @@ class StudentController extends Controller
             // Determine grade level
             // For new students, automatically assign Grade 7
             if ($validated['student_status'] === 'new') {
-                $gradeLevel = \App\Models\GradeLevel::where('name', 'Grade 7')->first();
+                $gradeLevel = GradeLevel::where('name', 'Grade 7')->first();
                 $gradeLevelId = $gradeLevel ? $gradeLevel->id : null;
             } else {
                 // For transferee and returning, use provided grade level or null
@@ -1244,7 +1246,7 @@ class StudentController extends Controller
                 }
 
                 // Resolve grade level
-                $gradeLevel = \App\Models\GradeLevel::where('name', $gradeLevelName)->first();
+                $gradeLevel = GradeLevel::where('name', $gradeLevelName)->first();
                 if ($studentStatus !== 'new' && !$gradeLevel) {
                     $errors[] = "Row {$rowNum}: Grade level '{$gradeLevelName}' not found.";
                     $errorCount++;
@@ -1253,7 +1255,7 @@ class StudentController extends Controller
 
                 // For new students, always auto-assign Grade 7
                 if ($studentStatus === 'new') {
-                    $gradeLevel = \App\Models\GradeLevel::where('name', 'Grade 7')->first();
+                    $gradeLevel = GradeLevel::where('name', 'Grade 7')->first();
                 }
 
                 DB::beginTransaction();
@@ -1451,30 +1453,43 @@ class StudentController extends Controller
     public function searchReturningStudents(Request $request)
     {
         $search = $request->input('search', '');
+        $program = $request->input('program', 'jhs'); // 'jhs' | 'shs'
 
-        // Get students with 'returning' status who can be re-enrolled
-        $students = Student::with(['gradeLevel'])
+        $query = Student::with(['gradeLevel', 'strand'])
             ->where('student_status', 'returning')
-            ->where(function ($query) use ($search) {
-                $query->where('lrn', 'like', "%{$search}%")
+            ->where('program', $program)
+            ->where(function ($q) use ($search) {
+                $q->where('lrn', 'like', "%{$search}%")
                     ->orWhere('first_name', 'like', "%{$search}%")
                     ->orWhere('last_name', 'like', "%{$search}%")
                     ->orWhereRaw("CONCAT(first_name, ' ', last_name) like ?", ["%{$search}%"]);
-            })
-            ->limit(10)
-            ->get()
-            ->map(function ($student) {
-                return [
-                    'id' => $student->id,
-                    'lrn' => $student->lrn,
-                    'name' => trim($student->first_name . ' ' . ($student->middle_name ? $student->middle_name . ' ' : '') . $student->last_name),
-                    'current_grade_level' => $student->gradeLevel ? $student->gradeLevel->name : 'N/A',
-                    'current_grade_level_id' => $student->current_grade_level_id,
-                    'school_year' => $student->school_year,
-                    'birth_date' => $student->birth_date ? $student->birth_date->format('Y-m-d') : null,
-                    'gender' => $student->gender,
-                ];
             });
+
+        // For SHS, only return Grade 11 students (can be promoted to 12)
+        if ($program === 'shs') {
+            $query->where('shs_year_level', 11);
+        }
+
+        $students = $query->limit(10)->get()->map(function ($student) use ($program) {
+            $base = [
+                'id' => $student->id,
+                'lrn' => $student->lrn,
+                'name' => trim($student->first_name . ' ' . ($student->middle_name ? $student->middle_name . ' ' : '') . $student->last_name),
+                'current_grade_level' => $student->gradeLevel ? $student->gradeLevel->name : 'N/A',
+                'current_grade_level_id' => $student->current_grade_level_id,
+                'school_year' => $student->school_year,
+                'birth_date' => $student->birth_date ? $student->birth_date->format('Y-m-d') : null,
+                'gender' => $student->gender,
+            ];
+
+            if ($program === 'shs') {
+                $base['shs_year_level'] = $student->shs_year_level;
+                $base['strand_id'] = $student->strand_id;
+                $base['strand_name'] = $student->strand ? $student->strand->name : null;
+            }
+
+            return $base;
+        });
 
         return response()->json($students);
     }
@@ -1606,7 +1621,7 @@ class StudentController extends Controller
             ->sortByDesc('school_year')
             ->values();
 
-        return \Inertia\Inertia::render('admin/registrar/student-checklist/page', [
+        return Inertia::render('admin/registrar/student-checklist/page', [
             'allStudents' => $allStudents,
             'grade7Students' => $grade7Students,
             'grade8Students' => $grade8Students,
@@ -1665,7 +1680,7 @@ class StudentController extends Controller
         });
 
         // Get all grade levels for filter - ordered properly (7, 8, 9, 10, Rizal)
-        $gradeLevels = \App\Models\GradeLevel::orderByRaw("
+        $gradeLevels = GradeLevel::orderByRaw("
             CASE 
                 WHEN name = 'Grade 7' THEN 1
                 WHEN name = 'Grade 8' THEN 2
@@ -1676,7 +1691,7 @@ class StudentController extends Controller
         ")->get();
 
         // Get all sections for filter
-        $sections = \App\Models\ClassSection::with('gradeLevel')
+        $sections = ClassSection::with('gradeLevel')
             ->orderBy('section_name')
             ->get()
             ->map(function ($section) {
@@ -1765,4 +1780,169 @@ class StudentController extends Controller
 
         return back()->with('success', 'Profile picture deleted successfully.');
     }
+
+    public function registrationSelect()
+    {
+        return Inertia::render('admin/admission/registration/page');
+    }
+
+
+    public function shsRegistrationPage()
+    {
+        // Only fetch SHS grade levels from the database
+        $gradeLevels = GradeLevel::whereIn('name', ['Grade 11', 'Grade 12'])
+            ->orderByRaw("CASE WHEN name = 'Grade 11' THEN 1 ELSE 2 END")
+            ->get();
+
+        $strands = Strand::active()->orderBy('track')->orderBy('name')->get();
+
+        return Inertia::render('admin/admission/registration/shs/page', [
+            'gradeLevels' => $gradeLevels,
+            'strands' => $strands,
+        ]);
+    }
+
+
+    public function jhsRegistrationPage()
+    {
+
+        $gradeLevels = GradeLevel::whereIn('name', ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'])->get();
+
+        return Inertia::render('admin/admission/registration/jhs/page', [
+            'gradeLevels' => $gradeLevels,
+        ]);
+    }
+
+
+    public function storeShs(Request $request)
+    {
+        $rules = [
+            'program' => 'required|in:shs',
+            'student_status' => 'required|in:new,transferee,returning',
+            'lrn' => 'required|string|digits:12',
+            'school_year' => 'required|string',
+            'gender' => 'required|in:male,female',
+            'birth_date' => 'required|date|before_or_equal:-15 years',
+            'last_name' => 'required|string|max:255',
+            'first_name' => 'required|string|max:255',
+            'middle_name' => 'nullable|string|max:255',
+            'suffix' => 'nullable|string|max:10',
+            'strand_id' => 'required|exists:tbl_strands,id',
+            'shs_year_level' => 'required|in:11,12',
+            'grade_level_id' => 'nullable|exists:tbl_grade_levels,id',
+            'has_psa_birth_certificate' => 'nullable|boolean',
+            'has_sf9' => 'nullable|boolean',
+            'has_report_card' => 'nullable|boolean',
+            'has_good_moral' => 'nullable|boolean',
+        ];
+
+        $validated = $request->validate($rules);
+
+        DB::beginTransaction();
+        try {
+            $existingStudent = Student::where('lrn', $validated['lrn'])->first();
+
+            if ($existingStudent) {
+                // Same school year → reject
+                if ($existingStudent->school_year === $validated['school_year']) {
+                    DB::rollBack();
+                    $name = trim($existingStudent->first_name . ' ' . $existingStudent->last_name);
+                    return redirect()->back()->withErrors([
+                        'lrn' => "Student '{$name}' with LRN {$validated['lrn']} is already registered for school year {$validated['school_year']}.",
+                    ])->withInput();
+                }
+
+                // Returning SHS student (Grade 11 → 12)
+                if ($validated['student_status'] === 'returning') {
+                    if ((int) $existingStudent->shs_year_level >= 12) {
+                        DB::rollBack();
+                        $name = trim($existingStudent->first_name . ' ' . $existingStudent->last_name);
+                        return redirect()->back()->withErrors([
+                            'lrn' => "Student '{$name}' has already completed Grade 12 and cannot be re-enrolled.",
+                        ])->withInput();
+                    }
+
+                    // Resolve Grade 12 level
+                    $grade12 = GradeLevel::where('name', 'Grade 12')->first();
+
+                    $existingStudent->update([
+                        'school_year' => $validated['school_year'],
+                        'shs_year_level' => 12,
+                        'current_grade_level_id' => $grade12?->id ?? $validated['grade_level_id'],
+                        'strand_id' => $validated['strand_id'],
+                        'student_status' => 'returning',
+                        'current_section_id' => null, // will be assigned later
+                        'has_psa_birth_certificate' => $validated['has_psa_birth_certificate'] ?? $existingStudent->has_psa_birth_certificate,
+                        'has_sf9' => $validated['has_sf9'] ?? $existingStudent->has_sf9,
+                        'has_report_card' => $validated['has_report_card'] ?? $existingStudent->has_report_card,
+                        'has_good_moral' => $validated['has_good_moral'] ?? $existingStudent->has_good_moral,
+                    ]);
+
+                    DB::commit();
+                    return redirect()->back()->with('success', 'Returning SHS student promoted to Grade 12 successfully.');
+                }
+
+                // Any other duplicate
+                DB::rollBack();
+                $name = trim($existingStudent->first_name . ' ' . $existingStudent->last_name);
+                return redirect()->back()->withErrors([
+                    'lrn' => "Student '{$name}' with LRN {$validated['lrn']} already exists. Use the 'Grade 11 → 12' tab for returning SHS students.",
+                ])->withInput();
+            }
+
+            // ── New / Transferee SHS student ────────────────────────────────────
+            // Determine grade level from year level
+            $yearLevelName = 'Grade ' . $validated['shs_year_level'];
+            $gradeLevel = GradeLevel::where('name', $yearLevelName)->first();
+
+            $user = User::create([
+                'name' => trim($validated['first_name'] . ' ' . $validated['last_name']),
+                'email' => 'SNHS-' . $validated['lrn'],
+                'password' => Hash::make($validated['lrn']),
+                'role' => 'student',
+                'password_changed' => false,
+            ]);
+
+            $student = Student::create([
+                'user_id' => $user->id,
+                'program' => 'shs',
+                'student_status' => $validated['student_status'],
+                'lrn' => $validated['lrn'],
+                'school_year' => $validated['school_year'],
+                'last_name' => $validated['last_name'],
+                'first_name' => $validated['first_name'],
+                'middle_name' => $validated['middle_name'] ?? null,
+                'suffix' => $validated['suffix'] ?? null,
+                'gender' => $validated['gender'],
+                'birth_date' => $validated['birth_date'],
+                'strand_id' => $validated['strand_id'],
+                'shs_year_level' => (int) $validated['shs_year_level'],
+                'current_grade_level_id' => $gradeLevel?->id ?? $validated['grade_level_id'],
+                'has_psa_birth_certificate' => $validated['has_psa_birth_certificate'] ?? false,
+                'has_sf9' => $validated['has_sf9'] ?? false,
+                'has_report_card' => $validated['has_report_card'] ?? false,
+                'has_good_moral' => $validated['has_good_moral'] ?? false,
+            ]);
+
+            $student->profile()->create([
+                'place_of_birth' => 'Bongabon, Nueva Ecija',
+                'city_municipality' => 'Bongabon',
+                'province_state' => 'Nueva Ecija',
+                'country' => 'Philippines',
+                'nationality' => 'Filipino',
+            ]);
+
+            DB::commit();
+            return redirect()->back()->with('success', 'SHS student registered successfully.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->withErrors(['error' => 'Failed to register student: ' . $e->getMessage()]);
+        }
+    }
+
+    // ── 5. Search returning SHS students (update existing searchReturningStudents) ─
+// Replace the existing searchReturningStudents method with this one:
+
+
 }

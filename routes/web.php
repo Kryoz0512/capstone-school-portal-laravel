@@ -196,21 +196,36 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('admin/enrollment/student-schedule/{student}', [StudentController::class, 'scheduleShow'])->name('admin.enrollment.student-schedule.show');
 
     // Admin Admission routes
-    Route::get('admin/admission/registration', function () {
-        $gradeLevels = \App\Models\GradeLevel::all();
-        $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
+// Admin Admission routes
+    Route::get('admin/admission/registration', [StudentController::class, 'registrationSelect'])
+        ->name('admin.admission.registration');
 
-        return \Inertia\Inertia::render('admin/admission/registration/page', [
-            'gradeLevels' => $gradeLevels,
-        ]);
-    })->name('admin.admission.registration');
+    // JHS
+    Route::get('admin/admission/registration/jhs', [StudentController::class, 'jhsRegistrationPage'])
+        ->name('admin.admission.registration.jhs');
+    Route::post('admin/admission/registration/jhs', [StudentController::class, 'store'])
+        ->name('admin.admission.registration.jhs.store');
 
-    Route::post('admin/admission/registration', [App\Http\Controllers\StudentController::class, 'store'])->name('admin.admission.registration.store');
-    Route::get('admin/admission/registration/export', [App\Http\Controllers\StudentController::class, 'export'])->name('admin.admission.registration.export');
-    Route::post('admin/admission/registration/import', [App\Http\Controllers\StudentController::class, 'import'])->name('admin.admission.registration.import');
-    Route::get('admin/admission/registration/import-status/{importJobId}', [App\Http\Controllers\StudentController::class, 'checkImportStatus'])->name('admin.admission.registration.import-status');
-    Route::get('admin/admission/registration/template', [App\Http\Controllers\StudentController::class, 'downloadTemplate'])->name('admin.admission.registration.template');
-    Route::get('admin/admission/registration/search-returning', [App\Http\Controllers\StudentController::class, 'searchReturningStudents'])->name('admin.admission.registration.search-returning');
+    // SHS
+    Route::get('admin/admission/registration/shs', [StudentController::class, 'shsRegistrationPage'])
+        ->name('admin.admission.registration.shs');
+    Route::post('admin/admission/registration/shs', [StudentController::class, 'storeShs'])
+        ->name('admin.admission.registration.shs.store');
+
+    // Shared utilities
+    Route::get('admin/admission/registration/export', [StudentController::class, 'export'])
+        ->name('admin.admission.registration.export');
+    Route::post('admin/admission/registration/import', [StudentController::class, 'import'])
+        ->name('admin.admission.registration.import');
+    Route::get('admin/admission/registration/import-status/{importJobId}', [StudentController::class, 'checkImportStatus'])
+        ->name('admin.admission.registration.import-status');
+    Route::get('admin/admission/registration/template', [StudentController::class, 'downloadTemplate'])
+        ->name('admin.admission.registration.template');
+    Route::get('admin/admission/registration/search-returning', [StudentController::class, 'searchReturningStudents'])
+        ->name('admin.admission.registration.search-returning');
+    Route::post('admin/admission/registration', [StudentController::class, 'store'])
+        ->name('admin.admission.registration.store');
+
 
     // Registrar routes
     Route::get('admin/registrar/student-checklist', [App\Http\Controllers\StudentController::class, 'checklist'])->name('admin.registrar.student-checklist');

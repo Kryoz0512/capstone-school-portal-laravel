@@ -369,6 +369,20 @@ class TeacherController extends Controller
         }
     }
 
+    private function profileSettingsPage(): string
+    {
+        return str_starts_with(request()->route()?->getName() ?? '', 'adviser.')
+            ? 'adviser/profile-settings/page'
+            : 'teacher/profile-settings/page';
+    }
+
+    private function profileSettingsRouteName(): string
+    {
+        return str_starts_with(request()->route()?->getName() ?? '', 'adviser.')
+            ? 'adviser.profile-settings'
+            : 'teacher.profile-settings';
+    }
+
     public function classList(Request $request)
     {
         $user = Auth::user();
@@ -769,7 +783,7 @@ class TeacherController extends Controller
             ->orderBy('name')
             ->get();
 
-        return Inertia::render('teacher/profile-settings/page', [
+        return Inertia::render($this->profileSettingsPage(), [
             'teacher' => [
                 'firstName' => $firstName,
                 'lastName' => $lastName,
@@ -850,7 +864,7 @@ class TeacherController extends Controller
 
             DB::commit();
 
-            return redirect()->route('teacher.profile-settings')->with('success', 'Profile updated successfully');
+            return redirect()->route($this->profileSettingsRouteName())->with('success', 'Profile updated successfully');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withErrors(['error' => 'Failed to update profile: ' . $e->getMessage()]);
@@ -876,7 +890,7 @@ class TeacherController extends Controller
                 'password' => Hash::make($validated['new_password']),
             ]);
 
-            return redirect()->route('teacher.profile-settings')->with('success', 'Password changed successfully');
+            return redirect()->route($this->profileSettingsRouteName())->with('success', 'Password changed successfully');
         } catch (\Exception $e) {
             return back()->withErrors(['error' => 'Failed to change password: ' . $e->getMessage()]);
         }

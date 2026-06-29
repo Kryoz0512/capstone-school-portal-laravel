@@ -37,9 +37,15 @@ class PasswordChangeController extends Controller
         $user->password_changed = true;
         $user->save();
 
-        // Redirect based on role
+        $portal = $request->session()->pull('login_portal');
+
+        // Redirect based on role and login portal
         if ($user->role === 'teacher') {
-            return redirect()->route('teacher.dashboard')->with('success', 'Password changed successfully!');
+            $redirectRoute = $portal === 'adviser'
+                ? route('adviser.dashboard')
+                : route('teacher.dashboard');
+
+            return redirect($redirectRoute)->with('success', 'Password changed successfully!');
         } elseif ($user->role === 'student') {
             return redirect()->route('student.dashboard')->with('success', 'Password changed successfully!');
         }

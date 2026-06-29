@@ -8,10 +8,10 @@ import { type FormEvent, useState, useEffect } from 'react'
 type Props = {
     status?: string
     slides?: string[]
-    role?: 'student' | 'teacher' | 'staff'
+    role?: 'student' | 'teacher' | 'staff' | 'adviser'
 }
 
-type Role = 'student' | 'teacher' | 'staff'
+type Role = 'student' | 'teacher' | 'staff' | 'adviser'
 
 export default function Login({ status, slides = [], role = 'student' }: Props) {
     const [showPassword, setShowPassword] = useState(false)
@@ -240,6 +240,7 @@ export default function Login({ status, slides = [], role = 'student' }: Props) 
     const roleConfig = {
         student: { label: 'Student', icon: GraduationCap, color: 'blue' },
         teacher: { label: 'Teacher', icon: BookOpen, color: 'green' },
+        adviser: { label: 'Adviser', icon: Users, color: 'sky' },
         staff: { label: 'Staff', icon: Users, color: 'purple' },
     }
 

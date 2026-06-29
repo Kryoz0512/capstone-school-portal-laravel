@@ -3,7 +3,7 @@ import { User, LogOut, ChevronDown, Bell, Menu } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
-import { SidebarContent } from '@/components/teacher-sidebar'
+import { SidebarContent } from '@/components/adviser-sidebar'
 
 type Notification = {
     id: number
@@ -25,7 +25,7 @@ function MobileSidebarContent({ onNavigate }: { onNavigate: () => void }) {
     return <SidebarContent onNavigate={onNavigate} />
 }
 
-export default function TeacherHeader({ user, teacher }: HeaderProps) {
+export default function AdviserHeader({ user, teacher }: HeaderProps) {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false)
     const [isNotificationOpen, setIsNotificationOpen] = useState(false)
     const [notifications, setNotifications] = useState<Notification[]>([])
@@ -34,7 +34,7 @@ export default function TeacherHeader({ user, teacher }: HeaderProps) {
     const dropdownRef = useRef<HTMLDivElement>(null)
     const notificationRef = useRef<HTMLDivElement>(null)
 
-    const { auth } = usePage<{ auth: { teacher?: { profile_picture?: string | null } } }>().props
+    const { auth } = usePage<{ auth: { teacher?: { profile_picture?: string | null; advisory_section?: { name?: string; grade_level?: string } | null } } }>().props
 
     let profilePicture: string | null = null
     if (auth?.teacher?.profile_picture && typeof auth.teacher.profile_picture === 'string') {
@@ -90,7 +90,7 @@ export default function TeacherHeader({ user, teacher }: HeaderProps) {
     useEffect(() => { if (isNotificationOpen) fetchNotifications() }, [isNotificationOpen])
 
     const handleNotificationClick = async (n: Notification) => {
-        if (n.is_read) { setIsNotificationOpen(false); router.visit('/teacher/dashboard', { preserveScroll: true }); return }
+        if (n.is_read) { setIsNotificationOpen(false); router.visit('/adviser/dashboard', { preserveScroll: true }); return }
         setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, is_read: true } : x))
         setUnreadCount(prev => Math.max(0, prev - 1))
         setIsNotificationOpen(false)
@@ -103,7 +103,7 @@ export default function TeacherHeader({ user, teacher }: HeaderProps) {
                 },
             })
         } catch { /* silent */ }
-        router.visit('/teacher/dashboard', { preserveScroll: true })
+        router.visit('/adviser/dashboard', { preserveScroll: true })
     }
 
     const handleMarkAllAsRead = async () => {
@@ -119,6 +119,10 @@ export default function TeacherHeader({ user, teacher }: HeaderProps) {
             setUnreadCount(0)
         } catch { /* silent */ }
     }
+
+    const advisoryLabel = auth?.teacher?.advisory_section
+        ? `${auth.teacher.advisory_section.grade_level} - ${auth.teacher.advisory_section.name}`
+        : 'Class Adviser'
 
     return (
         <header className="bg-white border-b border-gray-200 px-4 sm:px-8 py-3 shadow-md sticky top-0 z-20">
@@ -146,7 +150,6 @@ export default function TeacherHeader({ user, teacher }: HeaderProps) {
                 </div>
 
                 <div className="flex items-center gap-2 sm:gap-4">
-                    {/* Notification Bell */}
                     <div className="relative" ref={notificationRef}>
                         <button
                             onClick={() => setIsNotificationOpen(!isNotificationOpen)}
@@ -198,7 +201,6 @@ export default function TeacherHeader({ user, teacher }: HeaderProps) {
                         )}
                     </div>
 
-                    {/* Profile Dropdown */}
                     <div className="relative" ref={dropdownRef}>
                         <button
                             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -212,14 +214,14 @@ export default function TeacherHeader({ user, teacher }: HeaderProps) {
                                 </div>
                             )}
                             <div className="text-left hidden sm:block">
-                                <p className="text-sm font-medium text-gray-900">{user?.name || 'Teacher'}</p>
-                                <p className="text-xs text-gray-500">Teacher</p>
+                                <p className="text-sm font-medium text-gray-900">{user?.name || 'Adviser'}</p>
+                                <p className="text-xs text-gray-500 truncate max-w-[140px]">{advisoryLabel}</p>
                             </div>
                             <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform hidden sm:block ${isDropdownOpen ? 'rotate-180' : ''}`} />
                         </button>
                         {isDropdownOpen && (
                             <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                                <Link href="/teacher/profile-settings" className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 transition-colors">
+                                <Link href="/adviser/profile-settings" className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 transition-colors">
                                     <User className="w-4 h-4 text-gray-600" />
                                     <span className="text-sm text-gray-700">Profile</span>
                                 </Link>

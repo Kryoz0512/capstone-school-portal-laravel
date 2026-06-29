@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminProfileController;
+use App\Http\Controllers\AdviserController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\TeacherController;
 use App\Http\Controllers\RoomController;
@@ -71,6 +72,21 @@ Route::get('/login/teacher', function () {
     ]);
 })->name('login.teacher');
 
+Route::get('/login/adviser', function () {
+    $slides = \App\Models\LoginSlide::where('is_active', true)
+        ->orderBy('order')
+        ->get()
+        ->map(function ($slide) {
+            return \Illuminate\Support\Facades\Storage::url($slide->image_path);
+        })
+        ->toArray();
+
+    return \Inertia\Inertia::render('auth/login', [
+        'slides' => $slides,
+        'role' => 'adviser'
+    ]);
+})->name('login.adviser');
+
 // Admin login with hashed URL for security
 Route::get('/admin-access-' . md5('snhs-admin-portal-2026'), function () {
     return \Inertia\Inertia::render('auth/admin-login');
@@ -135,8 +151,29 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('teacher/student-clearance', [TeacherController::class, 'studentClearance'])->name('teacher.student-clearance');
 
+    Route::get('teacher/advisory/dashboard', [AdviserController::class, 'teacherDashboard'])->name('teacher.advisory.dashboard');
+    Route::get('teacher/advisory/class-list', [AdviserController::class, 'teacherClassList'])->name('teacher.advisory.class-list');
+
 
     Route::post('teacher/student-clearance/toggle', [\App\Http\Controllers\ClearanceController::class, 'toggle'])->name('teacher.student-clearance.toggle');
+
+    // Adviser routes (teachers assigned as class advisers)
+    Route::middleware('adviser')->group(function () {
+        Route::get('adviser/dashboard', [AdviserController::class, 'dashboard'])->name('adviser.dashboard');
+        Route::get('adviser/class-list', [AdviserController::class, 'classList'])->name('adviser.class-list');
+        Route::get('adviser/subject-teachers', [AdviserController::class, 'subjectTeachers'])->name('adviser.subject-teachers');
+        Route::get('adviser/grades', [AdviserController::class, 'grades'])->name('adviser.grades');
+        Route::get('adviser/student-clearance', [AdviserController::class, 'studentClearance'])->name('adviser.student-clearance');
+
+        Route::get('adviser/documents', [DocumentController::class, 'teacherIndex'])->name('adviser.documents');
+        Route::get('adviser/documents/{document}/download', [DocumentController::class, 'download'])->name('adviser.documents.download');
+
+        Route::get('adviser/profile-settings', [TeacherController::class, 'profileSettings'])->name('adviser.profile-settings');
+        Route::put('adviser/profile-settings', [TeacherController::class, 'updateProfile'])->name('adviser.profile-settings.update');
+        Route::put('adviser/profile-settings/password', [TeacherController::class, 'updatePassword'])->name('adviser.profile-settings.password');
+        Route::post('adviser/profile-settings/picture', [TeacherController::class, 'uploadProfilePicture'])->name('adviser.profile-settings.picture.upload');
+        Route::delete('adviser/profile-settings/picture', [TeacherController::class, 'deleteProfilePicture'])->name('adviser.profile-settings.picture.delete');
+    });
 
 
 

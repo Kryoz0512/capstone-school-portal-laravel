@@ -50,7 +50,11 @@ class DocumentController extends Controller
             ->get()
             ->map(fn (Document $d) => $this->mapDocument($d));
 
-        return Inertia::render('teacher/documents/page', [
+        $page = str_starts_with(request()->route()?->getName() ?? '', 'adviser.')
+            ? 'adviser/documents/page'
+            : 'teacher/documents/page';
+
+        return Inertia::render($page, [
             'documents' => $documents,
         ]);
     }

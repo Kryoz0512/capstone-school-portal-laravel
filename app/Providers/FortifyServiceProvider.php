@@ -28,14 +28,26 @@ class FortifyServiceProvider extends ServiceProvider
                 public function toResponse($request)
                 {
                     $user = Auth::user();
-                    
-                    // Redirect based on user role
-                    $redirectUrl = match ($user->role ?? 'student') {
-                        'admin' => '/admin/dashboard',
+
+                    $portal = $request->session()->get('login_portal') ?? $request->input('role');
+
+                    $redirectUrl = match ($portal) {
+                        'adviser' => '/adviser/dashboard',
+                        'admin', 'staff' => '/admin/dashboard',
                         'teacher' => '/teacher/dashboard',
                         'student' => '/student/dashboard',
-                        default => '/dashboard',
+                        default => match ($user->role ?? 'student') {
+                            'admin' => '/admin/dashboard',
+                            'teacher' => '/teacher/dashboard',
+                            'student' => '/student/dashboard',
+                            default => '/dashboard',
+                        },
                     };
+
+                    // Honor the portal the user signed in from instead of a stale intended URL
+                    if ($portal) {
+                        return redirect($redirectUrl);
+                    }
 
                     return redirect()->intended($redirectUrl);
                 }
@@ -143,11 +155,12 @@ class FortifyServiceProvider extends ServiceProvider
             // Validate role selection
             $selectedRole = $request->input('role');
             
-            // Map 'staff' to 'admin' for validation
+            // Map login portal roles to database roles
             $roleMap = [
                 'staff' => 'admin',
                 'teacher' => 'teacher',
                 'student' => 'student',
+                'adviser' => 'teacher',
             ];
             
             $expectedRole = $roleMap[$selectedRole] ?? $selectedRole;
@@ -158,11 +171,25 @@ class FortifyServiceProvider extends ServiceProvider
                 ]);
             }
 
+            if ($selectedRole === 'adviser') {
+                $teacher = \App\Models\Teacher::where('user_id', $user->id)->first();
+
+                if (!$teacher || !\App\Models\AdviserSection::where('teacher_id', $teacher->id)->exists()) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'role' => ['You are not assigned as a class adviser. Please use the Teacher Portal instead.'],
+                    ]);
+                }
+            }
+
             // Successful login - reset failed attempts
             $user->update([
                 'failed_login_attempts' => 0,
                 'locked_until' => null,
             ]);
+
+            if ($selectedRole) {
+                $request->session()->put('login_portal', $selectedRole);
+            }
             
             return $user;
         });

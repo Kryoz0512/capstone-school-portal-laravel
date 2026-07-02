@@ -2,10 +2,9 @@ import { Head, router } from '@inertiajs/react'
 import TeacherLayout from '@/layouts/teacher-layout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Pencil } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import EditGradeModal from '@/components/modals/edit-grade-modal'
 import { DataTablePagination, teacherTableHeaderCellClass, teacherTableHeaderClass } from '@/components/data-table-pagination'
-import { useClientPagination } from '@/hooks/use-client-pagination'
 
 type Student = {
     id: number
@@ -19,38 +18,54 @@ type GradeLevel = { id: number; name: string }
 type Section = { id: number; name: string; grade_level_id: number }
 type Subject = { id: number; name: string }
 type SchoolYear = { value: string; label: string }
+type Pagination = { current_page: number; last_page: number; per_page: number; total: number } | null
 type Props = {
     gradeLevels: GradeLevel[]
     sections: Section[]
     subjects: Subject[]
     students: Student[]
+    pagination: Pagination
     schoolYears: SchoolYear[]
-    filters: { grade_level_id: number | null; section_id: number | null; subject_id: number | null; quarter: string; school_year: string }
+    filters: { grade_level_id: number | null; section_id: number | null; subject_id: number | null; quarter: string; school_year: string; per_page?: number }
     auth?: { user: { id: number; name: string; email: string; role: string } }
 }
 
-export default function GradeSheets({ gradeLevels, sections, subjects, students, schoolYears, filters, auth }: Props) {
+export default function GradeSheets({ gradeLevels, sections, subjects, students, pagination, schoolYears, filters, auth }: Props) {
     const [gradeLevel, setGradeLevel] = useState(filters.grade_level_id?.toString() || '')
     const [section, setSection] = useState(filters.section_id?.toString() || '')
     const [subject, setSubject] = useState(filters.subject_id?.toString() || '')
     const [quarter, setQuarter] = useState(filters.quarter || '1')
     const [schoolYear, setSchoolYear] = useState(filters.school_year || '')
+    const [entriesPerPage, setEntriesPerPage] = useState(filters.per_page || 10)
     const [editModalOpen, setEditModalOpen] = useState(false)
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
-
-    const { currentPage, setCurrentPage, entriesPerPage, setEntriesPerPage, totalPages, paginatedItems: paginatedStudents, totalItems } = useClientPagination(students)
+    const isFirstRender = useRef(true)
 
     const handleEditClick = (student: Student) => { setSelectedStudent(student); setEditModalOpen(true) }
 
-    useEffect(() => {
+    const navigate = (page: number, perPage: number = entriesPerPage) => {
         const params = new URLSearchParams()
         if (gradeLevel) params.set('grade_level_id', gradeLevel)
         if (section) params.set('section_id', section)
         if (subject) params.set('subject_id', subject)
         if (quarter) params.set('quarter', quarter)
         if (schoolYear) params.set('school_year', schoolYear)
+        params.set('per_page', String(perPage))
+        params.set('page', String(page))
         router.get(`/teacher/grade-sheets?${params.toString()}`, {}, { preserveState: true, preserveScroll: true })
+    }
+
+    // Filter changes reset to page 1
+    useEffect(() => {
+        if (isFirstRender.current) { isFirstRender.current = false; return }
+        navigate(1)
     }, [gradeLevel, section, subject, quarter, schoolYear])
+
+    const handlePageChange = (page: number) => navigate(page)
+    const handleEntriesPerPageChange = (perPage: number) => {
+        setEntriesPerPage(perPage)
+        navigate(1, perPage)
+    }
 
     return (
         <TeacherLayout user={auth?.user}>
@@ -133,7 +148,7 @@ export default function GradeSheets({ gradeLevels, sections, subjects, students,
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
-                                    {paginatedStudents.length > 0 ? paginatedStudents.map(student => (
+                                    {students.length > 0 ? students.map(student => (
                                         <tr key={student.id} className="hover:bg-gray-50">
                                             <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-gray-900">{student.lrn}</td>
                                             <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-gray-900">{student.studentName}</td>
@@ -159,7 +174,15 @@ export default function GradeSheets({ gradeLevels, sections, subjects, students,
                                 </tbody>
                             </table>
                         </div>
-                        <DataTablePagination totalItems={totalItems} currentPage={currentPage} entriesPerPage={entriesPerPage} totalPages={totalPages} onPageChange={setCurrentPage} onEntriesPerPageChange={setEntriesPerPage} variant="teacher" />
+                        <DataTablePagination
+                            totalItems={pagination?.total ?? 0}
+                            currentPage={pagination?.current_page ?? 1}
+                            entriesPerPage={entriesPerPage}
+                            totalPages={pagination?.last_page ?? 1}
+                            onPageChange={handlePageChange}
+                            onEntriesPerPageChange={handleEntriesPerPageChange}
+                            variant="teacher"
+                        />
                     </div>
                 ) : (
                     <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">

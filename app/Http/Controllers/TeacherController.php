@@ -377,18 +377,16 @@ class TeacherController extends Controller
             return redirect()->route('login')->withErrors(['error' => 'Teacher profile not found.']);
         }
 
-        // Get filter parameters
         $subjectId = $request->input('subject_id');
         $sectionId = $request->input('section_id');
         $schoolYear = $request->input('school_year');
+        $perPage = (int) $request->input('per_page', 10);
 
-        // Get current school year if not provided
         if (!$schoolYear) {
             $schoolYear = Student::orderBy('school_year', 'desc')
                 ->value('school_year') ?? date('Y') . '-' . (date('Y') + 1);
         }
 
-        // Get subjects that teacher teaches (unique by name)
         $subjects = DB::table('tbl_teacher_subjects')
             ->join('tbl_subjects', 'tbl_teacher_subjects.subject_id', '=', 'tbl_subjects.id')
             ->where('tbl_teacher_subjects.teacher_id', $teacher->id)
@@ -399,7 +397,6 @@ class TeacherController extends Controller
             ->values()
             ->toArray();
 
-        // Get sections based on teacher's schedules
         $sections = DB::table('tbl_schedules')
             ->join('tbl_class_sections', 'tbl_schedules.class_section_id', '=', 'tbl_class_sections.id')
             ->join('tbl_grade_levels', 'tbl_class_sections.grade_level_id', '=', 'tbl_grade_levels.id')
@@ -413,35 +410,38 @@ class TeacherController extends Controller
             ->get()
             ->toArray();
 
-        // Get available school years
         $schoolYears = Student::select('school_year')
             ->distinct()
             ->orderBy('school_year', 'desc')
             ->pluck('school_year')
-            ->map(function ($year) {
-                return [
-                    'value' => $year,
-                    'label' => $year,
-                ];
-            });
+            ->map(fn($year) => ['value' => $year, 'label' => $year]);
 
-        // Get students if section is selected
         $students = [];
+        $pagination = null;
+
         if ($sectionId) {
-            $students = Student::where('current_section_id', $sectionId)
+            $paginated = Student::where('current_section_id', $sectionId)
                 ->where('school_year', $schoolYear)
                 ->with(['gradeLevel', 'section'])
-                ->get()
-                ->map(function ($student) {
-                    return [
-                        'id' => $student->id,
-                        'lrn' => $student->lrn,
-                        'studentName' => trim($student->first_name . ' ' . $student->last_name),
-                        'gradeLevel' => $student->gradeLevel ? $student->gradeLevel->name : 'N/A',
-                        'section' => $student->section ? $student->section->section_name : 'N/A',
-                    ];
-                })
-                ->values();
+                ->orderBy('last_name')
+                ->paginate($perPage);
+
+            $students = collect($paginated->items())->map(function ($student) {
+                return [
+                    'id' => $student->id,
+                    'lrn' => $student->lrn,
+                    'studentName' => trim($student->first_name . ' ' . $student->last_name),
+                    'gradeLevel' => $student->gradeLevel ? $student->gradeLevel->name : 'N/A',
+                    'section' => $student->section ? $student->section->section_name : 'N/A',
+                ];
+            })->values();
+
+            $pagination = [
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+            ];
         }
 
         return Inertia::render('teacher/class-list/page', [
@@ -449,14 +449,15 @@ class TeacherController extends Controller
             'sections' => $sections,
             'schoolYears' => $schoolYears,
             'students' => $students,
+            'pagination' => $pagination,
             'filters' => [
                 'subject_id' => $subjectId,
                 'section_id' => $sectionId,
                 'school_year' => $schoolYear,
+                'per_page' => $perPage,
             ],
         ]);
     }
-
     public function finalReport(Request $request)
     {
         $user = Auth::user();
@@ -477,15 +478,21 @@ class TeacherController extends Controller
         $gradeLevelId = $request->input('grade_level_id');
         $sectionId = $request->input('section_id');
         $subjectId = $request->input('subject_id');
-        $schoolYear = $request->input('school_year') ?? Student::orderBy('school_year', 'desc')->value('school_year') ?? date('Y') . '-' . (date('Y') + 1);
+        $schoolYear = $request->input('school_year')
+            ?? Student::orderBy('school_year', 'desc')->value('school_year')
+            ?? date('Y') . '-' . (date('Y') + 1);
+        $perPage = (int) $request->input('per_page', 10);
+
+        $result = $this->getFinalReportStudents($sectionId, $subjectId, $schoolYear, $teacher, $perPage);
 
         return [
             'gradeLevels' => $this->getGradeLevels(),
             'sections' => $this->getTeacherSections($teacher, $gradeLevelId),
             'subjects' => $this->getTeacherSubjects($teacher),
             'schoolYears' => $this->getSchoolYears(),
-            'students' => $this->getFinalReportStudents($sectionId, $subjectId, $schoolYear, $teacher),
-            'filters' => compact('gradeLevelId', 'sectionId', 'subjectId', 'schoolYear'),
+            'students' => $result['students'],
+            'pagination' => $result['pagination'],
+            'filters' => compact('gradeLevelId', 'sectionId', 'subjectId', 'schoolYear', 'perPage'),
         ];
     }
 
@@ -559,19 +566,21 @@ class TeacherController extends Controller
         });
     }
 
-    private function getFinalReportStudents($sectionId, $subjectId, $schoolYear, Teacher $teacher)
+    private function getFinalReportStudents($sectionId, $subjectId, $schoolYear, Teacher $teacher, int $perPage = 10): array
     {
         if (!$sectionId || !$subjectId) {
-            return [];
+            return ['students' => [], 'pagination' => null];
         }
 
-        $studentRecords = Student::where('current_section_id', $sectionId)
+        $paginated = Student::where('current_section_id', $sectionId)
             ->where('school_year', $schoolYear)
             ->with(['gradeLevel', 'section'])
-            ->get();
+            ->orderBy('last_name')
+            ->paginate($perPage);
 
-        // Fetch all grades in one query to avoid N+1
+        $studentRecords = collect($paginated->items());
         $studentIds = $studentRecords->pluck('id');
+
         $gradeRecords = DB::table('tbl_grades')
             ->where('class_section_id', $sectionId)
             ->where('subject_id', $subjectId)
@@ -581,10 +590,17 @@ class TeacherController extends Controller
             ->get()
             ->keyBy('student_id');
 
-        return $studentRecords->map(fn($student) => $this->mapStudentWithGrade(
-            $student,
-            $gradeRecords
-        ))->values();
+        $students = $studentRecords->map(fn($student) => $this->mapStudentWithGrade($student, $gradeRecords))->values();
+
+        return [
+            'students' => $students,
+            'pagination' => [
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+            ],
+        ];
     }
 
     private function mapStudentWithGrade($student, $gradeRecords): array
@@ -929,10 +945,10 @@ class TeacherController extends Controller
         $schoolYear = $request->input('school_year')
             ?? Student::orderBy('school_year', 'desc')->value('school_year')
             ?? date('Y') . '-' . (date('Y') + 1);
+        $search = trim((string) $request->input('search', ''));
+        $status = $request->input('status', 'all');
+        $perPage = (int) $request->input('per_page', 10);
 
-        // Drive purely from tbl_schedules — this is the single source of truth
-        // for which teacher teaches which subject in which section.
-        // tbl_teacher_subjects is redundant here and was causing the bad join.
         $subjects = DB::table('tbl_schedules')
             ->join('tbl_subjects', 'tbl_schedules.subject_id', '=', 'tbl_subjects.id')
             ->join('tbl_class_sections', 'tbl_schedules.class_section_id', '=', 'tbl_class_sections.id')
@@ -950,10 +966,10 @@ class TeacherController extends Controller
             ->get();
 
         $students = collect();
+        $pagination = null;
+        $stats = ['total' => 0, 'cleared' => 0, 'pending' => 0, 'not_cleared' => 0];
 
         if ($subjectId && $sectionId) {
-            // Verify this teacher actually teaches this subject in this section
-            // to prevent teachers from querying other sections
             $validAssignment = DB::table('tbl_schedules')
                 ->where('teacher_id', $teacher->id)
                 ->where('subject_id', $subjectId)
@@ -967,36 +983,75 @@ class TeacherController extends Controller
                     ->get()
                     ->keyBy('student_id');
 
-                $students = Student::where('current_section_id', $sectionId)
-                    ->with(['gradeLevel', 'section', 'profilePicture'])
-                    ->get()
-                    ->map(function ($student) use ($clearances) {
-                        $clearance = $clearances->get($student->id);
-                        return [
-                            'id' => $student->id,
-                            'student_id' => $student->lrn,
-                            'firstName' => $student->first_name,
-                            'lastName' => $student->last_name,
-                            'middleName' => $student->middle_name ?? null,
-                            'grade_level' => $student->gradeLevel?->name ?? 'N/A',
-                            'section' => $student->section?->section_name ?? 'N/A',
-                            'clearance_status' => $clearance?->status ?? 'pending',
-                            'profile_picture' => $student->profilePicture
-                                ? asset('storage/' . $student->profilePicture->file_path)
-                                : null,
-                        ];
-                    })
-                    ->values();
+                // Stats reflect the WHOLE section, not just the current page
+                $allIds = Student::where('current_section_id', $sectionId)->pluck('id');
+                foreach ($allIds as $id) {
+                    $st = $clearances->get($id)?->status ?? 'pending';
+                    $stats['total']++;
+                    $stats[$st] = ($stats[$st] ?? 0) + 1;
+                }
+
+                $query = Student::where('current_section_id', $sectionId)
+                    ->with(['gradeLevel', 'section', 'profilePicture']);
+
+                if ($search !== '') {
+                    $query->where(function ($q) use ($search) {
+                        $q->where('first_name', 'like', "%{$search}%")
+                            ->orWhere('last_name', 'like', "%{$search}%")
+                            ->orWhere('lrn', 'like', "%{$search}%");
+                    });
+                }
+
+                if ($status !== 'all') {
+                    $matchingIds = $clearances->filter(fn($c) => $c->status === $status)->pluck('student_id');
+                    if ($status === 'pending') {
+                        $nonPendingIds = $clearances->filter(fn($c) => $c->status !== 'pending')->pluck('student_id');
+                        $query->where(fn($q) => $q->whereIn('id', $matchingIds)->orWhereNotIn('id', $nonPendingIds));
+                    } else {
+                        $query->whereIn('id', $matchingIds);
+                    }
+                }
+
+                $paginated = $query->orderBy('last_name')->paginate($perPage);
+
+                $students = collect($paginated->items())->map(function ($student) use ($clearances) {
+                    $clearance = $clearances->get($student->id);
+                    return [
+                        'id' => $student->id,
+                        'student_id' => $student->lrn,
+                        'firstName' => $student->first_name,
+                        'lastName' => $student->last_name,
+                        'middleName' => $student->middle_name ?? null,
+                        'grade_level' => $student->gradeLevel?->name ?? 'N/A',
+                        'section' => $student->section?->section_name ?? 'N/A',
+                        'clearance_status' => $clearance?->status ?? 'pending',
+                        'profile_picture' => $student->profilePicture
+                            ? asset('storage/' . $student->profilePicture->file_path)
+                            : null,
+                    ];
+                })->values();
+
+                $pagination = [
+                    'current_page' => $paginated->currentPage(),
+                    'last_page' => $paginated->lastPage(),
+                    'per_page' => $paginated->perPage(),
+                    'total' => $paginated->total(),
+                ];
             }
         }
 
         return Inertia::render('teacher/student-clearance/page', [
             'subjects' => $subjects,
             'students' => $students,
+            'stats' => $stats,
+            'pagination' => $pagination,
             'filters' => [
                 'subject_id' => $subjectId ? (int) $subjectId : null,
                 'section_id' => $sectionId ? (int) $sectionId : null,
                 'school_year' => $schoolYear,
+                'search' => $search,
+                'status' => $status,
+                'per_page' => $perPage,
             ],
         ]);
     }

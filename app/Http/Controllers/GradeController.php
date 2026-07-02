@@ -62,28 +62,22 @@ class GradeController extends Controller
             return redirect()->route('login')->withErrors(['error' => 'Teacher profile not found.']);
         }
 
-        // Get filter parameters
         $gradeLevelId = $request->input('grade_level_id');
         $sectionId = $request->input('section_id');
         $subjectId = $request->input('subject_id');
         $quarter = $request->input('quarter', '1');
         $schoolYear = $request->input('school_year');
+        $perPage = (int) $request->input('per_page', 10);
 
-        // Get current school year if not provided
         if (!$schoolYear) {
             $schoolYear = Student::orderBy('school_year', 'desc')
                 ->value('school_year') ?? date('Y') . '-' . (date('Y') + 1);
         }
 
-        // Get grade levels
         $gradeLevels = GradeLevel::all()->map(function ($level) {
-            return [
-                'id' => $level->id,
-                'name' => $level->name,
-            ];
+            return ['id' => $level->id, 'name' => $level->name];
         });
 
-        // Get sections based on teacher's schedules
         $sections = ClassSection::whereIn('id', function ($query) use ($teacher) {
             $query->select('class_section_id')
                 ->from('tbl_schedules')
@@ -103,7 +97,6 @@ class GradeController extends Controller
                 ];
             });
 
-        // Get subjects that teacher teaches (unique by name)
         $subjects = DB::table('tbl_teacher_subjects')
             ->join('tbl_subjects', 'tbl_teacher_subjects.subject_id', '=', 'tbl_subjects.id')
             ->where('tbl_teacher_subjects.teacher_id', $teacher->id)
@@ -114,17 +107,20 @@ class GradeController extends Controller
             ->values()
             ->toArray();
 
-        // Get students with their grades
         $students = [];
+        $pagination = null;
+
         if ($sectionId && $subjectId) {
             $quarterColumn = 'quarter_' . $quarter;
 
-            $studentRecords = Student::where('current_section_id', $sectionId)
+            $paginated = Student::where('current_section_id', $sectionId)
                 ->where('school_year', $schoolYear)
-                ->get();
+                ->orderBy('last_name')
+                ->paginate($perPage);
 
-            // Fetch all grades in one query to avoid N+1
+            $studentRecords = collect($paginated->items());
             $studentIds = $studentRecords->pluck('id');
+
             $gradeRecords = Grade::where('class_section_id', $sectionId)
                 ->where('subject_id', $subjectId)
                 ->where('school_year', $schoolYear)
@@ -132,12 +128,11 @@ class GradeController extends Controller
                 ->whereIn('student_id', $studentIds)
                 ->get();
 
-            // Check for duplicate records (should not happen with unique constraint)
             $duplicateCheck = $gradeRecords->groupBy('student_id');
-            foreach ($duplicateCheck as $studentId => $records) {
+            foreach ($duplicateCheck as $dupStudentId => $records) {
                 if ($records->count() > 1) {
                     Log::warning('Found duplicate grade records for student', [
-                        'student_id' => $studentId,
+                        'student_id' => $dupStudentId,
                         'section_id' => $sectionId,
                         'subject_id' => $subjectId,
                         'school_year' => $schoolYear,
@@ -148,24 +143,20 @@ class GradeController extends Controller
                 }
             }
 
-            // Use keyBy to get one record per student (most recent if duplicates exist)
             $gradeRecords = $gradeRecords->keyBy('student_id');
 
             $students = $studentRecords->map(function ($student) use ($gradeRecords, $quarterColumn) {
                 $gradeRecord = $gradeRecords->get($student->id);
                 $grade = $gradeRecord ? $gradeRecord->$quarterColumn : null;
 
-                // Format grade to remove unnecessary decimals
                 $formattedGrade = null;
                 if ($grade !== null) {
                     $formattedGrade = (float) $grade;
-                    // Remove .00 if it's a whole number
                     if ($formattedGrade == floor($formattedGrade)) {
                         $formattedGrade = (int) $formattedGrade;
                     }
                 }
 
-                // Only show remarks if this specific quarter has a grade
                 $remarks = null;
                 if ($grade !== null) {
                     $remarks = $formattedGrade >= 75 ? 'Passed' : 'Failed';
@@ -180,9 +171,15 @@ class GradeController extends Controller
                     'gradeId' => $gradeRecord ? $gradeRecord->id : null,
                 ];
             })->values();
+
+            $pagination = [
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+            ];
         }
 
-        // Get available school years
         $schoolYears = $this->getSchoolYears();
 
         return Inertia::render('teacher/grade-sheets/page', [
@@ -190,6 +187,7 @@ class GradeController extends Controller
             'sections' => $sections,
             'subjects' => $subjects,
             'students' => $students,
+            'pagination' => $pagination,
             'schoolYears' => $schoolYears,
             'filters' => [
                 'grade_level_id' => $gradeLevelId,
@@ -197,6 +195,7 @@ class GradeController extends Controller
                 'subject_id' => $subjectId,
                 'quarter' => $quarter,
                 'school_year' => $schoolYear,
+                'per_page' => $perPage,
             ],
         ]);
     }

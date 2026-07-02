@@ -4,23 +4,52 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Search, Filter, Download, CheckCircle2, XCircle, Clock, Users, BookOpen, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 type Student = { id: number; student_id: string; firstName: string; lastName: string; middleName?: string; grade_level: string; section: string; clearance_status: 'cleared' | 'pending' | 'not_cleared'; profile_picture?: string | null }
 type Subject = { id: number; subject_name: string; subject_code: string; grade_level: string; section: string; section_id: number }
-type Props = { subjects: Subject[]; students: Student[]; filters?: { subject_id?: number | null; section_id?: number | null; school_year?: string | null }; auth?: { user: { id: number; name: string; email: string; role: string } } }
+type Stats = { total: number; cleared: number; pending: number; not_cleared: number }
+type Pagination = { current_page: number; last_page: number; per_page: number; total: number } | null
+type Props = {
+    subjects: Subject[]
+    students: Student[]
+    stats: Stats
+    pagination: Pagination
+    filters?: { subject_id?: number | null; section_id?: number | null; school_year?: string | null; search?: string; status?: string; per_page?: number }
+    auth?: { user: { id: number; name: string; email: string; role: string } }
+}
 
-export default function StudentClearance({ subjects, students, filters, auth }: Props) {
-    const [searchQuery, setSearchQuery] = useState('')
+export default function StudentClearance({ subjects, students, stats, pagination, filters, auth }: Props) {
+    const [searchQuery, setSearchQuery] = useState(filters?.search || '')
     const [selectedSubject, setSelectedSubject] = useState<number | null>(filters?.subject_id ? Number(filters.subject_id) : null)
+    const [selectedSectionId, setSelectedSectionId] = useState<number | null>(filters?.section_id ? Number(filters.section_id) : null)
     const [selectedGradeLevel, setSelectedGradeLevel] = useState<string | null>(() => filters?.subject_id ? (subjects.find(s => s.id === Number(filters.subject_id))?.grade_level ?? null) : null)
     const [selectedSection, setSelectedSection] = useState<string | null>(() => filters?.subject_id ? (subjects.find(s => s.id === Number(filters.subject_id))?.section ?? null) : null)
-    const [filterStatus, setFilterStatus] = useState<'all' | 'cleared' | 'pending' | 'not_cleared'>('all')
-    const [currentPage, setCurrentPage] = useState(1)
-    const [entriesPerPage, setEntriesPerPage] = useState(10)
+    const [filterStatus, setFilterStatus] = useState<'all' | 'cleared' | 'pending' | 'not_cleared'>((filters?.status as any) || 'all')
+    const [entriesPerPage, setEntriesPerPage] = useState(filters?.per_page || 10)
     const [localStatuses, setLocalStatuses] = useState<Record<number, 'cleared' | 'pending' | 'not_cleared'>>({})
+    const isFirstRender = useRef(true)
+    const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     const getStatus = (s: Student) => localStatuses[s.id] ?? s.clearance_status
+
+    const navigate = (overrides: Record<string, string | number | null> = {}) => {
+        const params = new URLSearchParams()
+        if (selectedSubject) params.set('subject_id', String(selectedSubject))
+        if (selectedSectionId) params.set('section_id', String(selectedSectionId))
+        if (filters?.school_year) params.set('school_year', filters.school_year)
+        if (searchQuery) params.set('search', searchQuery)
+        if (filterStatus !== 'all') params.set('status', filterStatus)
+        params.set('per_page', String(entriesPerPage))
+        params.set('page', String(pagination?.current_page ?? 1))
+
+        Object.entries(overrides).forEach(([key, value]) => {
+            if (value === null || value === '') params.delete(key)
+            else params.set(key, String(value))
+        })
+
+        router.get(`/teacher/student-clearance?${params.toString()}`, {}, { preserveState: true, preserveScroll: true })
+    }
 
     const handleClearanceToggle = (student: Student) => {
         const current = getStatus(student)
@@ -30,17 +59,30 @@ export default function StudentClearance({ subjects, students, filters, auth }: 
         router.post('/teacher/student-clearance/toggle', { student_id: student.id, subject_id: selectedSubject, class_section_id: subjectData?.section_id, school_year: filters?.school_year, cleared: next === 'cleared' }, { preserveScroll: true, preserveState: true, onError: () => setLocalStatuses(prev => ({ ...prev, [student.id]: current })) })
     }
 
-    const filteredStudents = students.filter(s => {
-        const matchesSearch = searchQuery === '' || s.firstName.toLowerCase().includes(searchQuery.toLowerCase()) || s.lastName.toLowerCase().includes(searchQuery.toLowerCase()) || s.student_id.toLowerCase().includes(searchQuery.toLowerCase())
-        return matchesSearch && (filterStatus === 'all' || getStatus(s) === filterStatus)
-    })
+    // Debounced search
+    useEffect(() => {
+        if (isFirstRender.current) return
+        if (searchDebounce.current) clearTimeout(searchDebounce.current)
+        searchDebounce.current = setTimeout(() => {
+            navigate({ search: searchQuery || null, page: 1 })
+        }, 400)
+        return () => { if (searchDebounce.current) clearTimeout(searchDebounce.current) }
+    }, [searchQuery])
 
-    const totalPages = Math.ceil(filteredStudents.length / entriesPerPage)
-    const paginatedStudents = filteredStudents.slice((currentPage - 1) * entriesPerPage, currentPage * entriesPerPage)
-    const startEntry = filteredStudents.length === 0 ? 0 : (currentPage - 1) * entriesPerPage + 1
-    const endEntry = Math.min(currentPage * entriesPerPage, filteredStudents.length)
+    useEffect(() => {
+        if (isFirstRender.current) { isFirstRender.current = false; return }
+        navigate({ status: filterStatus === 'all' ? null : filterStatus, page: 1 })
+    }, [filterStatus])
+
+    const handlePageChange = (page: number) => navigate({ page })
+    const handleEntriesPerPageChange = (perPage: number) => {
+        setEntriesPerPage(perPage)
+        navigate({ per_page: perPage, page: 1 })
+    }
 
     const getPageNumbers = () => {
+        const totalPages = pagination?.last_page ?? 1
+        const currentPage = pagination?.current_page ?? 1
         const pages: (number | 'ellipsis')[] = []
         if (totalPages <= 7) { for (let i = 1; i <= totalPages; i++) pages.push(i) }
         else {
@@ -54,8 +96,17 @@ export default function StudentClearance({ subjects, students, filters, auth }: 
     }
 
     const handleSubjectSelect = (subjectId: number, sectionId: number) => {
-        setSelectedSubject(subjectId); setLocalStatuses({}); setCurrentPage(1)
-        router.get('/teacher/student-clearance', { subject_id: subjectId, section_id: sectionId }, { preserveState: true, preserveScroll: true })
+        setSelectedSubject(subjectId)
+        setSelectedSectionId(sectionId)
+        setLocalStatuses({})
+        setSearchQuery('')
+        setFilterStatus('all')
+        const params = new URLSearchParams()
+        params.set('subject_id', String(subjectId))
+        params.set('section_id', String(sectionId))
+        params.set('per_page', String(entriesPerPage))
+        params.set('page', '1')
+        router.get(`/teacher/student-clearance?${params.toString()}`, {}, { preserveState: true, preserveScroll: true })
     }
 
     const getStatusBadge = (status: string) => {
@@ -64,11 +115,13 @@ export default function StudentClearance({ subjects, students, filters, auth }: 
         return <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700"><XCircle className="w-3 h-3" /> Not Cleared</span>
     }
 
-    const stats = { total: filteredStudents.length, cleared: filteredStudents.filter(s => getStatus(s) === 'cleared').length, pending: filteredStudents.filter(s => getStatus(s) === 'pending').length, notCleared: filteredStudents.filter(s => getStatus(s) === 'not_cleared').length }
     const selectedSubjectData = subjects.find(s => s.id === selectedSubject)
     const uniqueGradeLevels = [...new Map(subjects.map(s => [s.grade_level, s.grade_level])).values()]
     const filteredSections = [...new Map(subjects.filter(s => s.grade_level === selectedGradeLevel).map(s => [s.section, s.section])).values()]
     const filteredSubjects = subjects.filter(s => s.grade_level === selectedGradeLevel && s.section === selectedSection)
+
+    const startEntry = (stats?.total ?? 0) === 0 ? 0 : ((pagination?.current_page ?? 1) - 1) * (pagination?.per_page ?? entriesPerPage) + 1
+    const endEntry = pagination ? Math.min(pagination.current_page * pagination.per_page, pagination.total) : 0
 
     return (
         <TeacherLayout user={auth?.user}>
@@ -98,7 +151,7 @@ export default function StudentClearance({ subjects, students, filters, auth }: 
                         { label: 'Total Students', value: stats.total, color: 'blue', Icon: Users },
                         { label: 'Cleared', value: stats.cleared, color: 'green', Icon: CheckCircle2 },
                         { label: 'Pending', value: stats.pending, color: 'yellow', Icon: Clock },
-                        { label: 'Not Cleared', value: stats.notCleared, color: 'red', Icon: XCircle },
+                        { label: 'Not Cleared', value: stats.not_cleared, color: 'red', Icon: XCircle },
                     ].map(({ label, value, color, Icon }) => (
                         <div key={label} className={`bg-gradient-to-br from-${color}-50 to-${color}-100 rounded-lg border border-${color}-200 p-3 sm:p-4`}>
                             <div className="flex items-center justify-between">
@@ -130,7 +183,7 @@ export default function StudentClearance({ subjects, students, filters, auth }: 
                         <div className="flex flex-col gap-3">
                             <div>
                                 <label className="block text-xs font-medium text-gray-500 mb-1">Grade Level</label>
-                                <select value={selectedGradeLevel ?? ''} onChange={e => { setSelectedGradeLevel(e.target.value || null); setSelectedSection(null); setSelectedSubject(null); setCurrentPage(1); router.get('/teacher/student-clearance', {}, { preserveState: true, preserveScroll: true }) }} className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 text-sm">
+                                <select value={selectedGradeLevel ?? ''} onChange={e => { setSelectedGradeLevel(e.target.value || null); setSelectedSection(null); setSelectedSubject(null); setSelectedSectionId(null); router.get('/teacher/student-clearance', {}, { preserveState: true, preserveScroll: true }) }} className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 text-sm">
                                     <option value="" disabled>Select grade level...</option>
                                     {uniqueGradeLevels.map(gl => <option key={gl} value={gl}>{gl}</option>)}
                                 </select>
@@ -138,7 +191,7 @@ export default function StudentClearance({ subjects, students, filters, auth }: 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label className="block text-xs font-medium text-gray-500 mb-1">Section</label>
-                                    <select value={selectedSection ?? ''} disabled={!selectedGradeLevel} onChange={e => { setSelectedSection(e.target.value || null); setSelectedSubject(null); setCurrentPage(1); router.get('/teacher/student-clearance', {}, { preserveState: true, preserveScroll: true }) }} className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 text-sm disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed">
+                                    <select value={selectedSection ?? ''} disabled={!selectedGradeLevel} onChange={e => { setSelectedSection(e.target.value || null); setSelectedSubject(null); setSelectedSectionId(null); router.get('/teacher/student-clearance', {}, { preserveState: true, preserveScroll: true }) }} className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 text-sm disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed">
                                         <option value="" disabled>Select section...</option>
                                         {filteredSections.map(sec => <option key={sec} value={sec}>{sec}</option>)}
                                     </select>
@@ -162,11 +215,11 @@ export default function StudentClearance({ subjects, students, filters, auth }: 
                             <div className="flex flex-col gap-3">
                                 <div className="relative">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                                    <Input type="text" placeholder="Search by name or student ID..." value={searchQuery} onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1) }} className="pl-10 w-full" />
+                                    <Input type="text" placeholder="Search by name or student ID..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-10 w-full" />
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Filter className="w-4 h-4 text-gray-500 shrink-0" />
-                                    <select value={filterStatus} onChange={e => { setFilterStatus(e.target.value as any); setCurrentPage(1) }} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
+                                    <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as any)} className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
                                         <option value="all">All Status</option>
                                         <option value="cleared">Cleared</option>
                                         <option value="pending">Pending</option>
@@ -190,7 +243,7 @@ export default function StudentClearance({ subjects, students, filters, auth }: 
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
-                                        {paginatedStudents.length === 0 ? (
+                                        {students.length === 0 ? (
                                             <tr>
                                                 <td colSpan={5} className="px-6 py-16 text-center">
                                                     <div className="flex flex-col items-center justify-center text-gray-500">
@@ -198,11 +251,11 @@ export default function StudentClearance({ subjects, students, filters, auth }: 
                                                             <Users className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" />
                                                         </div>
                                                         <p className="text-base font-semibold text-gray-700">No students found</p>
-                                                        <p className="text-sm text-gray-500 mt-2">{students.length === 0 ? "No students are enrolled in this subject's section." : 'Try adjusting your search or filters'}</p>
+                                                        <p className="text-sm text-gray-500 mt-2">{stats.total === 0 ? "No students are enrolled in this subject's section." : 'Try adjusting your search or filters'}</p>
                                                     </div>
                                                 </td>
                                             </tr>
-                                        ) : paginatedStudents.map((student, index) => {
+                                        ) : students.map((student, index) => {
                                             const status = getStatus(student)
                                             const isCleared = status === 'cleared'
                                             return (
@@ -238,26 +291,26 @@ export default function StudentClearance({ subjects, students, filters, auth }: 
                                 </table>
                             </div>
 
-                            {filteredStudents.length > 0 && (
+                            {(pagination?.total ?? 0) > 0 && (
                                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-4 border-t border-gray-200 bg-gray-50">
                                     <div className="flex items-center gap-2 text-sm text-gray-600 flex-wrap">
                                         <span>Show</span>
-                                        <select value={entriesPerPage} onChange={e => { setEntriesPerPage(Number(e.target.value)); setCurrentPage(1) }} className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm">
+                                        <select value={entriesPerPage} onChange={e => handleEntriesPerPageChange(Number(e.target.value))} className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm">
                                             {[10, 25, 50, 100].map(n => <option key={n} value={n}>{n}</option>)}
                                         </select>
                                         <span>entries</span>
-                                        <span className="text-gray-400">— {startEntry}–{endEntry} of {filteredStudents.length}</span>
+                                        <span className="text-gray-400">— {startEntry}–{endEntry} of {pagination?.total ?? 0}</span>
                                     </div>
                                     <div className="flex items-center gap-1 flex-wrap">
-                                        <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className="p-1.5 rounded-md border border-gray-300 text-gray-500 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"><ChevronsLeft className="w-4 h-4" /></button>
-                                        <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-1.5 rounded-md border border-gray-300 text-gray-500 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"><ChevronLeft className="w-4 h-4" /></button>
+                                        <button onClick={() => handlePageChange(1)} disabled={(pagination?.current_page ?? 1) === 1} className="p-1.5 rounded-md border border-gray-300 text-gray-500 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"><ChevronsLeft className="w-4 h-4" /></button>
+                                        <button onClick={() => handlePageChange(Math.max(1, (pagination?.current_page ?? 1) - 1))} disabled={(pagination?.current_page ?? 1) === 1} className="p-1.5 rounded-md border border-gray-300 text-gray-500 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"><ChevronLeft className="w-4 h-4" /></button>
                                         {getPageNumbers().map((page, i) => page === 'ellipsis' ? (
                                             <span key={`e-${i}`} className="px-2 text-gray-400">…</span>
                                         ) : (
-                                            <button key={page} onClick={() => setCurrentPage(page)} className={`min-w-[34px] h-[34px] rounded-md border text-sm font-medium transition-all ${currentPage === page ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300 text-gray-600 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600'}`}>{page}</button>
+                                            <button key={page} onClick={() => handlePageChange(page)} className={`min-w-[34px] h-[34px] rounded-md border text-sm font-medium transition-all ${(pagination?.current_page ?? 1) === page ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300 text-gray-600 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600'}`}>{page}</button>
                                         ))}
-                                        <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="p-1.5 rounded-md border border-gray-300 text-gray-500 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"><ChevronRight className="w-4 h-4" /></button>
-                                        <button onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} className="p-1.5 rounded-md border border-gray-300 text-gray-500 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"><ChevronsRight className="w-4 h-4" /></button>
+                                        <button onClick={() => handlePageChange(Math.min(pagination?.last_page ?? 1, (pagination?.current_page ?? 1) + 1))} disabled={(pagination?.current_page ?? 1) === (pagination?.last_page ?? 1)} className="p-1.5 rounded-md border border-gray-300 text-gray-500 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"><ChevronRight className="w-4 h-4" /></button>
+                                        <button onClick={() => handlePageChange(pagination?.last_page ?? 1)} disabled={(pagination?.current_page ?? 1) === (pagination?.last_page ?? 1)} className="p-1.5 rounded-md border border-gray-300 text-gray-500 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all"><ChevronsRight className="w-4 h-4" /></button>
                                     </div>
                                 </div>
                             )}

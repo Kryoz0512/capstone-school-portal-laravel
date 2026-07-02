@@ -3,37 +3,58 @@ import TeacherLayout from '@/layouts/teacher-layout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Printer } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { DataTablePagination, teacherTableHeaderCellClass, teacherTableHeaderClass } from '@/components/data-table-pagination'
-import { useClientPagination } from '@/hooks/use-client-pagination'
 
 type Student = { id: number; lrn: string; studentName: string; gradeLevel: string; section: string }
 type Subject = { id: number; name: string }
 type Section = { id: number; name: string; grade_level_name: string }
 type SchoolYear = { value: string; label: string }
+type Pagination = { current_page: number; last_page: number; per_page: number; total: number } | null
 type Props = {
     subjects: Subject[]; sections: Section[]; schoolYears: SchoolYear[]; students: Student[]
-    filters: { subject_id: number | null; section_id: number | null; school_year: string }
+    pagination: Pagination
+    filters: { subject_id: number | null; section_id: number | null; school_year: string; per_page?: number }
     auth?: { user: { id: number; name: string; email: string; role: string } }
 }
 
-export default function ClassList({ subjects, sections, schoolYears, students, filters, auth }: Props) {
+export default function ClassList({ subjects, sections, schoolYears, students, pagination, filters, auth }: Props) {
     const [subject, setSubject] = useState(filters.subject_id?.toString() || '')
     const [section, setSection] = useState(filters.section_id?.toString() || '')
     const [schoolYear, setSchoolYear] = useState(filters.school_year || '')
-
-    const { currentPage, setCurrentPage, entriesPerPage, setEntriesPerPage, totalPages, totalItems, isVisibleOnScreen } = useClientPagination(students)
+    const [entriesPerPage, setEntriesPerPage] = useState(filters.per_page || 10)
+    const isFirstRender = useRef(true)
 
     const selectedSection = sections.find(s => s.id.toString() === section)
     const selectedSubject = subjects.find(s => s.id.toString() === subject)
 
-    useEffect(() => {
+    const navigate = (page: number) => {
         const params = new URLSearchParams()
         if (subject) params.set('subject_id', subject)
         if (section) params.set('section_id', section)
         if (schoolYear) params.set('school_year', schoolYear)
+        params.set('per_page', String(entriesPerPage))
+        params.set('page', String(page))
         router.get(`/teacher/class-list?${params.toString()}`, {}, { preserveState: true, preserveScroll: true })
+    }
+
+    // Filter changes reset to page 1
+    useEffect(() => {
+        if (isFirstRender.current) { isFirstRender.current = false; return }
+        navigate(1)
     }, [subject, section, schoolYear])
+
+    const handlePageChange = (page: number) => navigate(page)
+    const handleEntriesPerPageChange = (perPage: number) => {
+        setEntriesPerPage(perPage)
+        const params = new URLSearchParams()
+        if (subject) params.set('subject_id', subject)
+        if (section) params.set('section_id', section)
+        if (schoolYear) params.set('school_year', schoolYear)
+        params.set('per_page', String(perPage))
+        params.set('page', '1')
+        router.get(`/teacher/class-list?${params.toString()}`, {}, { preserveState: true, preserveScroll: true })
+    }
 
     return (
         <TeacherLayout user={auth?.user}>
@@ -104,7 +125,7 @@ export default function ClassList({ subjects, sections, schoolYears, students, f
                             {selectedSection && <p><span className="font-medium">Section:</span> {selectedSection.grade_level_name} - {selectedSection.name}</p>}
                             <p><span className="font-medium">School Year:</span> {schoolYear}</p>
                             <p><span className="font-medium">Teacher:</span> {auth?.user?.name}</p>
-                            <p><span className="font-medium">Total Students:</span> {students.length}</p>
+                            <p><span className="font-medium">Students on this page:</span> {students.length} of {pagination?.total ?? students.length}</p>
                         </div>
                     </div>
 
@@ -128,8 +149,10 @@ export default function ClassList({ subjects, sections, schoolYears, students, f
                                     </thead>
                                     <tbody className="divide-y divide-gray-200">
                                         {students.length > 0 ? students.map((student, index) => (
-                                            <tr key={student.id} className={`hover:bg-gray-50 ${!isVisibleOnScreen(index) ? 'hidden print:table-row' : ''}`}>
-                                                <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-gray-900">{index + 1}</td>
+                                            <tr key={student.id} className="hover:bg-gray-50">
+                                                <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-gray-900">
+                                                    {((pagination?.current_page ?? 1) - 1) * (pagination?.per_page ?? entriesPerPage) + index + 1}
+                                                </td>
                                                 <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-gray-900">{student.lrn}</td>
                                                 <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-gray-900">{student.studentName}</td>
                                                 <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-gray-900">{student.gradeLevel}</td>
@@ -141,7 +164,15 @@ export default function ClassList({ subjects, sections, schoolYears, students, f
                                     </tbody>
                                 </table>
                             </div>
-                            <DataTablePagination totalItems={totalItems} currentPage={currentPage} entriesPerPage={entriesPerPage} totalPages={totalPages} onPageChange={setCurrentPage} onEntriesPerPageChange={setEntriesPerPage} variant="teacher" />
+                            <DataTablePagination
+                                totalItems={pagination?.total ?? 0}
+                                currentPage={pagination?.current_page ?? 1}
+                                entriesPerPage={entriesPerPage}
+                                totalPages={pagination?.last_page ?? 1}
+                                onPageChange={handlePageChange}
+                                onEntriesPerPageChange={handleEntriesPerPageChange}
+                                variant="teacher"
+                            />
                             <div className="hidden print:block mt-12 pt-8 border-t border-gray-300">
                                 <div className="grid grid-cols-2 gap-8">
                                     <div>

@@ -9,43 +9,44 @@ use Inertia\Inertia;
 
 class ClassSectionController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $sections = ClassSection::with(['gradeLevel', 'room'])->get()->map(function ($section) {
-            return [
-                'id' => $section->id,
-                'section_name' => $section->section_name,
-                'grade_level_id' => $section->grade_level_id,
-                'grade_level' => $section->gradeLevel ? $section->gradeLevel->name : null,
-                'room_id' => $section->room_id,
-                'room' => $section->room ? $section->room->room_name : null,
-            ];
-        });
+        $search = $request->input('search', '');
+        $gradeLevelFilter = $request->input('grade_level', 'all');
+        $perPage = (int) $request->input('per_page', 10);
+
+        $sections = ClassSection::with(['gradeLevel', 'room'])
+            ->when($search, fn($q) => $q->where('section_name', 'like', "%{$search}%"))
+            ->when($gradeLevelFilter !== 'all', fn($q) => $q->where('grade_level_id', $gradeLevelFilter))
+            ->orderBy('section_name')
+            ->paginate($perPage)
+            ->withQueryString()
+            ->through(function ($section) {
+                return [
+                    'id' => $section->id,
+                    'section_name' => $section->section_name,
+                    'grade_level_id' => $section->grade_level_id,
+                    'grade_level' => $section->gradeLevel ? $section->gradeLevel->name : null,
+                    'room_id' => $section->room_id,
+                    'room' => $section->room ? $section->room->room_name : null,
+                ];
+            });
 
         $gradeLevels = GradeLevel::all()->map(function ($level) {
-            return [
-                'id' => $level->id,
-                'name' => $level->name,
-            ];
+            return ['id' => $level->id, 'name' => $level->name];
         });
 
         $rooms = \App\Models\Room::where('status', 'Available')->get()->map(function ($room) {
-            return [
-                'id' => $room->id,
-                'room_name' => $room->room_name,
-                'capacity' => $room->capacity,
-            ];
+            return ['id' => $room->id, 'room_name' => $room->room_name, 'capacity' => $room->capacity];
         });
-
-        $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
 
         return Inertia::render('admin/enrollment/class-sections/page', [
             'sections' => $sections,
             'gradeLevels' => $gradeLevels,
             'rooms' => $rooms,
+            'filters' => ['search' => $search, 'grade_level' => $gradeLevelFilter],
         ]);
     }
-
     public function checkSectionName(Request $request)
     {
         $sectionName = $request->input('section_name');

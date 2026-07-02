@@ -346,17 +346,15 @@ class StudentController extends Controller
 
     public function notEnrolled(Request $request)
     {
-        // 1. Sanitize and Get filter parameters
         $search = $request->input('search');
         $gradeLevelFilter = $request->input('grade_level');
         $genderFilter = $request->input('gender');
         $ageFilter = $request->input('age');
+        $perPage = (int) $request->input('per_page', 10);
 
-        // 2. Build Student Query
-        $query = Student::with(['gradeLevel']) // 'user' removed unless you actually use user data below
+        $query = Student::with(['gradeLevel'])
             ->whereNull('current_section_id');
 
-        // Apply search filter (name or LRN)
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('lrn', 'like', "%{$search}%")
@@ -365,37 +363,40 @@ class StudentController extends Controller
             });
         }
 
-        if ($gradeLevelFilter) {
+        if ($gradeLevelFilter && $gradeLevelFilter !== 'all') {
             $query->where('current_grade_level_id', $gradeLevelFilter);
         }
 
-        if ($genderFilter) {
+        if ($genderFilter && $genderFilter !== 'all') {
             $query->where('gender', strtolower($genderFilter));
         }
 
-        // Optimization: Filter Age at the Database level instead of in memory
-        if ($ageFilter) {
+        if ($ageFilter && $ageFilter !== 'all') {
             $query->whereRaw("FLOOR(DATEDIFF(CURDATE(), birth_date) / 365.25) = ?", [$ageFilter]);
         }
 
-        $students = $query->get()->map(fn($student) => [
-            'id' => $student->id,
-            'studentName' => trim("{$student->first_name} {$student->last_name}"),
-            'lrn' => $student->lrn,
-            'gender' => ucfirst($student->gender),
-            'age' => $student->birth_date ? Carbon::parse($student->birth_date)->age : null,
-            'gradeLevel' => $student->gradeLevel->name ?? '',
-            'gradeLevelId' => $student->current_grade_level_id,
-            'section' => '',
-            'studentStatus' => $student->student_status,
-        ]);
+        $totalNotEnrolled = Student::whereNull('current_section_id')->count();
+        $withGradeLevel = Student::whereNull('current_section_id')->whereNotNull('current_grade_level_id')->count();
 
-        // 3. Fetch Grade Levels (Keep it simple)
+        $students = $query->orderBy('last_name')->orderBy('first_name')
+            ->paginate($perPage)
+            ->withQueryString()
+            ->through(fn($student) => [
+                'id' => $student->id,
+                'studentName' => trim("{$student->first_name} {$student->last_name}"),
+                'lrn' => $student->lrn,
+                'gender' => ucfirst($student->gender),
+                'age' => $student->birth_date ? Carbon::parse($student->birth_date)->age : null,
+                'gradeLevel' => $student->gradeLevel->name ?? '',
+                'gradeLevelId' => $student->current_grade_level_id,
+                'section' => '',
+                'studentStatus' => $student->student_status,
+            ]);
+
         $gradeLevels = GradeLevel::select('id', 'name')->get();
 
-        // 4. Fetch Sections (Fixed N+1 issue using withCount)
         $sections = ClassSection::with(['gradeLevel', 'room'])
-            ->withCount('students') // Automatically adds a 'students_count' attribute
+            ->withCount('students')
             ->get()
             ->map(function ($section) {
                 $capacity = $section->room->capacity ?? 0;
@@ -418,6 +419,11 @@ class StudentController extends Controller
             'students' => $students,
             'gradeLevels' => $gradeLevels,
             'sections' => $sections,
+            'stats' => [
+                'total' => $totalNotEnrolled,
+                'pendingAssignment' => $totalNotEnrolled - $withGradeLevel,
+                'assigned' => $withGradeLevel,
+            ],
             'filters' => $request->only(['search', 'grade_level', 'gender', 'age']),
         ]);
     }
@@ -1651,6 +1657,8 @@ class StudentController extends Controller
 
     public function enrollmentList(Request $request)
     {
+        $perPage = (int) $request->input('per_page', 10);
+
         $query = Student::with([
             'section.gradeLevel',
             'section.adviserSections.teacher',
@@ -1658,7 +1666,6 @@ class StudentController extends Controller
         ])
             ->whereNotNull('current_section_id');
 
-        // Apply filters
         if ($request->filled('grade_level')) {
             $query->where('current_grade_level_id', $request->grade_level);
         }
@@ -1670,45 +1677,44 @@ class StudentController extends Controller
         if ($request->filled('search')) {
             $searchTerm = $request->search;
             $query->where(function ($q) use ($searchTerm) {
-                // Search in student name
                 $q->where(DB::raw("CONCAT(first_name, ' ', COALESCE(middle_name, ''), ' ', last_name)"), 'like', '%' . $searchTerm . '%')
-                    // Search in adviser name
                     ->orWhereHas('section.adviserSections.teacher', function ($q) use ($searchTerm) {
                         $q->where('name', 'like', '%' . $searchTerm . '%');
                     });
             });
         }
 
-        $students = $query->get()->map(function ($student) {
-            $section = $student->section;
-            $adviser = $section && $section->adviserSections->isNotEmpty()
-                ? $section->adviserSections->first()->teacher->name
-                : 'Not Assigned';
+        $students = $query->orderBy('last_name')
+            ->paginate($perPage)
+            ->withQueryString()
+            ->through(function ($student) {
+                $section = $student->section;
+                $adviser = $section && $section->adviserSections->isNotEmpty()
+                    ? $section->adviserSections->first()->teacher->name
+                    : 'Not Assigned';
 
-            return [
-                'id' => $student->id,
-                'student_name' => trim($student->first_name . ' ' . ($student->middle_name ? $student->middle_name . ' ' : '') . $student->last_name),
-                'lrn' => $student->lrn,
-                'section' => $section ? $section->section_name : 'N/A',
-                'section_id' => $student->current_section_id,
-                'grade_level' => $student->gradeLevel ? $student->gradeLevel->name : 'N/A',
-                'grade_level_id' => $student->current_grade_level_id,
-                'adviser' => $adviser,
-            ];
-        });
+                return [
+                    'id' => $student->id,
+                    'student_name' => trim($student->first_name . ' ' . ($student->middle_name ? $student->middle_name . ' ' : '') . $student->last_name),
+                    'lrn' => $student->lrn,
+                    'section' => $section ? $section->section_name : 'N/A',
+                    'section_id' => $student->current_section_id,
+                    'grade_level' => $student->gradeLevel ? $student->gradeLevel->name : 'N/A',
+                    'grade_level_id' => $student->current_grade_level_id,
+                    'adviser' => $adviser,
+                ];
+            });
 
-        // Get all grade levels for filter - ordered properly (7, 8, 9, 10, Rizal)
         $gradeLevels = \App\Models\GradeLevel::orderByRaw("
-            CASE 
-                WHEN name = 'Grade 7' THEN 1
-                WHEN name = 'Grade 8' THEN 2
-                WHEN name = 'Grade 9' THEN 3
-                WHEN name = 'Grade 10' THEN 4
-                ELSE 5
-            END
-        ")->get();
+        CASE
+            WHEN name = 'Grade 7' THEN 1
+            WHEN name = 'Grade 8' THEN 2
+            WHEN name = 'Grade 9' THEN 3
+            WHEN name = 'Grade 10' THEN 4
+            ELSE 5
+        END
+    ")->get();
 
-        // Get all sections for filter
         $sections = \App\Models\ClassSection::with('gradeLevel')
             ->orderBy('section_name')
             ->get()

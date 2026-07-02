@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react'
+import { Head, router } from '@inertiajs/react'
 import AdminLayout from '@/layouts/admin-layout'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -6,8 +6,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import AddRoomModal from '@/components/modals/add-room-modal'
 import EditRoomModal from '@/components/modals/edit-room-modal'
 import DeleteRoomModal from '@/components/modals/delete-room-modal'
-import { Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
-import { useState, useMemo } from 'react'
+import { Pagination } from '@/components/pagination'
+import { Pencil, Trash2 } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
 
 type Room = {
     id: number
@@ -17,56 +18,58 @@ type Room = {
     students_count: number
 }
 
+type PaginationLink = { url: string | null; label: string; active: boolean }
+
 type Props = {
     auth?: {
-        user: {
-            id: number
-            name: string
-            email: string
-            role: string
-        }
-        admin?: {
-            role: string
-            position: string
-        }
+        user: { id: number; name: string; email: string; role: string }
+        admin?: { role: string; position: string }
     }
-    rooms?: Room[]
+    rooms: {
+        data: Room[]
+        current_page: number
+        last_page: number
+        per_page: number
+        total: number
+        links: PaginationLink[]
+    }
+    filters?: { search?: string; capacity?: string; status?: string }
 }
 
-export default function RoomListings({ auth, rooms = [] }: Props) {
+export default function RoomListings({ auth, rooms, filters = {} }: Props) {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
     const [selectedRoom, setSelectedRoom] = useState<Room | null>(null)
     const [roomToDelete, setRoomToDelete] = useState<{ id: number; room_name: string } | null>(null)
-    const [searchTerm, setSearchTerm] = useState('')
-    const [capacityFilter, setCapacityFilter] = useState('')
-    const [statusFilter, setStatusFilter] = useState('All')
 
-    // Pagination states
-    const [currentPage, setCurrentPage] = useState(1)
-    const [itemsPerPage, setItemsPerPage] = useState(10)
+    const [searchTerm, setSearchTerm] = useState(filters.search || '')
+    const [capacityFilter, setCapacityFilter] = useState(filters.capacity || '')
+    const [statusFilter, setStatusFilter] = useState(filters.status || 'All')
+    const [perPage, setPerPage] = useState(rooms.per_page || 10)
 
-    const filteredRooms = rooms.filter(room => {
-        const matchesSearch = room.room_name.toLowerCase().includes(searchTerm.toLowerCase())
-        const matchesCapacity = capacityFilter === '' || room.capacity.toString() === capacityFilter
-        const matchesStatus = statusFilter === 'All' || room.status === statusFilter
-        return matchesSearch && matchesCapacity && matchesStatus
-    })
+    // Guards the filters effect below from firing on mount (including
+    // remounts triggered by pagination navigation). Without this, paginating
+    // to page 2+ would trigger a re-request with no `page` param, bouncing
+    // the user back to page 1.
+    const isFirstRender = useRef(true)
 
-    // Paginate filtered rooms
-    const paginatedRooms = useMemo(() => {
-        const startIndex = (currentPage - 1) * itemsPerPage
-        const endIndex = startIndex + itemsPerPage
-        return filteredRooms.slice(startIndex, endIndex)
-    }, [filteredRooms, currentPage, itemsPerPage])
+    useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false
+            return
+        }
 
-    const totalPages = Math.ceil(filteredRooms.length / itemsPerPage)
-
-    // Reset to page 1 when filters or itemsPerPage change
-    useMemo(() => {
-        setCurrentPage(1)
-    }, [searchTerm, capacityFilter, statusFilter, itemsPerPage])
+        const timer = setTimeout(() => {
+            router.get('/admin/enrollment/room-listings', {
+                search: searchTerm || undefined,
+                capacity: capacityFilter || undefined,
+                status: statusFilter !== 'All' ? statusFilter : undefined,
+                per_page: perPage,
+            }, { preserveState: true, preserveScroll: true, replace: true })
+        }, 300)
+        return () => clearTimeout(timer)
+    }, [searchTerm, capacityFilter, statusFilter, perPage])
 
     const handleEdit = (room: Room) => {
         setSelectedRoom(room)
@@ -78,23 +81,25 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
         setIsDeleteModalOpen(true)
     }
 
+    const handlePageChange = (url: string | null) => {
+        // preserveState is required here so the component instance (and its
+        // isFirstRender ref) survives the navigation instead of remounting,
+        // which previously caused the filters effect above to re-fire and
+        // silently strip the `page` param, sending the user back to page 1.
+        if (url) router.visit(url, { preserveScroll: true, preserveState: true })
+    }
+
     return (
         <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title="Room Listings" />
 
             <div className="space-y-6">
-                {/* Page Header */}
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">Room Listings</h1>
-                        <p className="text-sm text-gray-500 mt-1">
-                            Search and filter available rooms
-                        </p>
+                        <p className="text-sm text-gray-500 mt-1">Search and filter available rooms</p>
                     </div>
-                    <Button
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                        onClick={() => setIsModalOpen(true)}
-                    >
+                    <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={() => setIsModalOpen(true)}>
                         + Add Room
                     </Button>
                 </div>
@@ -108,14 +113,11 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
                     roomNumber={roomToDelete?.room_name || ''}
                 />
 
-                {/* Filters Section */}
                 <div className="bg-white rounded-lg border border-gray-200 p-6">
                     <h2 className="text-sm font-semibold text-gray-900 mb-4">Filters</h2>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Search by Room Name
-                            </label>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Search by Room Name</label>
                             <Input
                                 type="text"
                                 placeholder="Enter room name..."
@@ -124,9 +126,7 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Capacity
-                            </label>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Capacity</label>
                             <Input
                                 type="number"
                                 placeholder="Enter capacity..."
@@ -136,9 +136,7 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Status
-                            </label>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
                             <Select value={statusFilter} onValueChange={setStatusFilter}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="All" />
@@ -154,66 +152,44 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
                     </div>
                 </div>
 
-                {/* Rooms Table Section */}
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead className="bg-green-700">
                                 <tr>
-                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
-                                        Room Name
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
-                                        Capacity
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
-                                        Students
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
-                                        Status
-                                    </th>
-                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
-                                        Actions
-                                    </th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Room Name</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Capacity</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Students</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Status</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                {paginatedRooms.length > 0 ? (
-                                    paginatedRooms.map((room) => (
+                                {rooms.data.length > 0 ? (
+                                    rooms.data.map((room) => (
                                         <tr key={room.id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 text-sm text-gray-900">
-                                                {room.room_name}
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-gray-900">
-                                                {room.capacity}
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-gray-900">
-                                                {room.students_count || 0}
-                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">{room.room_name}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">{room.capacity}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">{room.students_count || 0}</td>
                                             <td className="px-6 py-4">
                                                 <span
-                                                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${room.status === 'Available'
+                                                    className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                                                        room.status === 'Available'
                                                             ? 'bg-green-100 text-green-800'
                                                             : room.status === 'Vacant'
                                                                 ? 'bg-yellow-100 text-yellow-800'
                                                                 : 'bg-red-100 text-red-800'
-                                                        }`}
+                                                    }`}
                                                 >
                                                     {room.status}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-2">
-                                                    <button
-                                                        className="text-gray-600 hover:text-green-600"
-                                                        onClick={() => handleEdit(room)}
-                                                    >
+                                                    <button className="text-gray-600 hover:text-green-600" onClick={() => handleEdit(room)}>
                                                         <Pencil className="w-4 h-4" />
                                                     </button>
-                                                    <button
-                                                        className="text-gray-600 hover:text-red-600"
-                                                        onClick={() => handleDelete(room)}
-                                                    >
+                                                    <button className="text-gray-600 hover:text-red-600" onClick={() => handleDelete(room)}>
                                                         <Trash2 className="w-4 h-4" />
                                                     </button>
                                                 </div>
@@ -225,8 +201,7 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
                                         <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-500">
                                             {searchTerm || capacityFilter !== '' || statusFilter !== 'All'
                                                 ? 'No rooms found matching your filters.'
-                                                : 'No rooms available. Click "+ Add Room" to create one.'
-                                            }
+                                                : 'No rooms available. Click "+ Add Room" to create one.'}
                                         </td>
                                     </tr>
                                 )}
@@ -234,81 +209,16 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
                         </table>
                     </div>
 
-                    {/* Pagination */}
-                    {filteredRooms.length > 0 && (
-                        <div className="p-4 border-t border-gray-200 flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm text-gray-600">Show</span>
-                                    <Select
-                                        value={itemsPerPage.toString()}
-                                        onValueChange={(value) => setItemsPerPage(Number(value))}
-                                    >
-                                        <SelectTrigger className="w-20">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="10">10</SelectItem>
-                                            <SelectItem value="25">25</SelectItem>
-                                            <SelectItem value="50">50</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    <span className="text-sm text-gray-600">entries</span>
-                                </div>
-                                <p className="text-sm text-gray-600">
-                                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredRooms.length)} of {filteredRooms.length} entries
-                                </p>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                    disabled={currentPage === 1}
-                                >
-                                    <ChevronLeft className="w-4 h-4" />
-                                </Button>
-
-                                <div className="flex items-center gap-1">
-                                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                                        // Show first page, last page, current page, and pages around current
-                                        if (
-                                            page === 1 ||
-                                            page === totalPages ||
-                                            (page >= currentPage - 1 && page <= currentPage + 1)
-                                        ) {
-                                            return (
-                                                <Button
-                                                    key={page}
-                                                    variant={currentPage === page ? "default" : "outline"}
-                                                    size="sm"
-                                                    onClick={() => setCurrentPage(page)}
-                                                    className={currentPage === page ? "bg-green-600 hover:bg-green-700" : ""}
-                                                >
-                                                    {page}
-                                                </Button>
-                                            )
-                                        } else if (
-                                            page === currentPage - 2 ||
-                                            page === currentPage + 2
-                                        ) {
-                                            return <span key={page} className="px-2">...</span>
-                                        }
-                                        return null
-                                    })}
-                                </div>
-
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                    disabled={currentPage === totalPages}
-                                >
-                                    <ChevronRight className="w-4 h-4" />
-                                </Button>
-                            </div>
-                        </div>
+                    {rooms.data.length > 0 && (
+                        <Pagination
+                            currentPage={rooms.current_page}
+                            lastPage={rooms.last_page}
+                            perPage={rooms.per_page}
+                            total={rooms.total}
+                            links={rooms.links}
+                            onPageChange={handlePageChange}
+                            onPerPageChange={setPerPage}
+                        />
                     )}
                 </div>
             </div>

@@ -4,8 +4,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Pagination } from '@/components/pagination'
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { ChevronLeft, ChevronRight, Pencil } from 'lucide-react'
+import { Pencil } from 'lucide-react'
 
 type Student = {
     id: number
@@ -29,6 +30,12 @@ type Section = {
     grade_level: string
 }
 
+type PaginationLink = {
+    url: string | null
+    label: string
+    active: boolean
+}
+
 type Props = {
     auth?: {
         user: {
@@ -42,30 +49,43 @@ type Props = {
             position: string
         }
     }
-    students: Student[]
+    students: {
+        data: Student[]
+        current_page: number
+        last_page: number
+        per_page: number
+        total: number
+        links: PaginationLink[]
+    }
     gradeLevels: GradeLevel[]
     sections: Section[]
     filters: {
         grade_level?: number
         section?: number
         search?: string
+        per_page?: number
     }
 }
 
-export default function EnrollmentList({ auth, students = [], gradeLevels = [], sections = [], filters }: Props) {
+export default function EnrollmentList({ auth, students, gradeLevels = [], sections = [], filters }: Props) {
     const [gradeLevelFilter, setGradeLevelFilter] = useState<string>(filters.grade_level?.toString() || 'all')
     const [sectionInput, setSectionInput] = useState('')
     const [selectedSectionId, setSelectedSectionId] = useState<number | null>(filters.section || null)
     const [searchTerm, setSearchTerm] = useState(filters.search || '')
     const [showSuggestions, setShowSuggestions] = useState(false)
-    const [currentPage, setCurrentPage] = useState(1)
-    const [itemsPerPage, setItemsPerPage] = useState(10)
+    const [perPage, setPerPage] = useState(students.per_page || 10)
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
     const [editSectionInput, setEditSectionInput] = useState('')
     const [showEditSuggestions, setShowEditSuggestions] = useState(false)
     const sectionInputRef = useRef<HTMLDivElement>(null)
     const editSectionInputRef = useRef<HTMLDivElement>(null)
+
+    // Guards the filters effect below from firing on mount (including
+    // remounts triggered by pagination navigation). Without this, paginating
+    // to page 2+ would trigger a re-request with no `page` param, bouncing
+    // the user back to page 1.
+    const isFirstRender = useRef(true)
 
     const { data, setData, put, processing, errors, reset } = useForm({
         grade_level_id: '',
@@ -104,6 +124,11 @@ export default function EnrollmentList({ auth, students = [], gradeLevels = [], 
 
     // Auto-apply filters when they change
     useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false
+            return
+        }
+
         const params: any = {}
 
         if (gradeLevelFilter !== 'all') {
@@ -118,15 +143,18 @@ export default function EnrollmentList({ auth, students = [], gradeLevels = [], 
             params.search = searchTerm.trim()
         }
 
+        params.per_page = perPage
+
         const timeoutId = setTimeout(() => {
             router.get('/admin/enrollment/enrollment-list', params, {
                 preserveState: true,
                 preserveScroll: true,
+                replace: true,
             })
         }, 300) // Debounce for 300ms
 
         return () => clearTimeout(timeoutId)
-    }, [gradeLevelFilter, selectedSectionId, searchTerm])
+    }, [gradeLevelFilter, selectedSectionId, searchTerm, perPage])
 
     // Handle click outside to close suggestions
     useEffect(() => {
@@ -161,16 +189,15 @@ export default function EnrollmentList({ auth, students = [], gradeLevels = [], 
         setSearchTerm('')
     }
 
-    // Pagination
-    const totalPages = Math.ceil(students.length / itemsPerPage)
-    const startIndex = (currentPage - 1) * itemsPerPage
-    const endIndex = startIndex + itemsPerPage
-    const paginatedStudents = students.slice(startIndex, endIndex)
-
-    // Reset to page 1 when filters change
-    useMemo(() => {
-        setCurrentPage(1)
-    }, [students])
+    const handlePageChange = (url: string | null) => {
+        // preserveState is required here so the component instance (and its
+        // isFirstRender ref) survives the navigation instead of remounting,
+        // which previously caused the filters effect above to re-fire and
+        // silently strip the `page` param, sending the user back to page 1.
+        if (url) {
+            router.visit(url, { preserveScroll: true, preserveState: true })
+        }
+    }
 
     const hasActiveFilters = gradeLevelFilter !== 'all' || selectedSectionId !== null || searchTerm.trim() !== ''
 
@@ -262,7 +289,7 @@ export default function EnrollmentList({ auth, students = [], gradeLevels = [], 
                 {/* Stats Card */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <p className="text-sm text-blue-600 font-medium">Total Enrolled Students</p>
-                    <p className="text-3xl font-bold text-blue-900 mt-2">{students.length}</p>
+                    <p className="text-3xl font-bold text-blue-900 mt-2">{students.total}</p>
                 </div>
 
                 {/* Filters */}
@@ -338,7 +365,7 @@ export default function EnrollmentList({ auth, students = [], gradeLevels = [], 
 
                 {/* Table */}
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                    {students.length === 0 ? (
+                    {students.data.length === 0 ? (
                         <div className="p-8 text-center">
                             <p className="text-lg font-medium text-gray-900 mb-2">No Enrolled Students</p>
                             <p className="text-sm text-gray-500">
@@ -362,7 +389,7 @@ export default function EnrollmentList({ auth, students = [], gradeLevels = [], 
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-200">
-                                        {paginatedStudents.map((student) => (
+                                        {students.data.map((student) => (
                                             <tr key={student.id} className="hover:bg-gray-50">
                                                 <td className="px-6 py-4 text-sm text-gray-900">{student.lrn}</td>
                                                 <td className="px-6 py-4 text-sm text-gray-900">{student.student_name}</td>
@@ -402,80 +429,15 @@ export default function EnrollmentList({ auth, students = [], gradeLevels = [], 
                             </div>
 
                             {/* Pagination */}
-                            {students.length > 0 && (
-                                <div className="p-4 border-t border-gray-200 flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm text-gray-600">Show</span>
-                                            <Select
-                                                value={itemsPerPage.toString()}
-                                                onValueChange={(value) => setItemsPerPage(Number(value))}
-                                            >
-                                                <SelectTrigger className="w-20">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="10">10</SelectItem>
-                                                    <SelectItem value="25">25</SelectItem>
-                                                    <SelectItem value="50">50</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                            <span className="text-sm text-gray-600">entries</span>
-                                        </div>
-                                        <p className="text-sm text-gray-600">
-                                            Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, students.length)} of {students.length} entries
-                                        </p>
-                                    </div>
-
-                                    <div className="flex items-center gap-2">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                            disabled={currentPage === 1}
-                                        >
-                                            <ChevronLeft className="w-4 h-4" />
-                                        </Button>
-
-                                        <div className="flex items-center gap-1">
-                                            {Array.from({ length: totalPages || 1 }, (_, i) => i + 1).map((page) => {
-                                                if (
-                                                    page === 1 ||
-                                                    page === totalPages ||
-                                                    (page >= currentPage - 1 && page <= currentPage + 1)
-                                                ) {
-                                                    return (
-                                                        <Button
-                                                            key={page}
-                                                            variant={currentPage === page ? "default" : "outline"}
-                                                            size="sm"
-                                                            onClick={() => setCurrentPage(page)}
-                                                            className={currentPage === page ? "bg-green-600 hover:bg-green-700" : ""}
-                                                        >
-                                                            {page}
-                                                        </Button>
-                                                    )
-                                                } else if (
-                                                    page === currentPage - 2 ||
-                                                    page === currentPage + 2
-                                                ) {
-                                                    return <span key={page} className="px-2">...</span>
-                                                }
-                                                return null
-                                            })}
-                                        </div>
-
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                            disabled={currentPage === totalPages}
-                                        >
-                                            <ChevronRight className="w-4 h-4" />
-                                        </Button>
-                                    </div>
-                                </div>
-                            )}
+                            <Pagination
+                                currentPage={students.current_page}
+                                lastPage={students.last_page}
+                                perPage={students.per_page}
+                                total={students.total}
+                                links={students.links}
+                                onPageChange={handlePageChange}
+                                onPerPageChange={setPerPage}
+                            />
                         </>
                     )}
                 </div>

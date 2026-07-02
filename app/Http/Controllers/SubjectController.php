@@ -11,19 +11,32 @@ use Inertia\Inertia;
 
 class SubjectController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $subjects = Subject::with('gradeLevel')->get()->map(function ($subject) {
-            return [
+        $gradeLevelFilter = $request->input('grade_level', 'all');
+        $subjectNameFilter = $request->input('subject_name', 'all');
+        $perPage = (int) $request->input('per_page', 10);
+
+        $subjects = Subject::with('gradeLevel')
+            ->when($gradeLevelFilter !== 'all', function ($q) use ($gradeLevelFilter) {
+                $q->whereHas('gradeLevel', fn($q2) => $q2->where('name', $gradeLevelFilter));
+            })
+            ->when($subjectNameFilter !== 'all', fn($q) => $q->where('name', $subjectNameFilter))
+            ->orderBy('name')
+            ->paginate($perPage)
+            ->withQueryString()
+            ->through(fn($subject) => [
                 'id' => $subject->id,
                 'code' => $subject->code,
                 'name' => $subject->name,
                 'description' => $subject->description,
                 'grade_level' => $subject->gradeLevel ? $subject->gradeLevel->name : null,
                 'grade_level_id' => $subject->grade_level_id,
-            ];
-        });
+            ]);
 
+        // Full (unfiltered) lists for the filter dropdowns — the paginated
+        // $subjects above only contains the current page, so it can't be used
+        // to derive these client-side anymore.
         $gradeLevels = GradeLevel::all()->map(function ($level) {
             return [
                 'id' => $level->id,
@@ -31,11 +44,19 @@ class SubjectController extends Controller
             ];
         });
 
-        $admin = \App\Models\Admin::where('user_id', Auth::id())->first();
+        $uniqueGradeLevels = GradeLevel::orderBy('name')->pluck('name');
+        $uniqueSubjectNames = Subject::select('name')->distinct()->orderBy('name')->pluck('name');
 
         return Inertia::render('admin/registrar/subject-listings/page', [
             'subjects' => $subjects,
             'gradeLevels' => $gradeLevels,
+            'uniqueGradeLevels' => $uniqueGradeLevels,
+            'uniqueSubjectNames' => $uniqueSubjectNames,
+            'filters' => [
+                'grade_level' => $gradeLevelFilter,
+                'subject_name' => $subjectNameFilter,
+                'per_page' => $perPage,
+            ],
         ]);
     }
 

@@ -12,32 +12,55 @@ use Inertia\Inertia;
 
 class AdviserSectionController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         try {
             $currentYear = date('Y');
             $schoolYear = $currentYear . '-' . ($currentYear + 1);
 
-            $sections = ClassSection::with([
+            $search = $request->input('search', '');
+            $gradeLevelFilter = $request->input('grade_level', 'all');
+            $perPage = (int) $request->input('per_page', 10);
+
+            $sectionsQuery = ClassSection::with([
                 'gradeLevel',
                 'adviserSections' => function ($query) use ($schoolYear) {
-                    // We filter the relationship right in the query
                     $query->where('school_year', $schoolYear)->with('teacher');
                 }
-            ])->get()->map(function ($section) {
-                // Get the first adviser record from the pre-loaded collection
-                $adviserSection = $section->adviserSections->first();
+            ]);
 
-                return [
-                    'id' => $section->id,
-                    'section_name' => $section->section_name ?? 'Unknown',
-                    'grade_level' => $section->gradeLevel ? $section->gradeLevel->name : 'N/A',
-                    'grade_level_id' => $section->grade_level_id,
-                    'current_adviser' => $adviserSection && $adviserSection->teacher ? $adviserSection->teacher->name : 'Not Assigned',
-                    'adviser_id' => $adviserSection ? $adviserSection->teacher_id : null,
-                    'adviser_section_id' => $adviserSection ? $adviserSection->id : null,
-                ];
-            });
+            if ($gradeLevelFilter !== 'all') {
+                $sectionsQuery->where('grade_level_id', $gradeLevelFilter);
+            }
+
+            if ($search) {
+                $sectionsQuery->where(function ($q) use ($search, $schoolYear) {
+                    $q->where('section_name', 'like', "%{$search}%")
+                        ->orWhereHas('adviserSections', function ($q2) use ($search, $schoolYear) {
+                            $q2->where('school_year', $schoolYear)
+                                ->whereHas('teacher', function ($q3) use ($search) {
+                                    $q3->where('name', 'like', "%{$search}%");
+                                });
+                        });
+                });
+            }
+
+            $sections = $sectionsQuery->orderBy('section_name')
+                ->paginate($perPage)
+                ->withQueryString()
+                ->through(function ($section) {
+                    $adviserSection = $section->adviserSections->first();
+
+                    return [
+                        'id' => $section->id,
+                        'section_name' => $section->section_name ?? 'Unknown',
+                        'grade_level' => $section->gradeLevel ? $section->gradeLevel->name : 'N/A',
+                        'grade_level_id' => $section->grade_level_id,
+                        'current_adviser' => $adviserSection && $adviserSection->teacher ? $adviserSection->teacher->name : 'Not Assigned',
+                        'adviser_id' => $adviserSection ? $adviserSection->teacher_id : null,
+                        'adviser_section_id' => $adviserSection ? $adviserSection->id : null,
+                    ];
+                });
 
             $assignedTeacherIds = AdviserSection::where('school_year', $schoolYear)
                 ->pluck('teacher_id')
@@ -51,26 +74,27 @@ class AdviserSectionController extends Controller
                 ];
             });
 
-            $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
+            $gradeLevels = \App\Models\GradeLevel::all()->map(fn($g) => ['id' => $g->id, 'name' => $g->name]);
 
             return Inertia::render('admin/enrollment/adviser-management/page', [
                 'sections' => $sections,
                 'teachers' => $teachers,
+                'gradeLevels' => $gradeLevels,
                 'schoolYear' => $schoolYear,
+                'filters' => ['search' => $search, 'grade_level' => $gradeLevelFilter],
             ]);
         } catch (\Exception $e) {
             Log::error('Adviser Management Error: ' . $e->getMessage());
 
-            $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
-
             return Inertia::render('admin/enrollment/adviser-management/page', [
-                'sections' => [],
+                'sections' => ['data' => [], 'current_page' => 1, 'last_page' => 1, 'per_page' => 10, 'total' => 0, 'links' => []],
                 'teachers' => [],
+                'gradeLevels' => [],
                 'schoolYear' => date('Y') . '-' . (date('Y') + 1),
+                'filters' => ['search' => '', 'grade_level' => 'all'],
             ]);
         }
     }
-
     public function store(Request $request)
     {
         $validated = $request->validate([

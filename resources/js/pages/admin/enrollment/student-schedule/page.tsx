@@ -2,7 +2,7 @@ import { Head, router } from '@inertiajs/react'
 import AdminLayout from '@/layouts/admin-layout'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/pagination'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 type Student = {
     id: number
@@ -54,9 +54,20 @@ type Props = {
 export default function StudentSchedule({ auth, students, gradeLevels, filters }: Props) {
     const [searchTerm, setSearchTerm] = useState(filters?.search || '')
     const [gradeLevel, setGradeLevel] = useState(filters?.grade_level?.toString() || '')
-    const [perPage, setPerPage] = useState(10)
+    const [perPage, setPerPage] = useState(students.per_page || 10)
+
+    // Guards the filters effect below from firing on mount (including
+    // remounts triggered by pagination navigation). Without this, paginating
+    // to page 2+ would trigger a re-request with no `page` param, bouncing
+    // the user back to page 1.
+    const isFirstRender = useRef(true)
 
     useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false
+            return
+        }
+
         const timer = setTimeout(() => {
             router.get('/admin/enrollment/student-schedule', 
                 { 
@@ -64,7 +75,7 @@ export default function StudentSchedule({ auth, students, gradeLevels, filters }
                     grade_level: gradeLevel || undefined,
                     per_page: perPage 
                 },
-                { preserveState: true, replace: true }
+                { preserveState: true, preserveScroll: true, replace: true }
             )
         }, 300)
 
@@ -76,8 +87,14 @@ export default function StudentSchedule({ auth, students, gradeLevels, filters }
     }
 
     const handlePageChange = (url: string | null) => {
+        // preserveState is required here so the component instance (and its
+        // isFirstRender ref) survives the navigation instead of remounting,
+        // which previously caused the filters effect above to re-fire and
+        // silently strip the `page` param, sending the user back to page 1.
+        // preserveScroll is added too — the original call had neither, so
+        // paginating also used to jerk the page back to the top.
         if (url) {
-            router.visit(url)
+            router.visit(url, { preserveScroll: true, preserveState: true })
         }
     }
 

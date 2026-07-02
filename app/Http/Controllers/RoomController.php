@@ -9,18 +9,32 @@ use Inertia\Inertia;
 
 class RoomController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $search = $request->input('search', '');
+        $capacity = $request->input('capacity');
+        $status = $request->input('status', 'All');
+        $perPage = (int) $request->input('per_page', 10);
+
         $rooms = Room::withCount([
             'sections as students_count' => function ($query) {
                 $query->join('tbl_students', 'tbl_class_sections.id', '=', 'tbl_students.current_section_id');
             }
-        ])->orderBy('room_name')->get();
-
-        $admin = \App\Models\Admin::where('user_id', Auth::id())->first();
+        ])
+            ->when($search, fn($q) => $q->where('room_name', 'like', "%{$search}%"))
+            ->when($capacity, fn($q) => $q->where('capacity', $capacity))
+            ->when($status && $status !== 'All', fn($q) => $q->where('status', $status))
+            ->orderBy('room_name')
+            ->paginate($perPage)
+            ->withQueryString();
 
         return Inertia::render('admin/enrollment/room-listings/page', [
             'rooms' => $rooms,
+            'filters' => [
+                'search' => $search,
+                'capacity' => $capacity,
+                'status' => $status,
+            ],
         ]);
     }
 
@@ -75,7 +89,6 @@ class RoomController extends Controller
     {
         $room = Room::findOrFail($id);
 
-        // Archive the room before deletion
         \App\Models\Archive::create([
             'archivable_type' => Room::class,
             'archivable_id' => $room->id,

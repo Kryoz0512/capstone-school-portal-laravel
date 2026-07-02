@@ -1,11 +1,11 @@
-import { Head } from '@inertiajs/react'
+import { Head, router } from '@inertiajs/react'
 import AdminLayout from '@/layouts/admin-layout'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import AssignAdviserModal from '@/components/modals/assign-adviser-modal'
-import { useState, useMemo } from 'react'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { Pagination } from '@/components/pagination'
+import { useState, useEffect, useRef } from 'react'
 
 type Section = {
     id: number
@@ -17,77 +17,74 @@ type Section = {
     adviser_section_id: number | null
 }
 
-type Teacher = {
-    id: number
-    name: string
-    is_assigned: boolean
-}
+type Teacher = { id: number; name: string; is_assigned: boolean }
+type GradeLevel = { id: number; name: string }
+type PaginationLink = { url: string | null; label: string; active: boolean }
 
 type Props = {
     auth?: {
-        user: {
-            id: number
-            name: string
-            email: string
-            role: string
-        }
-        admin?: {
-            role: string
-            position: string
-        }
+        user: { id: number; name: string; email: string; role: string }
+        admin?: { role: string; position: string }
     }
-    sections: Section[]
+    sections: {
+        data: Section[]
+        current_page: number
+        last_page: number
+        per_page: number
+        total: number
+        links: PaginationLink[]
+    }
     teachers: Teacher[]
+    gradeLevels: GradeLevel[]
     schoolYear: string
+    filters?: { search?: string; grade_level?: string }
 }
 
-export default function AdviserManagement({ auth, sections = [], teachers = [], schoolYear = '' }: Props) {
-    const [searchTerm, setSearchTerm] = useState('')
-    const [gradeLevelFilter, setGradeLevelFilter] = useState<string>('all')
+export default function AdviserManagement({ auth, sections, teachers = [], gradeLevels = [], schoolYear = '', filters = {} }: Props) {
+    const [searchTerm, setSearchTerm] = useState(filters.search || '')
+    const [gradeLevelFilter, setGradeLevelFilter] = useState(filters.grade_level || 'all')
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [selectedSection, setSelectedSection] = useState<Section | null>(null)
-    const [currentPage, setCurrentPage] = useState(1)
-    const [itemsPerPage, setItemsPerPage] = useState(10)
+    const [perPage, setPerPage] = useState(sections.per_page || 10)
 
-    // Fallback for school year if not provided
+    // Guards the search/filter effect below from firing on mount (including
+    // remounts triggered by pagination navigation). Without this, paginating
+    // to page 2+ would trigger a re-request with no `page` param, bouncing
+    // the user back to page 1.
+    const isFirstRender = useRef(true)
+
     const displaySchoolYear = schoolYear || `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`
 
-    // Get unique grade levels for filter
-    const gradeLevels = useMemo(() => {
-        const levels = Array.from(new Set(sections.map(s => s.grade_level)))
-        return levels.sort()
-    }, [sections])
+    useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false
+            return
+        }
 
-    // Filter sections
-    const filteredSections = useMemo(() => {
-        return sections.filter(section => {
-            const matchesSearch =
-                section.section_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                section.current_adviser.toLowerCase().includes(searchTerm.toLowerCase())
+        const timer = setTimeout(() => {
+            router.get('/admin/enrollment/adviser-management', {
+                search: searchTerm || undefined,
+                grade_level: gradeLevelFilter !== 'all' ? gradeLevelFilter : undefined,
+                per_page: perPage,
+            }, { preserveState: true, preserveScroll: true, replace: true })
+        }, 300)
+        return () => clearTimeout(timer)
+    }, [searchTerm, gradeLevelFilter, perPage])
 
-            const matchesGradeLevel = gradeLevelFilter === 'all' || section.grade_level === gradeLevelFilter
-
-            return matchesSearch && matchesGradeLevel
-        })
-    }, [sections, searchTerm, gradeLevelFilter])
-
-    // Pagination
-    const totalPages = Math.ceil(filteredSections.length / itemsPerPage)
-    const startIndex = (currentPage - 1) * itemsPerPage
-    const endIndex = startIndex + itemsPerPage
-    const paginatedSections = filteredSections.slice(startIndex, endIndex)
-
-    // Reset to page 1 when filters change
-    useMemo(() => {
-        setCurrentPage(1)
-    }, [searchTerm, gradeLevelFilter, itemsPerPage])
-
-    const totalSections = sections.length
-    const assignedAdvisers = sections.filter(s => s.adviser_id !== null).length
+    const totalSections = sections.total
+    const assignedAdvisers = sections.data.filter(s => s.adviser_id !== null).length // page-local only; see note below
 
     const handleAssign = (section: Section) => {
         setSelectedSection(section)
         setIsModalOpen(true)
+    }
+
+    const handlePageChange = (url: string | null) => {
+        // preserveState is required here so the component instance (and its
+        // isFirstRender ref) survives the navigation instead of remounting,
+        // which previously caused the search/filter effect above to re-fire
+        // and silently strip the `page` param, sending the user back to page 1.
+        if (url) router.visit(url, { preserveScroll: true, preserveState: true })
     }
 
     return (
@@ -107,27 +104,25 @@ export default function AdviserManagement({ auth, sections = [], teachers = [], 
                     onOpenChange={setIsModalOpen}
                     section={selectedSection}
                     teachers={teachers}
-                    sections={sections}
+                    sections={sections.data}
                     schoolYear={displaySchoolYear}
                 />
 
-                {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                         <p className="text-sm text-blue-600 font-medium">Total Sections</p>
                         <p className="text-3xl font-bold text-blue-900 mt-2">{totalSections}</p>
                     </div>
                     <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                        <p className="text-sm text-green-600 font-medium">Assigned Advisers</p>
+                        <p className="text-sm text-green-600 font-medium">Assigned Advisers (this page)</p>
                         <p className="text-3xl font-bold text-green-900 mt-2">{assignedAdvisers}</p>
                     </div>
                     <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                        <p className="text-sm text-purple-600 font-medium">Unassigned Sections</p>
-                        <p className="text-3xl font-bold text-purple-900 mt-2">{totalSections - assignedAdvisers}</p>
+                        <p className="text-sm text-purple-600 font-medium">Unassigned (this page)</p>
+                        <p className="text-3xl font-bold text-purple-900 mt-2">{sections.data.length - assignedAdvisers}</p>
                     </div>
                 </div>
 
-                {/* Search and Filters */}
                 <div className="bg-white rounded-lg border border-gray-200 p-6">
                     <h2 className="text-sm font-semibold text-gray-900 mb-4">Search & Filters</h2>
                     <div className="flex flex-col md:flex-row gap-4">
@@ -145,30 +140,23 @@ export default function AdviserManagement({ auth, sections = [], teachers = [], 
                             <SelectContent>
                                 <SelectItem value="all">All Grade Levels</SelectItem>
                                 {gradeLevels.map((level) => (
-                                    <SelectItem key={level} value={level}>
-                                        {level}
-                                    </SelectItem>
+                                    <SelectItem key={level.id} value={level.id.toString()}>{level.name}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
                     </div>
                 </div>
 
-                {/* Table */}
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                    {sections.length === 0 ? (
+                    {sections.total === 0 && !searchTerm && gradeLevelFilter === 'all' ? (
                         <div className="p-8 text-center">
                             <p className="text-lg font-medium text-gray-900 mb-2">No Data Found</p>
-                            <p className="text-sm text-gray-500">
-                                No sections available. Please create class sections first.
-                            </p>
+                            <p className="text-sm text-gray-500">No sections available. Please create class sections first.</p>
                         </div>
                     ) : teachers.length === 0 ? (
                         <div className="p-8 text-center">
                             <p className="text-lg font-medium text-gray-900 mb-2">No Teachers Available</p>
-                            <p className="text-sm text-gray-500">
-                                Please create teachers first before assigning advisers.
-                            </p>
+                            <p className="text-sm text-gray-500">Please create teachers first before assigning advisers.</p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
@@ -182,8 +170,8 @@ export default function AdviserManagement({ auth, sections = [], teachers = [], 
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
-                                    {paginatedSections.length > 0 ? (
-                                        paginatedSections.map((section) => (
+                                    {sections.data.length > 0 ? (
+                                        sections.data.map((section) => (
                                             <tr key={section.id} className="hover:bg-gray-50">
                                                 <td className="px-6 py-4">
                                                     <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -191,7 +179,6 @@ export default function AdviserManagement({ auth, sections = [], teachers = [], 
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 text-sm text-gray-900">{section.section_name}</td>
-
                                                 <td className="px-6 py-4 text-sm text-gray-900">
                                                     {section.current_adviser === 'Not Assigned' ? (
                                                         <span className="text-gray-400 italic">{section.current_adviser}</span>
@@ -222,80 +209,16 @@ export default function AdviserManagement({ auth, sections = [], teachers = [], 
                         </div>
                     )}
 
-                    {/* Pagination */}
-                    {filteredSections.length > 0 && (
-                        <div className="p-4 border-t border-gray-200 flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm text-gray-600">Show</span>
-                                    <Select
-                                        value={itemsPerPage.toString()}
-                                        onValueChange={(value) => setItemsPerPage(Number(value))}
-                                    >
-                                        <SelectTrigger className="w-20">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="10">10</SelectItem>
-                                            <SelectItem value="25">25</SelectItem>
-                                            <SelectItem value="50">50</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    <span className="text-sm text-gray-600">entries</span>
-                                </div>
-                                <p className="text-sm text-gray-600">
-                                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredSections.length)} of {filteredSections.length} entries
-                                </p>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                    disabled={currentPage === 1}
-                                >
-                                    <ChevronLeft className="w-4 h-4" />
-                                </Button>
-
-                                <div className="flex items-center gap-1">
-                                    {Array.from({ length: totalPages || 1 }, (_, i) => i + 1).map((page) => {
-                                        if (
-                                            page === 1 ||
-                                            page === totalPages ||
-                                            (page >= currentPage - 1 && page <= currentPage + 1)
-                                        ) {
-                                            return (
-                                                <Button
-                                                    key={page}
-                                                    variant={currentPage === page ? "default" : "outline"}
-                                                    size="sm"
-                                                    onClick={() => setCurrentPage(page)}
-                                                    className={currentPage === page ? "bg-green-600 hover:bg-green-700" : ""}
-                                                >
-                                                    {page}
-                                                </Button>
-                                            )
-                                        } else if (
-                                            page === currentPage - 2 ||
-                                            page === currentPage + 2
-                                        ) {
-                                            return <span key={page} className="px-2">...</span>
-                                        }
-                                        return null
-                                    })}
-                                </div>
-
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                    disabled={currentPage === totalPages}
-                                >
-                                    <ChevronRight className="w-4 h-4" />
-                                </Button>
-                            </div>
-                        </div>
+                    {sections.data.length > 0 && (
+                        <Pagination
+                            currentPage={sections.current_page}
+                            lastPage={sections.last_page}
+                            perPage={sections.per_page}
+                            total={sections.total}
+                            links={sections.links}
+                            onPageChange={handlePageChange}
+                            onPerPageChange={setPerPage}
+                        />
                     )}
                 </div>
             </div>

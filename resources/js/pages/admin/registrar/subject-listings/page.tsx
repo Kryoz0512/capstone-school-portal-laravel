@@ -1,12 +1,13 @@
-import { Head } from '@inertiajs/react'
+import { Head, router } from '@inertiajs/react'
 import AdminLayout from '@/layouts/admin-layout'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import AddSubjectModal from '@/components/modals/add-subject-modal'
 import EditSubjectModal from '@/components/modals/edit-subject-modal'
 import DeleteSubjectModal from '@/components/modals/delete-subject-modal'
-import { Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
-import { useState, useMemo } from 'react'
+import { Pagination } from '@/components/pagination'
+import { Pencil, Trash2 } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
 
 type Subject = {
     id: number
@@ -22,6 +23,8 @@ type GradeLevel = {
     name: string
 }
 
+type PaginationLink = { url: string | null; label: string; active: boolean }
+
 type Props = {
     auth?: {
         user: {
@@ -35,56 +38,60 @@ type Props = {
             position: string
         }
     }
-    subjects: Subject[]
+    subjects: {
+        data: Subject[]
+        current_page: number
+        last_page: number
+        per_page: number
+        total: number
+        links: PaginationLink[]
+    }
     gradeLevels: GradeLevel[]
+    uniqueGradeLevels: string[]
+    uniqueSubjectNames: string[]
+    filters?: { grade_level?: string; subject_name?: string; per_page?: number }
 }
 
-export default function SubjectListings({ auth, subjects = [], gradeLevels = [] }: Props) {
+export default function SubjectListings({
+    auth,
+    subjects,
+    gradeLevels = [],
+    uniqueGradeLevels = [],
+    uniqueSubjectNames = [],
+    filters = {},
+}: Props) {
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
     const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null)
-    
-    // Filter and pagination states
-    const [gradeLevelFilter, setGradeLevelFilter] = useState('all')
-    const [subjectNameFilter, setSubjectNameFilter] = useState('all')
-    const [currentPage, setCurrentPage] = useState(1)
-    const [itemsPerPage, setItemsPerPage] = useState(10)
 
-    // Filter subjects by grade level and subject name
-    const filteredSubjects = useMemo(() => {
-        return subjects.filter(subject => {
-            const matchesGradeLevel = gradeLevelFilter === 'all' || subject.grade_level === gradeLevelFilter
-            const matchesSubjectName = subjectNameFilter === 'all' || subject.name === subjectNameFilter
-            return matchesGradeLevel && matchesSubjectName
-        })
-    }, [subjects, gradeLevelFilter, subjectNameFilter])
+    // Filter and pagination state — now driven by the backend instead of a
+    // client-side slice of a fully-loaded subjects array.
+    const [gradeLevelFilter, setGradeLevelFilter] = useState(filters.grade_level || 'all')
+    const [subjectNameFilter, setSubjectNameFilter] = useState(filters.subject_name || 'all')
+    const [perPage, setPerPage] = useState(subjects.per_page || 10)
 
-    // Paginate filtered subjects
-    const paginatedSubjects = useMemo(() => {
-        const startIndex = (currentPage - 1) * itemsPerPage
-        const endIndex = startIndex + itemsPerPage
-        return filteredSubjects.slice(startIndex, endIndex)
-    }, [filteredSubjects, currentPage, itemsPerPage])
+    // Guards the filters effect below from firing on mount (including
+    // remounts triggered by pagination navigation). Without this, paginating
+    // to page 2+ would trigger a re-request with no `page` param, bouncing
+    // the user back to page 1.
+    const isFirstRender = useRef(true)
 
-    const totalPages = Math.ceil(filteredSubjects.length / itemsPerPage)
+    useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false
+            return
+        }
 
-    // Reset to page 1 when filters change
-    useMemo(() => {
-        setCurrentPage(1)
-    }, [gradeLevelFilter, subjectNameFilter, itemsPerPage])
-
-    // Get unique grade levels
-    const uniqueGradeLevels = useMemo(() => {
-        const levels = new Set(subjects.map(s => s.grade_level))
-        return Array.from(levels).sort()
-    }, [subjects])
-
-    // Get unique subject names
-    const uniqueSubjectNames = useMemo(() => {
-        const names = new Set(subjects.map(s => s.name))
-        return Array.from(names).sort()
-    }, [subjects])
+        const timer = setTimeout(() => {
+            router.get('/admin/registrar/subject-listings', {
+                grade_level: gradeLevelFilter !== 'all' ? gradeLevelFilter : undefined,
+                subject_name: subjectNameFilter !== 'all' ? subjectNameFilter : undefined,
+                per_page: perPage,
+            }, { preserveState: true, preserveScroll: true, replace: true })
+        }, 300)
+        return () => clearTimeout(timer)
+    }, [gradeLevelFilter, subjectNameFilter, perPage])
 
     const handleEdit = (subject: Subject) => {
         setSelectedSubject(subject)
@@ -94,6 +101,14 @@ export default function SubjectListings({ auth, subjects = [], gradeLevels = [] 
     const handleDelete = (subject: Subject) => {
         setSelectedSubject(subject)
         setIsDeleteModalOpen(true)
+    }
+
+    const handlePageChange = (url: string | null) => {
+        // preserveState is required here so the component instance (and its
+        // isFirstRender ref) survives the navigation instead of remounting,
+        // which would otherwise cause the filters effect above to re-fire
+        // and silently strip the `page` param, sending the user back to page 1.
+        if (url) router.visit(url, { preserveScroll: true, preserveState: true })
     }
 
     return (
@@ -108,7 +123,7 @@ export default function SubjectListings({ auth, subjects = [], gradeLevels = [] 
                             Manage school subjects by grade level
                         </p>
                     </div>
-                    <Button 
+                    <Button
                         className="bg-green-600 hover:bg-green-700 text-white"
                         onClick={() => setIsModalOpen(true)}
                     >
@@ -116,20 +131,20 @@ export default function SubjectListings({ auth, subjects = [], gradeLevels = [] 
                     </Button>
                 </div>
 
-                <AddSubjectModal 
-                    open={isModalOpen} 
+                <AddSubjectModal
+                    open={isModalOpen}
                     onOpenChange={setIsModalOpen}
                     gradeLevels={gradeLevels}
                 />
 
-                <EditSubjectModal 
+                <EditSubjectModal
                     open={isEditModalOpen}
                     onOpenChange={setIsEditModalOpen}
                     subject={selectedSubject}
                     gradeLevels={gradeLevels}
                 />
 
-                <DeleteSubjectModal 
+                <DeleteSubjectModal
                     open={isDeleteModalOpen}
                     onOpenChange={setIsDeleteModalOpen}
                     subject={selectedSubject}
@@ -189,8 +204,8 @@ export default function SubjectListings({ auth, subjects = [], gradeLevels = [] 
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                {paginatedSubjects.length > 0 ? (
-                                    paginatedSubjects.map((subject) => (
+                                {subjects.data.length > 0 ? (
+                                    subjects.data.map((subject) => (
                                         <tr key={subject.id} className="hover:bg-gray-50">
                                             <td className="px-6 py-4 text-sm text-gray-900">{subject.code}</td>
                                             <td className="px-6 py-4 text-sm text-gray-900">{subject.name}</td>
@@ -202,13 +217,13 @@ export default function SubjectListings({ auth, subjects = [], gradeLevels = [] 
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-2">
-                                                    <button 
+                                                    <button
                                                         className="text-gray-600 hover:text-green-600"
                                                         onClick={() => handleEdit(subject)}
                                                     >
                                                         <Pencil className="w-4 h-4" />
                                                     </button>
-                                                    <button 
+                                                    <button
                                                         className="text-gray-600 hover:text-red-600"
                                                         onClick={() => handleDelete(subject)}
                                                     >
@@ -232,81 +247,16 @@ export default function SubjectListings({ auth, subjects = [], gradeLevels = [] 
                         </table>
                     </div>
 
-                    {/* Pagination */}
-                    {filteredSubjects.length > 0 && (
-                        <div className="p-4 border-t border-gray-200 flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sm text-gray-600">Show</span>
-                                    <Select 
-                                        value={itemsPerPage.toString()} 
-                                        onValueChange={(value) => setItemsPerPage(Number(value))}
-                                    >
-                                        <SelectTrigger className="w-20">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="10">10</SelectItem>
-                                            <SelectItem value="25">25</SelectItem>
-                                            <SelectItem value="50">50</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    <span className="text-sm text-gray-600">entries</span>
-                                </div>
-                                <p className="text-sm text-gray-600">
-                                    Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredSubjects.length)} of {filteredSubjects.length} entries
-                                </p>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                    disabled={currentPage === 1}
-                                >
-                                    <ChevronLeft className="w-4 h-4" />
-                                </Button>
-                                
-                                <div className="flex items-center gap-1">
-                                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                                        // Show first page, last page, current page, and pages around current
-                                        if (
-                                            page === 1 ||
-                                            page === totalPages ||
-                                            (page >= currentPage - 1 && page <= currentPage + 1)
-                                        ) {
-                                            return (
-                                                <Button
-                                                    key={page}
-                                                    variant={currentPage === page ? "default" : "outline"}
-                                                    size="sm"
-                                                    onClick={() => setCurrentPage(page)}
-                                                    className={currentPage === page ? "bg-green-600 hover:bg-green-700" : ""}
-                                                >
-                                                    {page}
-                                                </Button>
-                                            )
-                                        } else if (
-                                            page === currentPage - 2 ||
-                                            page === currentPage + 2
-                                        ) {
-                                            return <span key={page} className="px-2">...</span>
-                                        }
-                                        return null
-                                    })}
-                                </div>
-
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                    disabled={currentPage === totalPages}
-                                >
-                                    <ChevronRight className="w-4 h-4" />
-                                </Button>
-                            </div>
-                        </div>
+                    {subjects.data.length > 0 && (
+                        <Pagination
+                            currentPage={subjects.current_page}
+                            lastPage={subjects.last_page}
+                            perPage={subjects.per_page}
+                            total={subjects.total}
+                            links={subjects.links}
+                            onPageChange={handlePageChange}
+                            onPerPageChange={setPerPage}
+                        />
                     )}
                 </div>
             </div>

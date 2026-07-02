@@ -14,31 +14,53 @@ use Illuminate\Support\Carbon;
 
 class ScheduleController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // Get all teachers with their schedule count
-        $teachers = Teacher::withCount('schedules')->get()->map(function ($teacher) {
-            return [
+        $search = $request->input('search', '');
+        $specialization = $request->input('specialization', 'all');
+        $position = $request->input('position', 'all');
+        $perPage = (int) $request->input('per_page', 10);
+
+        $teachers = Teacher::withCount('schedules')
+            ->when($search, function ($q) use ($search) {
+                $q->where(function ($qq) use ($search) {
+                    $qq->where('name', 'like', "%{$search}%")
+                        ->orWhere('employee_number', 'like', "%{$search}%");
+                });
+            })
+            ->when($specialization !== 'all', fn($q) => $q->where('subject', $specialization))
+            ->when($position !== 'all', fn($q) => $q->where('position', $position))
+            ->orderBy('name')
+            ->paginate($perPage)
+            ->withQueryString()
+            ->through(fn($teacher) => [
                 'id' => $teacher->id,
                 'name' => $teacher->name,
                 'employee_number' => $teacher->employee_number,
                 'subject' => $teacher->subject,
                 'position' => $teacher->position,
                 'schedules_count' => $teacher->schedules_count,
-            ];
-        });
+            ]);
 
-        $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
+        $specializations = Teacher::select('subject')->distinct()->orderBy('subject')->pluck('subject');
+        $positions = Teacher::select('position')->distinct()->orderBy('position')->pluck('position');
 
         return Inertia::render('admin/enrollment/load-scheduling/page', [
             'teachers' => $teachers,
+            'specializations' => $specializations,
+            'positions' => $positions,
+            'filters' => [
+                'search' => $search,
+                'specialization' => $specialization,
+                'position' => $position,
+            ],
         ]);
     }
 
     public function show($id)
     {
         $teacher = Teacher::findOrFail($id);
-        
+
         // Get teacher's schedules
         $schedules = Schedule::where('teacher_id', $id)
             ->with(['classSection.gradeLevel', 'subject', 'room'])
@@ -114,7 +136,7 @@ class ScheduleController extends Controller
     public function create($teacherId)
     {
         $teacher = Teacher::findOrFail($teacherId);
-        
+
         $classSections = ClassSection::with('gradeLevel')->get()->map(function ($section) {
             return [
                 'id' => $section->id,
@@ -165,7 +187,7 @@ class ScheduleController extends Controller
     public function edit($scheduleId)
     {
         $schedule = Schedule::with(['teacher', 'classSection.gradeLevel', 'subject', 'room'])->findOrFail($scheduleId);
-        
+
         $classSections = ClassSection::with('gradeLevel')->get()->map(function ($section) {
             return [
                 'id' => $section->id,
@@ -256,7 +278,7 @@ class ScheduleController extends Controller
                 // Check if new schedule overlaps with existing schedule
                 // Overlap occurs if: (new_start < existing_end) AND (new_end > existing_start)
                 $query->where('start_time', '<', $validated['end_time'])
-                      ->where('end_time', '>', $validated['start_time']);
+                    ->where('end_time', '>', $validated['start_time']);
             })
             ->with(['teacher', 'classSection.gradeLevel', 'subject'])
             ->first();
@@ -275,7 +297,7 @@ class ScheduleController extends Controller
                 ->where(function ($query) use ($validated) {
                     // Check if new schedule overlaps with existing schedule
                     $query->where('start_time', '<', $validated['end_time'])
-                          ->where('end_time', '>', $validated['start_time']);
+                        ->where('end_time', '>', $validated['start_time']);
                 })
                 ->with(['room', 'classSection.gradeLevel', 'subject'])
                 ->first();
@@ -294,7 +316,7 @@ class ScheduleController extends Controller
             ->where(function ($query) use ($validated) {
                 // Check if new schedule overlaps with existing schedule
                 $query->where('start_time', '<', $validated['end_time'])
-                      ->where('end_time', '>', $validated['start_time']);
+                    ->where('end_time', '>', $validated['start_time']);
             })
             ->with(['classSection.gradeLevel', 'subject', 'teacher'])
             ->first();
@@ -344,7 +366,7 @@ class ScheduleController extends Controller
                 // Check if new schedule overlaps with existing schedule
                 $query->where(function ($q) use ($validated) {
                     $q->where('start_time', '<', $validated['end_time'])
-                      ->where('end_time', '>', $validated['start_time']);
+                        ->where('end_time', '>', $validated['start_time']);
                 });
             })
             ->with(['teacher', 'classSection.gradeLevel', 'subject'])
@@ -366,7 +388,7 @@ class ScheduleController extends Controller
                     // Check if new schedule overlaps with existing schedule
                     $query->where(function ($q) use ($validated) {
                         $q->where('start_time', '<', $validated['end_time'])
-                          ->where('end_time', '>', $validated['start_time']);
+                            ->where('end_time', '>', $validated['start_time']);
                     });
                 })
                 ->with(['room', 'classSection.gradeLevel', 'subject'])
@@ -388,7 +410,7 @@ class ScheduleController extends Controller
                 // Check if new schedule overlaps with existing schedule
                 $query->where(function ($q) use ($validated) {
                     $q->where('start_time', '<', $validated['end_time'])
-                      ->where('end_time', '>', $validated['start_time']);
+                        ->where('end_time', '>', $validated['start_time']);
                 });
             })
             ->with(['classSection.gradeLevel', 'subject', 'teacher'])
@@ -426,29 +448,33 @@ class ScheduleController extends Controller
         return redirect()->back()->with('success', 'Schedule deleted successfully');
     }
 
-    public function roomSchedule()
+    public function roomSchedule(Request $request)
     {
-        // Get all rooms with their schedule count
-        $rooms = Room::withCount('schedules')->get()->map(function ($room) {
-            return [
+        $search = $request->input('search', '');
+        $perPage = (int) $request->input('per_page', 10);
+
+        $rooms = Room::withCount('schedules')
+            ->when($search, fn($q) => $q->where('room_name', 'like', "%{$search}%"))
+            ->orderBy('room_name')
+            ->paginate($perPage)
+            ->withQueryString()
+            ->through(fn($room) => [
                 'id' => $room->id,
                 'room_name' => $room->room_name,
                 'capacity' => $room->capacity,
                 'schedules_count' => $room->schedules_count,
-            ];
-        });
-
-        $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
+            ]);
 
         return Inertia::render('admin/enrollment/room-schedule/page', [
             'rooms' => $rooms,
+            'filters' => ['search' => $search],
         ]);
     }
 
     public function showRoomSchedule($roomId)
     {
         $room = Room::findOrFail($roomId);
-        
+
         $schedules = Schedule::where('room_id', $roomId)
             ->with([
                 'classSection.gradeLevel',

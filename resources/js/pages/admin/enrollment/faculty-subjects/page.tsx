@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Pencil, Trash2, ChevronLeft, ChevronRight, ArrowLeft, Plus, Search } from 'lucide-react'
-import { useState, useMemo, useEffect } from 'react'
+import { Pagination } from '@/components/pagination'
+import { Pencil, Trash2, ArrowLeft, Plus, Search } from 'lucide-react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import axios from 'axios'
 
 type Teacher = {
@@ -40,6 +41,21 @@ type GradeLevel = {
     name: string
 }
 
+type PaginationLink = {
+    url: string | null
+    label: string
+    active: boolean
+}
+
+type Paginated<T> = {
+    data: T[]
+    current_page: number
+    last_page: number
+    per_page: number
+    total: number
+    links: PaginationLink[]
+}
+
 type Props = {
     auth?: {
         user: {
@@ -53,85 +69,88 @@ type Props = {
             position: string
         }
     }
-    teachers: Teacher[]
+    teachers: Paginated<Teacher>
     gradeLevels: GradeLevel[]
     subjects: Subject[]
+    specializations: string[]
+    positions: string[]
+    filters?: {
+        search?: string
+        specialization?: string
+        position?: string
+    }
 }
 
-export default function FacultySubjects({ auth, teachers = [], gradeLevels = [], subjects = [] }: Props) {
+export default function FacultySubjects({
+    auth,
+    teachers,
+    gradeLevels = [],
+    subjects = [],
+    specializations = [],
+    positions = [],
+    filters = {},
+}: Props) {
     const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null)
-    const [teacherAssignments, setTeacherAssignments] = useState<Assignment[]>([])
+    const [assignments, setAssignments] = useState<Paginated<Assignment> | null>(null)
     const [loading, setLoading] = useState(false)
-    
+
     // Filter states for teachers list
-    const [searchQuery, setSearchQuery] = useState('')
-    const [specializationFilter, setSpecializationFilter] = useState('all')
-    const [positionFilter, setPositionFilter] = useState('all')
-    
+    const [searchQuery, setSearchQuery] = useState(filters.search || '')
+    const [specializationFilter, setSpecializationFilter] = useState(filters.specialization || 'all')
+    const [positionFilter, setPositionFilter] = useState(filters.position || 'all')
+
     // Pagination for teachers list
-    const [currentPage, setCurrentPage] = useState(1)
-    const [itemsPerPage, setItemsPerPage] = useState(10)
-    
+    const [perPage, setPerPage] = useState(teachers.per_page || 10)
+
     // Pagination for assignments
-    const [assignmentsPage, setAssignmentsPage] = useState(1)
     const [assignmentsPerPage, setAssignmentsPerPage] = useState(10)
-    
+
     // Assignment modal state
     const [showAssignModal, setShowAssignModal] = useState(false)
     const [selectedSubjectId, setSelectedSubjectId] = useState('')
     const [selectedGradeLevel, setSelectedGradeLevel] = useState('')
-    
+
     // Delete confirmation modal state
     const [showDeleteModal, setShowDeleteModal] = useState(false)
     const [assignmentToDelete, setAssignmentToDelete] = useState<Assignment | null>(null)
 
-    // Get unique specializations for filter
-    const specializations = useMemo(() => {
-        const unique = Array.from(new Set(teachers.map(t => t.subject)))
-        return unique.sort()
-    }, [teachers])
+    // Guards the teachers filter effect below from firing on mount (including
+    // remounts triggered by pagination navigation). Without this, paginating
+    // the teachers list to page 2+ would trigger a re-request with no `page`
+    // param, bouncing the user back to page 1.
+    const isFirstRender = useRef(true)
 
-    // Get unique positions for filter
-    const positions = useMemo(() => {
-        const unique = Array.from(new Set(teachers.map(t => t.position)))
-        return unique.sort()
-    }, [teachers])
+    // Debounced backend filter/pagination for teachers list
+    useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false
+            return
+        }
 
-    // Filter teachers
-    const filteredTeachers = useMemo(() => {
-        return teachers.filter(teacher => {
-            const matchesSearch = 
-                teacher.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                teacher.employee_number.toLowerCase().includes(searchQuery.toLowerCase())
-            const matchesSpecialization = specializationFilter === 'all' || teacher.subject === specializationFilter
-            const matchesPosition = positionFilter === 'all' || teacher.position === positionFilter
-            return matchesSearch && matchesSpecialization && matchesPosition
-        })
-    }, [teachers, searchQuery, specializationFilter, positionFilter])
+        const timer = setTimeout(() => {
+            router.get('/admin/enrollment/faculty-subjects', {
+                search: searchQuery || undefined,
+                specialization: specializationFilter !== 'all' ? specializationFilter : undefined,
+                position: positionFilter !== 'all' ? positionFilter : undefined,
+                per_page: perPage,
+            }, {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+            })
+        }, 300)
 
-    // Paginate filtered teachers
-    const paginatedTeachers = useMemo(() => {
-        const startIndex = (currentPage - 1) * itemsPerPage
-        const endIndex = startIndex + itemsPerPage
-        return filteredTeachers.slice(startIndex, endIndex)
-    }, [filteredTeachers, currentPage, itemsPerPage])
+        return () => clearTimeout(timer)
+    }, [searchQuery, specializationFilter, positionFilter, perPage])
 
-    const totalPages = Math.ceil(filteredTeachers.length / itemsPerPage)
-
-    // Reset to page 1 when filters or itemsPerPage change
-    useMemo(() => {
-        setCurrentPage(1)
-    }, [itemsPerPage, searchQuery, specializationFilter, positionFilter])
-
-    // Fetch teacher assignments when a teacher is selected
-    const handleTeacherClick = async (teacher: Teacher) => {
-        setSelectedTeacher(teacher)
+    // Fetch teacher assignments (paginated) when a teacher is selected
+    const fetchAssignments = async (teacherId: number, page = 1, perPageParam = assignmentsPerPage) => {
         setLoading(true)
-        setAssignmentsPage(1)
-        
         try {
-            const response = await axios.get(`/admin/enrollment/teacher-subjects/${teacher.id}`)
-            setTeacherAssignments(response.data)
+            const response = await axios.get(`/admin/enrollment/teacher-subjects/${teacherId}`, {
+                params: { page, per_page: perPageParam },
+            })
+            setAssignments(response.data)
         } catch (error) {
             console.error('Error fetching teacher assignments:', error)
         } finally {
@@ -139,19 +158,15 @@ export default function FacultySubjects({ auth, teachers = [], gradeLevels = [],
         }
     }
 
-    const handleBackToTeachers = () => {
-        setSelectedTeacher(null)
-        setTeacherAssignments([])
+    const handleTeacherClick = async (teacher: Teacher) => {
+        setSelectedTeacher(teacher)
+        await fetchAssignments(teacher.id, 1, assignmentsPerPage)
     }
 
-    // Paginate assignments
-    const paginatedAssignments = useMemo(() => {
-        const startIndex = (assignmentsPage - 1) * assignmentsPerPage
-        const endIndex = startIndex + assignmentsPerPage
-        return teacherAssignments.slice(startIndex, endIndex)
-    }, [teacherAssignments, assignmentsPage, assignmentsPerPage])
-
-    const assignmentsTotalPages = Math.ceil(teacherAssignments.length / assignmentsPerPage)
+    const handleBackToTeachers = () => {
+        setSelectedTeacher(null)
+        setAssignments(null)
+    }
 
     // Filter subjects based on selected grade level
     const filteredSubjects = useMemo(() => {
@@ -167,16 +182,15 @@ export default function FacultySubjects({ auth, teachers = [], gradeLevels = [],
                 teacher_id: selectedTeacher.id,
                 subject_id: selectedSubjectId,
             })
-            
-            // Refresh assignments
-            const response = await axios.get(`/admin/enrollment/teacher-subjects/${selectedTeacher.id}`)
-            setTeacherAssignments(response.data)
-            
+
+            // Refresh assignments (stay on current page)
+            await fetchAssignments(selectedTeacher.id, assignments?.current_page ?? 1)
+
             // Close modal and reset
             setShowAssignModal(false)
             setSelectedSubjectId('')
             setSelectedGradeLevel('')
-            
+
             // Refresh page to update counts
             router.reload({ only: ['teachers'] })
         } catch (error: any) {
@@ -187,14 +201,19 @@ export default function FacultySubjects({ auth, teachers = [], gradeLevels = [],
     const handleDeleteAssignment = async (assignmentId: number) => {
         try {
             await axios.delete(`/admin/enrollment/teacher-subjects/${assignmentId}`)
-            
-            // Refresh assignments
-            const response = await axios.get(`/admin/enrollment/teacher-subjects/${selectedTeacher!.id}`)
-            setTeacherAssignments(response.data)
-            
+
+            // Refresh assignments — if the deleted row was the last one on the
+            // current page, fall back to page 1
+            const nextPage =
+                assignments && assignments.data.length === 1 && assignments.current_page > 1
+                    ? assignments.current_page - 1
+                    : assignments?.current_page ?? 1
+
+            await fetchAssignments(selectedTeacher!.id, nextPage)
+
             // Refresh page to update counts
             router.reload({ only: ['teachers'] })
-            
+
             // Close modal
             setShowDeleteModal(false)
             setAssignmentToDelete(null)
@@ -206,6 +225,27 @@ export default function FacultySubjects({ auth, teachers = [], gradeLevels = [],
     const handleDeleteClick = (assignment: Assignment) => {
         setAssignmentToDelete(assignment)
         setShowDeleteModal(true)
+    }
+
+    const handleTeachersPageChange = (url: string | null) => {
+        // preserveState is required here so the component instance (and its
+        // isFirstRender ref) survives the navigation instead of remounting,
+        // which previously caused the teachers filter effect above to re-fire
+        // and silently strip the `page` param, sending the user back to page 1.
+        if (url) router.visit(url, { preserveScroll: true, preserveState: true })
+    }
+
+    const handleAssignmentsPageChange = (url: string | null) => {
+        if (!url || !selectedTeacher) return
+        const page = new URL(url, window.location.origin).searchParams.get('page')
+        fetchAssignments(selectedTeacher.id, page ? Number(page) : 1, assignmentsPerPage)
+    }
+
+    const handleAssignmentsPerPageChange = (value: number) => {
+        setAssignmentsPerPage(value)
+        if (selectedTeacher) {
+            fetchAssignments(selectedTeacher.id, 1, value)
+        }
     }
 
     return (
@@ -227,16 +267,16 @@ export default function FacultySubjects({ auth, teachers = [], gradeLevels = [],
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                                 <p className="text-sm text-blue-600 font-medium">Total Teachers</p>
-                                <p className="text-3xl font-bold text-blue-900 mt-2">{teachers.length}</p>
+                                <p className="text-3xl font-bold text-blue-900 mt-2">{teachers.total}</p>
                             </div>
                             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                                 <p className="text-sm text-green-600 font-medium">Total Subjects</p>
                                 <p className="text-3xl font-bold text-green-900 mt-2">{subjects.length}</p>
                             </div>
                             <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                                <p className="text-sm text-purple-600 font-medium">Total Assignments</p>
+                                <p className="text-sm text-purple-600 font-medium">Total Assignments (this page)</p>
                                 <p className="text-3xl font-bold text-purple-900 mt-2">
-                                    {teachers.reduce((sum, t) => sum + t.assigned_subjects_count, 0)}
+                                    {teachers.data.reduce((sum, t) => sum + t.assigned_subjects_count, 0)}
                                 </p>
                             </div>
                         </div>
@@ -303,8 +343,8 @@ export default function FacultySubjects({ auth, teachers = [], gradeLevels = [],
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
-                                        {paginatedTeachers.length > 0 ? (
-                                            paginatedTeachers.map((teacher) => (
+                                        {teachers.data.length > 0 ? (
+                                            teachers.data.map((teacher) => (
                                                 <tr key={teacher.id} className="hover:bg-gray-50 transition-colors">
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{teacher.employee_number}</td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
@@ -346,79 +386,16 @@ export default function FacultySubjects({ auth, teachers = [], gradeLevels = [],
                             </div>
 
                             {/* Pagination */}
-                            {filteredTeachers.length > 0 && (
-                                <div className="p-4 border-t border-gray-200 flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm text-gray-600">Show</span>
-                                            <Select 
-                                                value={itemsPerPage.toString()} 
-                                                onValueChange={(value) => setItemsPerPage(Number(value))}
-                                            >
-                                                <SelectTrigger className="w-20">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="10">10</SelectItem>
-                                                    <SelectItem value="25">25</SelectItem>
-                                                    <SelectItem value="50">50</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                            <span className="text-sm text-gray-600">entries</span>
-                                        </div>
-                                        <p className="text-sm text-gray-600">
-                                            Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredTeachers.length)} of {filteredTeachers.length} entries
-                                        </p>
-                                    </div>
-
-                                    <div className="flex items-center gap-2">
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                            disabled={currentPage === 1}
-                                        >
-                                            <ChevronLeft className="w-4 h-4" />
-                                        </Button>
-                                        
-                                        <div className="flex items-center gap-1">
-                                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                                                if (
-                                                    page === 1 ||
-                                                    page === totalPages ||
-                                                    (page >= currentPage - 1 && page <= currentPage + 1)
-                                                ) {
-                                                    return (
-                                                        <Button
-                                                            key={page}
-                                                            variant={currentPage === page ? "default" : "outline"}
-                                                            size="sm"
-                                                            onClick={() => setCurrentPage(page)}
-                                                            className={currentPage === page ? "bg-green-600 hover:bg-green-700" : ""}
-                                                        >
-                                                            {page}
-                                                        </Button>
-                                                    )
-                                                } else if (
-                                                    page === currentPage - 2 ||
-                                                    page === currentPage + 2
-                                                ) {
-                                                    return <span key={page} className="px-2">...</span>
-                                                }
-                                                return null
-                                            })}
-                                        </div>
-
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                            disabled={currentPage === totalPages}
-                                        >
-                                            <ChevronRight className="w-4 h-4" />
-                                        </Button>
-                                    </div>
-                                </div>
+                            {teachers.data.length > 0 && (
+                                <Pagination
+                                    currentPage={teachers.current_page}
+                                    lastPage={teachers.last_page}
+                                    perPage={teachers.per_page}
+                                    total={teachers.total}
+                                    links={teachers.links}
+                                    onPageChange={handleTeachersPageChange}
+                                    onPerPageChange={setPerPage}
+                                />
                             )}
                         </div>
                     </>
@@ -476,10 +453,10 @@ export default function FacultySubjects({ auth, teachers = [], gradeLevels = [],
                                     <div>
                                         <h2 className="text-base font-semibold text-gray-900">Assigned Subjects</h2>
                                         <p className="text-sm text-gray-500 mt-1">
-                                            {teacherAssignments.length} subject{teacherAssignments.length !== 1 ? 's' : ''} currently assigned
+                                            {assignments?.total ?? 0} subject{(assignments?.total ?? 0) !== 1 ? 's' : ''} currently assigned
                                         </p>
                                     </div>
-                                    {teacherAssignments.length > 0 && (
+                                    {(assignments?.total ?? 0) > 0 && (
                                         <div className="flex items-center gap-2 text-sm text-gray-600">
                                             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                                 Active
@@ -507,8 +484,8 @@ export default function FacultySubjects({ auth, teachers = [], gradeLevels = [],
                                                 </tr>
                                             </thead>
                                             <tbody className="bg-white divide-y divide-gray-200">
-                                                {paginatedAssignments.length > 0 ? (
-                                                    paginatedAssignments.map((assignment) => (
+                                                {assignments && assignments.data.length > 0 ? (
+                                                    assignments.data.map((assignment) => (
                                                         <tr key={assignment.id} className="hover:bg-gray-50 transition-colors">
                                                             <td className="px-6 py-4 whitespace-nowrap">
                                                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
@@ -551,79 +528,16 @@ export default function FacultySubjects({ auth, teachers = [], gradeLevels = [],
                                     </div>
 
                                     {/* Assignments Pagination */}
-                                    {teacherAssignments.length > 0 && (
-                                        <div className="p-4 border-t border-gray-200 flex items-center justify-between">
-                                            <div className="flex items-center gap-4">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-sm text-gray-600">Show</span>
-                                                    <Select 
-                                                        value={assignmentsPerPage.toString()} 
-                                                        onValueChange={(value) => setAssignmentsPerPage(Number(value))}
-                                                    >
-                                                        <SelectTrigger className="w-20">
-                                                            <SelectValue />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="10">10</SelectItem>
-                                                            <SelectItem value="25">25</SelectItem>
-                                                            <SelectItem value="50">50</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                    <span className="text-sm text-gray-600">entries</span>
-                                                </div>
-                                                <p className="text-sm text-gray-600">
-                                                    Showing {((assignmentsPage - 1) * assignmentsPerPage) + 1} to {Math.min(assignmentsPage * assignmentsPerPage, teacherAssignments.length)} of {teacherAssignments.length} entries
-                                                </p>
-                                            </div>
-
-                                            <div className="flex items-center gap-2">
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => setAssignmentsPage(prev => Math.max(1, prev - 1))}
-                                                    disabled={assignmentsPage === 1}
-                                                >
-                                                    <ChevronLeft className="w-4 h-4" />
-                                                </Button>
-                                                
-                                                <div className="flex items-center gap-1">
-                                                    {Array.from({ length: assignmentsTotalPages }, (_, i) => i + 1).map((page) => {
-                                                        if (
-                                                            page === 1 ||
-                                                            page === assignmentsTotalPages ||
-                                                            (page >= assignmentsPage - 1 && page <= assignmentsPage + 1)
-                                                        ) {
-                                                            return (
-                                                                <Button
-                                                                    key={page}
-                                                                    variant={assignmentsPage === page ? "default" : "outline"}
-                                                                    size="sm"
-                                                                    onClick={() => setAssignmentsPage(page)}
-                                                                    className={assignmentsPage === page ? "bg-green-600 hover:bg-green-700" : ""}
-                                                                >
-                                                                    {page}
-                                                                </Button>
-                                                            )
-                                                        } else if (
-                                                            page === assignmentsPage - 2 ||
-                                                            page === assignmentsPage + 2
-                                                        ) {
-                                                            return <span key={page} className="px-2">...</span>
-                                                        }
-                                                        return null
-                                                    })}
-                                                </div>
-
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => setAssignmentsPage(prev => Math.min(assignmentsTotalPages, prev + 1))}
-                                                    disabled={assignmentsPage === assignmentsTotalPages}
-                                                >
-                                                    <ChevronRight className="w-4 h-4" />
-                                                </Button>
-                                            </div>
-                                        </div>
+                                    {assignments && assignments.data.length > 0 && (
+                                        <Pagination
+                                            currentPage={assignments.current_page}
+                                            lastPage={assignments.last_page}
+                                            perPage={assignments.per_page}
+                                            total={assignments.total}
+                                            links={assignments.links}
+                                            onPageChange={handleAssignmentsPageChange}
+                                            onPerPageChange={handleAssignmentsPerPageChange}
+                                        />
                                     )}
                                 </>
                             )}
@@ -665,8 +579,8 @@ export default function FacultySubjects({ auth, teachers = [], gradeLevels = [],
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Subject <span className="text-red-500">*</span>
                             </label>
-                            <Select 
-                                value={selectedSubjectId} 
+                            <Select
+                                value={selectedSubjectId}
                                 onValueChange={setSelectedSubjectId}
                                 disabled={!selectedGradeLevel}
                             >

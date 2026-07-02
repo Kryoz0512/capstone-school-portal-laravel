@@ -11,58 +11,104 @@ use Inertia\Inertia;
 
 class ProfilePictureController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $students = Student::with(['gradeLevel', 'section', 'profilePicture'])
-            ->orderBy('last_name')
-            ->orderBy('first_name')
-            ->get()
-            ->map(fn ($student) => [
-                'id' => $student->id,
-                'name' => trim($student->first_name . ' ' . $student->last_name),
-                'identifier' => $student->lrn,
-                'type' => 'student',
-                'profile_picture' => $student->profilePicture?->file_path
-                    ? asset('storage/' . $student->profilePicture->file_path)
-                    : null,
-                'grade_level' => $student->gradeLevel?->name,
-                'section' => $student->section?->section_name,
-            ]);
+        $tab = $request->input('tab', 'student');
+        $search = trim((string) $request->input('search', ''));
+        $perPage = (int) $request->input('per_page', 10);
 
-        $teachers = Teacher::with('profilePicture')
-            ->orderBy('name')
-            ->get()
-            ->map(fn ($teacher) => [
-                'id' => $teacher->id,
-                'name' => $teacher->name,
-                'identifier' => $teacher->employee_number,
-                'type' => 'teacher',
-                'profile_picture' => $teacher->profilePicture?->file_path
-                    ? asset('storage/' . $teacher->profilePicture->file_path)
-                    : null,
-            ]);
+        $counts = [
+            'student' => Student::count(),
+            'teacher' => Teacher::count(),
+            'staff_admin' => Admin::count(),
+        ];
 
-        $staffAdmins = Admin::with('profilePicture')
-            ->orderBy('last_name')
-            ->orderBy('first_name')
-            ->get()
-            ->map(fn ($admin) => [
-                'id' => $admin->id,
-                'name' => trim(($admin->first_name ?? '') . ' ' . ($admin->last_name ?? '')),
-                'identifier' => $admin->employee_number,
-                'type' => 'staff_admin',
-                'profile_picture' => $admin->profilePicture?->file_path
-                    ? asset('storage/' . $admin->profilePicture->file_path)
-                    : null,
-            ]);
+        $people = match ($tab) {
+            'teacher' => $this->paginatedTeachers($search, $perPage),
+            'staff_admin' => $this->paginatedStaffAdmins($search, $perPage),
+            default => $this->paginatedStudents($search, $perPage),
+        };
 
         return Inertia::render('admin/admission/upload-delete-picture/page', [
-            'students' => $students,
-            'teachers' => $teachers,
-            'staffAdmins' => $staffAdmins,
+            'people' => $people,
+            'counts' => $counts,
+            'filters' => [
+                'tab' => in_array($tab, ['student', 'teacher', 'staff_admin']) ? $tab : 'student',
+                'search' => $search,
+                'per_page' => $perPage,
+            ],
         ]);
     }
 
+    private function paginatedStudents(string $search, int $perPage)
+    {
+        $query = Student::with(['gradeLevel', 'section', 'profilePicture'])
+            ->orderBy('last_name')
+            ->orderBy('first_name');
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->whereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"])
+                    ->orWhere('lrn', 'like', "%{$search}%");
+            });
+        }
+
+        return $query->paginate($perPage)->withQueryString()->through(fn($student) => [
+            'id' => $student->id,
+            'name' => trim($student->first_name . ' ' . $student->last_name),
+            'identifier' => $student->lrn,
+            'type' => 'student',
+            'profile_picture' => $student->profilePicture?->file_path
+                ? asset('storage/' . $student->profilePicture->file_path)
+                : null,
+            'grade_level' => $student->gradeLevel?->name,
+            'section' => $student->section?->section_name,
+        ]);
+    }
+
+    private function paginatedTeachers(string $search, int $perPage)
+    {
+        $query = Teacher::with('profilePicture')->orderBy('name');
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('employee_number', 'like', "%{$search}%");
+            });
+        }
+
+        return $query->paginate($perPage)->withQueryString()->through(fn($teacher) => [
+            'id' => $teacher->id,
+            'name' => $teacher->name,
+            'identifier' => $teacher->employee_number,
+            'type' => 'teacher',
+            'profile_picture' => $teacher->profilePicture?->file_path
+                ? asset('storage/' . $teacher->profilePicture->file_path)
+                : null,
+        ]);
+    }
+
+    private function paginatedStaffAdmins(string $search, int $perPage)
+    {
+        $query = Admin::with('profilePicture')->orderBy('last_name')->orderBy('first_name');
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->whereRaw("CONCAT(COALESCE(first_name,''), ' ', COALESCE(last_name,'')) LIKE ?", ["%{$search}%"])
+                    ->orWhere('employee_number', 'like', "%{$search}%");
+            });
+        }
+
+        return $query->paginate($perPage)->withQueryString()->through(fn($admin) => [
+            'id' => $admin->id,
+            'name' => trim(($admin->first_name ?? '') . ' ' . ($admin->last_name ?? '')),
+            'identifier' => $admin->employee_number,
+            'type' => 'staff_admin',
+            'profile_picture' => $admin->profilePicture?->file_path
+                ? asset('storage/' . $admin->profilePicture->file_path)
+                : null,
+        ]);
+    }
     public function upload(Request $request)
     {
         $validated = $request->validate([

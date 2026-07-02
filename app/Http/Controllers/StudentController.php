@@ -441,31 +441,61 @@ class StudentController extends Controller
         }
     }
 
-    public function viewEdit()
+    public function viewEdit(Request $request)
     {
-        $students = Student::with(['user', 'gradeLevel', 'section'])
-            ->get()  // Remove the whereNotNull filter
-            ->map(function ($student) {
-                return [
+        $gradeFilter = $request->input('grade', 'all');
+        $nameSearch = trim((string) $request->input('name', ''));
+        $lrnSearch = trim((string) $request->input('lrn', ''));
+        $sectionFilter = trim((string) $request->input('section', ''));
+        $perPage = (int) $request->input('per_page', 10);
+
+        $gradeLevels = GradeLevel::select('id', 'name')->get();
+
+        $students = null;
+
+        if ($gradeFilter !== 'all') {
+            $query = Student::with(['user', 'gradeLevel', 'section'])
+                ->whereHas('gradeLevel', function ($q) use ($gradeFilter) {
+                    $q->where('name', $gradeFilter);
+                });
+
+            if ($nameSearch !== '') {
+                $query->whereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$nameSearch}%"]);
+            }
+
+            if ($lrnSearch !== '') {
+                $query->where('lrn', 'like', "%{$lrnSearch}%");
+            }
+
+            if ($sectionFilter !== '') {
+                $query->whereHas('section', function ($q) use ($sectionFilter) {
+                    $q->where('section_name', 'like', "%{$sectionFilter}%");
+                });
+            }
+
+            $students = $query->orderBy('last_name')->orderBy('first_name')
+                ->paginate($perPage)
+                ->withQueryString()
+                ->through(fn($student) => [
                     'id' => $student->id,
                     'studentName' => trim($student->first_name . ' ' . $student->last_name),
                     'lrn' => $student->lrn,
                     'gradeLevel' => $student->gradeLevel ? $student->gradeLevel->name : '',
                     'section' => $student->section ? $student->section->section_name : '',
                     'readyToGraduate' => $student->ready_to_graduate ?? false,
-                ];
-            });
-
-        $gradeLevels = \App\Models\GradeLevel::all()->map(function ($gradeLevel) {
-            return [
-                'id' => $gradeLevel->id,
-                'name' => $gradeLevel->name,
-            ];
-        });
+                ]);
+        }
 
         return Inertia::render('admin/admission/view-edit-student/page', [
             'students' => $students,
             'gradeLevels' => $gradeLevels,
+            'filters' => [
+                'grade' => $gradeFilter,
+                'name' => $nameSearch,
+                'lrn' => $lrnSearch,
+                'section' => $sectionFilter,
+                'per_page' => $perPage,
+            ],
         ]);
     }
 

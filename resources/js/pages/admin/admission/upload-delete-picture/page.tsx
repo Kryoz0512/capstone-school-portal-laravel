@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react'
+import { Head, router } from '@inertiajs/react'
 import AdminLayout from '@/layouts/admin-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,25 +27,29 @@ import {
     ChevronLeft,
     ChevronRight,
 } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import axios from 'axios'
 
 type Props = {
     auth?: {
-        user: {
-            id: number
-            name: string
-            email: string
-            role: string
-        }
-        admin?: {
-            role: string
-            position: string
-        }
+        user: { id: number; name: string; email: string; role: string }
+        admin?: { role: string; position: string }
     }
-    students: PersonRow[]
-    teachers: PersonRow[]
-    staffAdmins: PersonRow[]
+    people: {
+        data: PersonRow[]
+        current_page: number
+        last_page: number
+        per_page: number
+        total: number
+        from: number | null
+        to: number | null
+    }
+    counts: { student: number; teacher: number; staff_admin: number }
+    filters: {
+        tab: TabKey
+        search: string
+        per_page: number
+    }
 }
 
 type PersonRow = {
@@ -60,68 +64,63 @@ type PersonRow = {
 
 type TabKey = 'student' | 'teacher' | 'staff_admin'
 
-const TAB_CONFIG: Record<TabKey, { label: string; icon: typeof GraduationCap; identifierLabel: string; accent: string }> = {
-    student: {
-        label: 'Student',
-        icon: GraduationCap,
-        identifierLabel: 'LRN',
-        accent: 'blue',
-    },
-    teacher: {
-        label: 'Teacher',
-        icon: User,
-        identifierLabel: 'Employee No.',
-        accent: 'green',
-    },
-    staff_admin: {
-        label: 'Staff & Admin',
-        icon: Users,
-        identifierLabel: 'Employee No.',
-        accent: 'purple',
-    },
+const TAB_CONFIG: Record<TabKey, { label: string; icon: typeof GraduationCap; identifierLabel: string }> = {
+    student: { label: 'Student', icon: GraduationCap, identifierLabel: 'LRN' },
+    teacher: { label: 'Teacher', icon: User, identifierLabel: 'Employee No.' },
+    staff_admin: { label: 'Staff & Admin', icon: Users, identifierLabel: 'Employee No.' },
 }
 
-export default function UploadDeletePicturePage({ auth, students, teachers, staffAdmins }: Props) {
-    const [activeTab, setActiveTab] = useState<TabKey>('student')
-    const [search, setSearch] = useState('')
-    const [rows, setRows] = useState<{ student: PersonRow[]; teacher: PersonRow[]; staff_admin: PersonRow[] }>({
-        student: students,
-        teacher: teachers,
-        staff_admin: staffAdmins,
-    })
+export default function UploadDeletePicturePage({ auth, people, counts, filters }: Props) {
+    const [searchInput, setSearchInput] = useState(filters.search)
+    const [rows, setRows] = useState<PersonRow[]>(people.data)
     const [busyId, setBusyId] = useState<number | null>(null)
     const [pendingDelete, setPendingDelete] = useState<PersonRow | null>(null)
-    const [pageSize, setPageSize] = useState(10)
-    const [page, setPage] = useState(1)
 
     const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({})
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-    const filteredRows = rows[activeTab].filter((row) => {
-        if (!search.trim()) return true
-        const term = search.toLowerCase()
-        return (
-            row.name.toLowerCase().includes(term) ||
-            row.identifier.toLowerCase().includes(term)
+    // Keep local rows in sync whenever the server sends new data (tab/page/search/upload changes)
+    useEffect(() => {
+        setRows(people.data)
+    }, [people.data])
+
+    const visit = (params: Record<string, any>, opts: Record<string, any> = {}) => {
+        router.get(
+            '/admin/admission/upload-delete-picture',
+            {
+                tab: filters.tab,
+                search: filters.search,
+                per_page: filters.per_page,
+                ...params,
+            },
+            { preserveState: true, preserveScroll: true, replace: true, ...opts }
         )
-    })
-
-    const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize))
-    const safePage = Math.min(page, totalPages)
-    const currentRows = filteredRows.slice((safePage - 1) * pageSize, safePage * pageSize)
-    const rangeStart = filteredRows.length === 0 ? 0 : (safePage - 1) * pageSize + 1
-    const rangeEnd = Math.min(safePage * pageSize, filteredRows.length)
-
-    const updateRow = (type: TabKey, id: number, updates: Partial<PersonRow>) => {
-        setRows((prev) => ({
-            ...prev,
-            [type]: prev[type].map((row) => (row.id === id ? { ...row, ...updates } : row)),
-        }))
     }
 
     const handleTabChange = (tab: TabKey) => {
-        setActiveTab(tab)
-        setSearch('')
-        setPage(1)
+        setSearchInput('')
+        visit({ tab, search: '', page: 1 })
+    }
+
+    const handleSearchChange = (value: string) => {
+        setSearchInput(value)
+        if (debounceRef.current) clearTimeout(debounceRef.current)
+        debounceRef.current = setTimeout(() => {
+            visit({ search: value, page: 1 })
+        }, 400)
+    }
+
+    const handlePerPageChange = (value: string) => {
+        visit({ per_page: Number(value), page: 1 })
+    }
+
+    const handlePageChange = (page: number) => {
+        if (page < 1 || page > people.last_page) return
+        visit({ page })
+    }
+
+    const updateRow = (id: number, updates: Partial<PersonRow>) => {
+        setRows((prev) => prev.map((row) => (row.id === id ? { ...row, ...updates } : row)))
     }
 
     const triggerFilePicker = (id: number) => {
@@ -153,7 +152,7 @@ export default function UploadDeletePicturePage({ auth, students, teachers, staf
             })
 
             if (response.data.success) {
-                updateRow(row.type, row.id, { profile_picture: response.data.profile_picture })
+                updateRow(row.id, { profile_picture: response.data.profile_picture })
             }
         } catch (error: any) {
             alert(error.response?.data?.message || 'Failed to upload profile picture')
@@ -164,9 +163,7 @@ export default function UploadDeletePicturePage({ auth, students, teachers, staf
         }
     }
 
-    const requestDelete = (row: PersonRow) => {
-        setPendingDelete(row)
-    }
+    const requestDelete = (row: PersonRow) => setPendingDelete(row)
 
     const confirmDelete = async () => {
         if (!pendingDelete) return
@@ -180,7 +177,7 @@ export default function UploadDeletePicturePage({ auth, students, teachers, staf
             })
 
             if (response.data.success) {
-                updateRow(row.type, row.id, { profile_picture: null })
+                updateRow(row.id, { profile_picture: null })
             }
         } catch (error: any) {
             alert(error.response?.data?.message || 'Failed to delete profile picture')
@@ -189,6 +186,8 @@ export default function UploadDeletePicturePage({ auth, students, teachers, staf
             setPendingDelete(null)
         }
     }
+
+    const activeTab = filters.tab
 
     return (
         <AdminLayout user={auth?.user} admin={auth?.admin}>
@@ -202,7 +201,6 @@ export default function UploadDeletePicturePage({ auth, students, teachers, staf
                     </p>
                 </div>
 
-                {/* Tabs */}
                 <div className="bg-white rounded-lg border border-gray-200">
                     <div className="flex border-b border-gray-200">
                         {(Object.keys(TAB_CONFIG) as TabKey[]).map((tab) => {
@@ -213,20 +211,19 @@ export default function UploadDeletePicturePage({ auth, students, teachers, staf
                                 <button
                                     key={tab}
                                     onClick={() => handleTabChange(tab)}
-                                    className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
-                                        isActive
+                                    className={`flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors ${isActive
                                             ? tab === 'student'
                                                 ? 'border-blue-600 text-blue-600'
                                                 : tab === 'teacher'
-                                                ? 'border-green-600 text-green-600'
-                                                : 'border-purple-600 text-purple-600'
+                                                    ? 'border-green-600 text-green-600'
+                                                    : 'border-purple-600 text-purple-600'
                                             : 'border-transparent text-gray-500 hover:text-gray-700'
-                                    }`}
+                                        }`}
                                 >
                                     <Icon className="w-4 h-4" />
                                     {config.label}
                                     <span className="text-xs bg-gray-100 text-gray-600 rounded-full px-2 py-0.5">
-                                        {rows[tab].length}
+                                        {counts[tab]}
                                     </span>
                                 </button>
                             )
@@ -234,22 +231,17 @@ export default function UploadDeletePicturePage({ auth, students, teachers, staf
                     </div>
 
                     <div className="p-6 space-y-4">
-                        {/* Search */}
                         <div className="relative max-w-sm">
                             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                             <Input
                                 type="text"
                                 placeholder={`Search by name or ${TAB_CONFIG[activeTab].identifierLabel}`}
-                                value={search}
-                                onChange={(e) => {
-                                    setSearch(e.target.value)
-                                    setPage(1)
-                                }}
+                                value={searchInput}
+                                onChange={(e) => handleSearchChange(e.target.value)}
                                 className="pl-9"
                             />
                         </div>
 
-                        {/* Table */}
                         <div className="overflow-x-auto border border-gray-200 rounded-lg">
                             <table className="w-full text-sm">
                                 <thead className="bg-gray-50">
@@ -269,17 +261,17 @@ export default function UploadDeletePicturePage({ auth, students, teachers, staf
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {currentRows.length === 0 && (
+                                    {rows.length === 0 && (
                                         <tr>
                                             <td
                                                 colSpan={activeTab === 'student' ? 6 : 4}
                                                 className="px-4 py-10 text-center text-gray-500"
                                             >
-                                                {search ? 'No matching records found.' : 'No records found.'}
+                                                {searchInput ? 'No matching records found.' : 'No records found.'}
                                             </td>
                                         </tr>
                                     )}
-                                    {currentRows.map((row) => (
+                                    {rows.map((row) => (
                                         <tr key={row.id} className="hover:bg-gray-50">
                                             <td className="px-4 py-3">
                                                 <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 border border-gray-200 flex items-center justify-center">
@@ -341,16 +333,12 @@ export default function UploadDeletePicturePage({ auth, students, teachers, staf
                             </table>
                         </div>
 
-                        {/* Pagination */}
                         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
                             <div className="flex items-center gap-2 text-sm text-gray-600">
                                 <span>Show</span>
                                 <Select
-                                    value={pageSize.toString()}
-                                    onValueChange={(value) => {
-                                        setPageSize(Number(value))
-                                        setPage(1)
-                                    }}
+                                    value={people.per_page.toString()}
+                                    onValueChange={handlePerPageChange}
                                 >
                                     <SelectTrigger className="w-20 h-8">
                                         <SelectValue />
@@ -367,29 +355,29 @@ export default function UploadDeletePicturePage({ auth, students, teachers, staf
 
                             <div className="flex items-center gap-4 sm:ml-auto">
                                 <span className="text-sm text-gray-500">
-                                    {filteredRows.length === 0
+                                    {people.total === 0
                                         ? 'No entries'
-                                        : `Showing ${rangeStart}-${rangeEnd} of ${filteredRows.length}`}
+                                        : `Showing ${people.from}-${people.to} of ${people.total}`}
                                 </span>
                                 <div className="flex items-center gap-1">
                                     <Button
                                         size="sm"
                                         variant="outline"
                                         className="h-8 w-8 p-0"
-                                        disabled={safePage <= 1}
-                                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                        disabled={people.current_page <= 1}
+                                        onClick={() => handlePageChange(people.current_page - 1)}
                                     >
                                         <ChevronLeft className="w-4 h-4" />
                                     </Button>
                                     <span className="text-sm text-gray-600 px-2 min-w-[5.5rem] text-center">
-                                        Page {safePage} of {totalPages}
+                                        Page {people.current_page} of {people.last_page}
                                     </span>
                                     <Button
                                         size="sm"
                                         variant="outline"
                                         className="h-8 w-8 p-0"
-                                        disabled={safePage >= totalPages}
-                                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                                        disabled={people.current_page >= people.last_page}
+                                        onClick={() => handlePageChange(people.current_page + 1)}
                                     >
                                         <ChevronRight className="w-4 h-4" />
                                     </Button>
@@ -400,7 +388,6 @@ export default function UploadDeletePicturePage({ auth, students, teachers, staf
                 </div>
             </div>
 
-            {/* Delete confirmation modal */}
             <Dialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)}>
                 <DialogContent className="sm:max-w-md">
                     <DialogHeader>

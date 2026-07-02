@@ -22,12 +22,12 @@ type HeaderProps = {
 
 const navItems = [
     { href: '/teacher/dashboard',         label: 'Dashboard',         Icon: LayoutDashboard },
-    { href: '/teacher/grade-sheets',      label: 'Grade Sheets',      Icon: FileSpreadsheet },
-    { href: '/teacher/class-list',        label: 'Class List',        Icon: Users },
-    { href: '/teacher/final-report',      label: 'Final Report',      Icon: FileText },
     { href: '/teacher/schedule',          label: 'Schedule',          Icon: Calendar },
-    { href: '/teacher/documents',         label: 'Documents',         Icon: File },
+    { href: '/teacher/class-list',        label: 'Class List',        Icon: Users },
+    { href: '/teacher/grade-sheets',      label: 'Grade Sheets',      Icon: FileSpreadsheet },
+    { href: '/teacher/final-report',      label: 'Final Report',      Icon: FileText },
     { href: '/teacher/student-clearance', label: 'Student Clearance', Icon: GraduationCap },
+    { href: '/teacher/documents',         label: 'Documents',         Icon: File },
 ]
 
 function MobileSidebarContent({ onNavigate }: { onNavigate: () => void }) {

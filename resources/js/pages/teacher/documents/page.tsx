@@ -3,7 +3,18 @@ import TeacherLayout from '@/layouts/teacher-layout'
 import { Download, FileText } from 'lucide-react'
 
 type DocumentItem = { id: number; title: string; file_name: string; file_type: string; file_size: string; uploaded_by: string; uploaded_at: string }
-type Props = { documents: DocumentItem[]; auth?: { user: { id: number; name: string; email: string; role: string } } }
+
+// This now matches the shape Laravel's paginate() -> Inertia actually sends
+type PaginatedDocuments = {
+    data: DocumentItem[]
+    current_page: number
+    last_page: number
+    per_page: number
+    total: number
+    links: { url: string | null; label: string; active: boolean }[]
+}
+
+type Props = { documents: PaginatedDocuments; auth?: { user: { id: number; name: string; email: string; role: string } } }
 
 const fileTypeBadge: Record<string, string> = {
     PDF: 'bg-red-50 text-red-700', DOC: 'bg-blue-50 text-blue-700', DOCX: 'bg-blue-50 text-blue-700',
@@ -11,6 +22,8 @@ const fileTypeBadge: Record<string, string> = {
 }
 
 export default function Documents({ documents, auth }: Props) {
+    const rows = documents.data // <-- the actual array lives here
+
     return (
         <TeacherLayout user={auth?.user}>
             <Head title="Documents" />
@@ -31,7 +44,7 @@ export default function Documents({ documents, auth }: Props) {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200 bg-white">
-                                {documents.length === 0 ? (
+                                {rows.length === 0 ? (
                                     <tr>
                                         <td colSpan={4} className="px-6 py-12 text-center">
                                             <FileText className="w-10 h-10 text-gray-300 mx-auto mb-3" />
@@ -39,7 +52,7 @@ export default function Documents({ documents, auth }: Props) {
                                             <p className="text-xs text-gray-400 mt-1">Check back later once the registrar's office uploads files.</p>
                                         </td>
                                     </tr>
-                                ) : documents.map((doc, index) => (
+                                ) : rows.map((doc, index) => (
                                     <tr key={doc.id} className={`hover:bg-gray-50 ${index % 2 === 1 ? 'bg-gray-50/40' : ''}`}>
                                         <td className="px-4 sm:px-6 py-4">
                                             <div className="flex items-center gap-2">
@@ -65,6 +78,26 @@ export default function Documents({ documents, auth }: Props) {
                             </tbody>
                         </table>
                     </div>
+                    {/* Optional: pagination controls, since the backend already paginates */}
+                    {documents.last_page > 1 && (
+                        <div className="flex justify-center gap-1 py-3 border-t border-gray-200">
+                            {documents.links.map((link, i) => {
+                                const isDisabled = link.url === null
+                                const base = 'px-3 py-1 text-sm rounded'
+                                const activeClass = link.active ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                                const disabledClass = isDisabled ? 'pointer-events-none opacity-40' : ''
+
+                                return (
+                                    <a
+                                        key={i}
+                                        href={isDisabled ? '#' : link.url}
+                                        className={base + ' ' + activeClass + ' ' + disabledClass}
+                                        dangerouslySetInnerHTML={{ __html: link.label }}
+                                    />
+                                )
+                            })}
+                        </div>
+                    )}
                 </div>
             </div>
         </TeacherLayout>

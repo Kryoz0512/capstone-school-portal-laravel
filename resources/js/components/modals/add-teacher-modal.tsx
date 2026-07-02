@@ -230,8 +230,15 @@ export default function AddTeacherModal({ open, onOpenChange, subjects = [] }: A
                                 <SelectItem value="Teacher I">Teacher I</SelectItem>
                                 <SelectItem value="Teacher II">Teacher II</SelectItem>
                                 <SelectItem value="Teacher III">Teacher III</SelectItem>
+                                <SelectItem value="Teacher III">Teacher IV</SelectItem>
+                                <SelectItem value="Teacher III">Teacher V</SelectItem>
+                                <SelectItem value="Teacher III">Teacher VI</SelectItem>
                                 <SelectItem value="Master Teacher I">Master Teacher I</SelectItem>
                                 <SelectItem value="Master Teacher II">Master Teacher II</SelectItem>
+                                <SelectItem value="Master Teacher II">Master Teacher III</SelectItem>
+                                <SelectItem value="Master Teacher II">Master Teacher IV</SelectItem>
+                                <SelectItem value="Master Teacher II">Master Teacher V</SelectItem>
+                                <SelectItem value="Master Teacher II">Master Teacher VI</SelectItem>
                             </SelectContent>
                         </Select>
                         {errors.position && <p className="text-xs text-red-500 mt-1">{errors.position}</p>}

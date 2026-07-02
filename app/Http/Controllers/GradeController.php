@@ -502,9 +502,7 @@ class GradeController extends Controller
         $currentLevelOrder = $this->getGradeLevelOrder($currentLevelName);
 
         // Pre-fetch clearances for this student across all sections
-        $allClearances = \App\Models\Clearance::where('student_id', $studentId)
-            ->where('status', 'cleared')
-            ->get();
+        $allClearances = \App\Models\Clearance::where('student_id', $studentId)->get();
 
         $academicRecord = $gradeLevels->map(function ($gradeLevel) use ($allGrades, $catalogSubjectsByGradeLevel, $student, $currentLevelName, $currentLevelOrder, $allClearances) {
             $gradeLevelName = $gradeLevel->name;
@@ -585,17 +583,30 @@ class GradeController extends Controller
             $totalSubjects = 0;
             $clearedCount = 0;
             $allCleared = false;
+            $subjectClearances = collect();
 
             if ($sectionId) {
-                $totalSubjects = DB::table('tbl_schedules')
-                    ->where('class_section_id', $sectionId)
-                    ->distinct('subject_id')
-                    ->count('subject_id');
+                $clearancesForSection = $allClearances->where('class_section_id', $sectionId);
 
-                $clearedCount = $allClearances
-                    ->where('class_section_id', $sectionId)
-                    ->count();
+                $scheduledSubjects = Schedule::where('class_section_id', $sectionId)
+                    ->with(['subject', 'teacher'])
+                    ->get()
+                    ->unique('subject_id');
 
+                $subjectClearances = $scheduledSubjects->map(function ($schedule) use ($clearancesForSection) {
+                    $clearance = $clearancesForSection->firstWhere('subject_id', $schedule->subject_id);
+
+                    return [
+                        'subject_id' => $schedule->subject_id,
+                        'subject_code' => $schedule->subject->code ?? null,
+                        'subject_name' => $schedule->subject->name ?? 'N/A',
+                        'teacher_name' => $schedule->teacher->name ?? '-',
+                        'status' => $clearance?->status ?? 'pending',
+                    ];
+                })->sortBy('subject_name')->values();
+
+                $totalSubjects = $subjectClearances->count();
+                $clearedCount = $clearancesForSection->where('status', 'cleared')->count();
                 $allCleared = $totalSubjects > 0 && $clearedCount >= $totalSubjects;
             }
             // ----------------------
@@ -623,6 +634,7 @@ class GradeController extends Controller
                 'clearance_total' => $totalSubjects,
                 'clearance_cleared' => $clearedCount,
                 'all_cleared' => $allCleared,
+                'subject_clearances' => $subjectClearances,
             ];
         });
 

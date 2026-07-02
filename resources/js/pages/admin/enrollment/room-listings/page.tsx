@@ -114,11 +114,11 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Search by Room Number
+                                Search by Room Name
                             </label>
                             <Input
                                 type="text"
-                                placeholder="Enter room number..."
+                                placeholder="Enter room name..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -161,7 +161,7 @@ export default function RoomListings({ auth, rooms = [] }: Props) {
                             <thead className="bg-green-700">
                                 <tr>
                                     <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
-                                        Room Number
+                                        Room Name
                                     </th>
                                     <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">
                                         Capacity

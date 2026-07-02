@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import '../css/app.css';
 import { initializeTheme } from '@/hooks/use-appearance';
+import { NotificationProvider } from '@/hooks/use-notifications';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -21,7 +22,9 @@ createInertiaApp({
         root.render(
             <StrictMode>
                 <TooltipProvider delayDuration={0}>
-                    <App {...props} />
+                    <NotificationProvider>
+                        <App {...props} />
+                    </NotificationProvider>
                 </TooltipProvider>
             </StrictMode>,
         );

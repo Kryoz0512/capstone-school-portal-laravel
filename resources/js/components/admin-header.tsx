@@ -1,17 +1,7 @@
 import { router, Link, usePage } from '@inertiajs/react'
 import { User, LogOut, ChevronDown, Bell } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
-
-type Notification = {
-    id: number
-    type: string
-    title: string
-    message: string
-    announcement_id: number | null
-    is_read: boolean
-    created_at: string
-    created_at_full: string
-}
+import { useNotifications, type Notification } from '@/hooks/use-notifications'
 
 type HeaderProps = {
     user?: {
@@ -29,10 +19,9 @@ type HeaderProps = {
 export default function AdminHeader({ user, admin }: HeaderProps) {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false)
     const [isNotificationOpen, setIsNotificationOpen] = useState(false)
-    const [notifications, setNotifications] = useState<Notification[]>([])
-    const [unreadCount, setUnreadCount] = useState(0)
     const dropdownRef = useRef<HTMLDivElement>(null)
     const notificationRef = useRef<HTMLDivElement>(null)
+    const { notifications, unreadCount, fetchNotifications, markAsRead, markAllAsRead } = useNotifications()
     
     // Get shared data directly from Inertia
     const page = usePage()
@@ -97,126 +86,41 @@ export default function AdminHeader({ user, admin }: HeaderProps) {
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [])
 
-    // Fetch notifications
-    const fetchNotifications = async () => {
-        try {
-            const response = await fetch('/api/notifications')
-            const data = await response.json()
-            setNotifications(data)
-        } catch (error) {
-            console.error('Error fetching notifications:', error)
-        }
-    }
-
-    // Fetch unread count
-    const fetchUnreadCount = async () => {
-        try {
-            const response = await fetch('/api/notifications/unread-count')
-            const data = await response.json()
-            setUnreadCount(data.count)
-        } catch (error) {
-            console.error('Error fetching unread count:', error)
-        }
-    }
-
-    // Poll for new notifications every 30 seconds
-    useEffect(() => {
-        fetchUnreadCount()
-        const interval = setInterval(fetchUnreadCount, 30000) // 30 seconds
-        return () => clearInterval(interval)
-    }, [])
-
     // Fetch notifications when dropdown opens
     useEffect(() => {
         if (isNotificationOpen) {
             fetchNotifications()
         }
-    }, [isNotificationOpen])
+    }, [isNotificationOpen, fetchNotifications])
+
+    const getDashboardPath = () => {
+        const role = user?.role || 'student'
+
+        if (role === 'admin') {
+            return '/admin/dashboard'
+        }
+
+        if (role === 'teacher') {
+            return '/teacher/dashboard'
+        }
+
+        return '/student/dashboard'
+    }
 
     // Mark notification as read and navigate
     const handleNotificationClick = async (notification: Notification) => {
-        // Skip if already read
-        if (notification.is_read) {
-            setIsNotificationOpen(false)
-            const role = user?.role || 'student'
-            if (role === 'admin') {
-                router.visit('/admin/dashboard', { preserveScroll: true })
-            } else if (role === 'teacher') {
-                router.visit('/teacher/dashboard', { preserveScroll: true })
-            } else {
-                router.visit('/student/dashboard', { preserveScroll: true })
-            }
-            return
+        setIsNotificationOpen(false)
+
+        if (!notification.is_read) {
+            await markAsRead(notification.id)
         }
 
-        try {
-            // Update local state immediately for instant UI feedback
-            setNotifications(prev => 
-                prev.map(n => n.id === notification.id ? { ...n, is_read: true } : n)
-            )
-            setUnreadCount(prev => Math.max(0, prev - 1))
-
-            // Close dropdown
-            setIsNotificationOpen(false)
-
-            // Mark as read in database and WAIT for it to complete
-            const response = await fetch(`/api/notifications/${notification.id}/read`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                },
-            })
-
-            if (!response.ok) {
-                throw new Error('Failed to mark notification as read')
-            }
-
-            // Wait for response to ensure database transaction completes
-            await response.json()
-
-            // Small delay to ensure database commit
-            await new Promise(resolve => setTimeout(resolve, 100))
-
-            // Navigate based on user role AFTER database update completes
-            const role = user?.role || 'student'
-            if (role === 'admin') {
-                router.visit('/admin/dashboard', { preserveScroll: true })
-            } else if (role === 'teacher') {
-                router.visit('/teacher/dashboard', { preserveScroll: true })
-            } else {
-                router.visit('/student/dashboard', { preserveScroll: true })
-            }
-        } catch (error) {
-            console.error('Error handling notification click:', error)
-            // Still navigate even if there's an error
-            const role = user?.role || 'student'
-            if (role === 'admin') {
-                router.visit('/admin/dashboard', { preserveScroll: true })
-            } else if (role === 'teacher') {
-                router.visit('/teacher/dashboard', { preserveScroll: true })
-            } else {
-                router.visit('/student/dashboard', { preserveScroll: true })
-            }
-        }
+        router.visit(getDashboardPath(), { preserveScroll: true })
     }
 
     // Mark all as read
     const handleMarkAllAsRead = async () => {
-        try {
-            await fetch('/api/notifications/mark-all-read', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                },
-            })
-
-            setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
-            setUnreadCount(0)
-        } catch (error) {
-            console.error('Error marking all as read:', error)
-        }
+        await markAllAsRead()
     }
 
     return (

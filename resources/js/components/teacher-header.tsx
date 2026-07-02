@@ -3,17 +3,7 @@ import { User, LogOut, ChevronDown, Bell, Menu, BookOpen, LayoutDashboard, FileS
 import { useState, useEffect, useRef } from 'react'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
-
-type Notification = {
-    id: number
-    type: string
-    title: string
-    message: string
-    announcement_id: number | null
-    is_read: boolean
-    created_at: string
-    created_at_full: string
-}
+import { useNotifications, type Notification } from '@/hooks/use-notifications'
 
 type HeaderProps = {
     user?: { name: string; email: string; role: string }
@@ -71,11 +61,10 @@ function MobileSidebarContent({ onNavigate }: { onNavigate: () => void }) {
 export default function TeacherHeader({ user, teacher }: HeaderProps) {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false)
     const [isNotificationOpen, setIsNotificationOpen] = useState(false)
-    const [notifications, setNotifications] = useState<Notification[]>([])
-    const [unreadCount, setUnreadCount] = useState(0)
     const [sheetOpen, setSheetOpen] = useState(false)
     const dropdownRef = useRef<HTMLDivElement>(null)
     const notificationRef = useRef<HTMLDivElement>(null)
+    const { notifications, unreadCount, fetchNotifications, markAsRead, markAllAsRead } = useNotifications()
 
     const { auth } = usePage<{ auth: { teacher?: { profile_picture?: string | null } } }>().props
 
@@ -108,59 +97,20 @@ export default function TeacherHeader({ user, teacher }: HeaderProps) {
         return () => document.removeEventListener('mousedown', handler)
     }, [])
 
-    const fetchNotifications = async () => {
-        try {
-            const res = await fetch('/api/notifications')
-            const data = await res.json()
-            setNotifications(data)
-        } catch { /* silent */ }
-    }
-
-    const fetchUnreadCount = async () => {
-        try {
-            const res = await fetch('/api/notifications/unread-count')
-            const data = await res.json()
-            setUnreadCount(data.count)
-        } catch { /* silent */ }
-    }
-
-    useEffect(() => {
-        fetchUnreadCount()
-        const iv = setInterval(fetchUnreadCount, 30_000)
-        return () => clearInterval(iv)
-    }, [])
-
-    useEffect(() => { if (isNotificationOpen) fetchNotifications() }, [isNotificationOpen])
+    useEffect(() => { if (isNotificationOpen) fetchNotifications() }, [isNotificationOpen, fetchNotifications])
 
     const handleNotificationClick = async (n: Notification) => {
-        if (n.is_read) { setIsNotificationOpen(false); router.visit('/teacher/dashboard', { preserveScroll: true }); return }
-        setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, is_read: true } : x))
-        setUnreadCount(prev => Math.max(0, prev - 1))
         setIsNotificationOpen(false)
-        try {
-            await fetch(`/api/notifications/${n.id}/read`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '',
-                },
-            })
-        } catch { /* silent */ }
+
+        if (!n.is_read) {
+            await markAsRead(n.id)
+        }
+
         router.visit('/teacher/dashboard', { preserveScroll: true })
     }
 
     const handleMarkAllAsRead = async () => {
-        try {
-            await fetch('/api/notifications/mark-all-read', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '',
-                },
-            })
-            setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
-            setUnreadCount(0)
-        } catch { /* silent */ }
+        await markAllAsRead()
     }
 
     return (

@@ -37,7 +37,7 @@ class NotificationController extends Controller
                     'title' => $notification->title,
                     'message' => $notification->message,
                     'announcement_id' => $notification->announcement_id,
-                    'is_read' => $notification->is_read,
+                    'is_read' => (bool) $notification->is_read,
                     'created_at' => $notification->created_at->diffForHumans(),
                     'created_at_full' => $notification->created_at->format('M d, Y h:i A'),
                 ];

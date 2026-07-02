@@ -505,13 +505,32 @@ class StudentController extends Controller
         ]);
     }
 
-    public function userManagement()
+    public function userManagement(Request $request)
     {
-        $students = Student::with('gradeLevel')
-            ->orderBy('last_name')
-            ->orderBy('first_name')
-            ->get()
-            ->map(function ($student) {
+        $search = trim((string) $request->input('search', ''));
+        $gradeLevelFilter = $request->input('grade_level', 'all');
+        $perPage = (int) $request->input('per_page', 10);
+
+        $query = Student::with('gradeLevel');
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('lrn', 'like', "%{$search}%")
+                    ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"])
+                    ->orWhereRaw("CONCAT(last_name, ' ', first_name) LIKE ?", ["%{$search}%"]);
+            });
+        }
+
+        if ($gradeLevelFilter !== 'all') {
+            $query->whereHas('gradeLevel', function ($q) use ($gradeLevelFilter) {
+                $q->where('name', $gradeLevelFilter);
+            });
+        }
+
+        $students = $query->orderBy('last_name')->orderBy('first_name')
+            ->paginate($perPage)
+            ->withQueryString()
+            ->through(function ($student) {
                 return [
                     'id' => $student->id,
                     'lrn' => $student->lrn,
@@ -523,9 +542,24 @@ class StudentController extends Controller
 
         $gradeLevels = GradeLevel::select('id', 'name')->get();
 
+        // Stats must be computed globally, not from the current page slice.
+        $totalStudents = Student::count();
+        $pendingPasswordChange = Student::whereHas('user', function ($q) {
+            $q->where('password_changed', false);
+        })->count();
+
         return Inertia::render('admin/user-management/student/page', [
             'students' => $students,
             'gradeLevels' => $gradeLevels,
+            'stats' => [
+                'total' => $totalStudents,
+                'pendingPasswordChange' => $pendingPasswordChange,
+            ],
+            'filters' => [
+                'search' => $search,
+                'grade_level' => $gradeLevelFilter,
+                'per_page' => $perPage,
+            ],
         ]);
     }
 
@@ -1518,12 +1552,67 @@ class StudentController extends Controller
         return response()->json($students);
     }
 
-    public function checklist()
+    public function checklist(Request $request)
     {
-        // Get ALL students
-        $allStudents = Student::with(['gradeLevel', 'section'])
-            ->get()
-            ->map(function ($student) {
+        $search = trim((string) $request->input('search', ''));
+        $gradeLevelFilter = $request->input('grade_level', 'all');
+        $sectionFilter = $request->input('section', 'all');
+        $documentFilter = $request->input('document', 'all');
+        $sortOrder = $request->input('sort', 'asc') === 'desc' ? 'desc' : 'asc';
+        $perPage = (int) $request->input('per_page', 10);
+
+        // Global stats (always unfiltered, matches the summary cards at the top)
+        $totalStudents = Student::count();
+        $completeDocsCount = Student::where('has_psa_birth_certificate', true)
+            ->where('has_sf9', true)
+            ->where('has_report_card', true)
+            ->where('has_good_moral', true)
+            ->count();
+        $incompleteDocsCount = $totalStudents - $completeDocsCount;
+
+        // Filtered + paginated table query
+        $query = Student::with(['gradeLevel', 'section']);
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('lrn', 'like', "%{$search}%")
+                    ->orWhereRaw("CONCAT(first_name, ' ', COALESCE(middle_name, ''), ' ', last_name) LIKE ?", ["%{$search}%"])
+                    ->orWhereRaw("CONCAT(last_name, ' ', first_name) LIKE ?", ["%{$search}%"]);
+            });
+        }
+
+        if ($gradeLevelFilter !== 'all') {
+            $query->whereHas('gradeLevel', function ($q) use ($gradeLevelFilter) {
+                $q->where('name', $gradeLevelFilter);
+            });
+        }
+
+        if ($sectionFilter !== 'all') {
+            $query->whereHas('section', function ($q) use ($sectionFilter) {
+                $q->where('section_name', $sectionFilter);
+            });
+        }
+
+        if ($documentFilter !== 'all') {
+            $column = match ($documentFilter) {
+                'psa' => 'has_psa_birth_certificate',
+                'sf9' => 'has_sf9',
+                'report_card' => 'has_report_card',
+                'good_moral' => 'has_good_moral',
+                default => null,
+            };
+
+            if ($column) {
+                $query->where($column, true);
+            }
+        }
+
+        $allStudents = $query
+            ->orderBy('last_name', $sortOrder)
+            ->orderBy('first_name', $sortOrder)
+            ->paginate($perPage)
+            ->withQueryString()
+            ->through(function ($student) {
                 return [
                     'id' => $student->id,
                     'lrn' => $student->lrn,
@@ -1539,89 +1628,20 @@ class StudentController extends Controller
                 ];
             });
 
-        // Get current students by grade level
-        $grade7Students = Student::with(['gradeLevel', 'section'])
-            ->whereHas('gradeLevel', function ($query) {
-                $query->where('name', 'Grade 7');
-            })
-            ->get()
-            ->map(function ($student) {
-                return [
-                    'id' => $student->id,
-                    'lrn' => $student->lrn,
-                    'name' => trim($student->first_name . ' ' . ($student->middle_name ? $student->middle_name . ' ' : '') . $student->last_name),
-                    'gender' => ucfirst($student->gender),
-                    'section' => $student->section ? $student->section->section_name : null,
-                    'school_year' => $student->school_year,
-                    'has_psa_birth_certificate' => $student->has_psa_birth_certificate,
-                    'has_sf9' => $student->has_sf9,
-                    'has_report_card' => $student->has_report_card,
-                    'has_good_moral' => $student->has_good_moral,
-                ];
-            });
+        // Dropdown options — independent of active filters so options don't shrink as you filter
+        $gradeLevelOptions = GradeLevel::orderByRaw("
+        CASE
+            WHEN name = 'Grade 7' THEN 1
+            WHEN name = 'Grade 8' THEN 2
+            WHEN name = 'Grade 9' THEN 3
+            WHEN name = 'Grade 10' THEN 4
+            ELSE 5
+        END
+    ")->pluck('name');
 
-        $grade8Students = Student::with(['gradeLevel', 'section'])
-            ->whereHas('gradeLevel', function ($query) {
-                $query->where('name', 'Grade 8');
-            })
-            ->get()
-            ->map(function ($student) {
-                return [
-                    'id' => $student->id,
-                    'lrn' => $student->lrn,
-                    'name' => trim($student->first_name . ' ' . ($student->middle_name ? $student->middle_name . ' ' : '') . $student->last_name),
-                    'gender' => ucfirst($student->gender),
-                    'section' => $student->section ? $student->section->section_name : null,
-                    'school_year' => $student->school_year,
-                    'has_psa_birth_certificate' => $student->has_psa_birth_certificate,
-                    'has_sf9' => $student->has_sf9,
-                    'has_report_card' => $student->has_report_card,
-                    'has_good_moral' => $student->has_good_moral,
-                ];
-            });
+        $sectionOptions = ClassSection::orderBy('section_name')->pluck('section_name');
 
-        $grade9Students = Student::with(['gradeLevel', 'section'])
-            ->whereHas('gradeLevel', function ($query) {
-                $query->where('name', 'Grade 9');
-            })
-            ->get()
-            ->map(function ($student) {
-                return [
-                    'id' => $student->id,
-                    'lrn' => $student->lrn,
-                    'name' => trim($student->first_name . ' ' . ($student->middle_name ? $student->middle_name . ' ' : '') . $student->last_name),
-                    'gender' => ucfirst($student->gender),
-                    'section' => $student->section ? $student->section->section_name : null,
-                    'school_year' => $student->school_year,
-                    'has_psa_birth_certificate' => $student->has_psa_birth_certificate,
-                    'has_sf9' => $student->has_sf9,
-                    'has_report_card' => $student->has_report_card,
-                    'has_good_moral' => $student->has_good_moral,
-                ];
-            });
-
-        $grade10Students = Student::with(['gradeLevel', 'section'])
-            ->whereHas('gradeLevel', function ($query) {
-                $query->where('name', 'Grade 10');
-            })
-            ->get()
-            ->map(function ($student) {
-                return [
-                    'id' => $student->id,
-                    'lrn' => $student->lrn,
-                    'name' => trim($student->first_name . ' ' . ($student->middle_name ? $student->middle_name . ' ' : '') . $student->last_name),
-                    'gender' => ucfirst($student->gender),
-                    'section' => $student->section ? $student->section->section_name : null,
-                    'school_year' => $student->school_year,
-                    'has_psa_birth_certificate' => $student->has_psa_birth_certificate,
-                    'has_sf9' => $student->has_sf9,
-                    'has_report_card' => $student->has_report_card,
-                    'has_good_moral' => $student->has_good_moral,
-                ];
-            });
-
-        // Get past students grouped by school year
-        // Since archives store data as JSON, we need to extract it differently
+        // Past students grouped by school year (unchanged)
         $pastStudents = Archive::where('archivable_type', 'App\\Models\\Student')
             ->get()
             ->map(function ($archive) {
@@ -1647,14 +1667,24 @@ class StudentController extends Controller
 
         return \Inertia\Inertia::render('admin/registrar/student-checklist/page', [
             'allStudents' => $allStudents,
-            'grade7Students' => $grade7Students,
-            'grade8Students' => $grade8Students,
-            'grade9Students' => $grade9Students,
-            'grade10Students' => $grade10Students,
+            'stats' => [
+                'total' => $totalStudents,
+                'complete' => $completeDocsCount,
+                'incomplete' => $incompleteDocsCount,
+            ],
+            'gradeLevelOptions' => $gradeLevelOptions,
+            'sectionOptions' => $sectionOptions,
             'pastStudents' => $pastStudents,
+            'filters' => [
+                'search' => $search,
+                'grade_level' => $gradeLevelFilter,
+                'section' => $sectionFilter,
+                'document' => $documentFilter,
+                'sort' => $sortOrder,
+                'per_page' => $perPage,
+            ],
         ]);
     }
-
     public function enrollmentList(Request $request)
     {
         $perPage = (int) $request->input('per_page', 10);

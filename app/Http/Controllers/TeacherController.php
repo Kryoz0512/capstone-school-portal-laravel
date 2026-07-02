@@ -57,48 +57,74 @@ class TeacherController extends Controller
         ]);
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $teachers = Teacher::with(['user', 'updatedBy'])->get()->map(function ($teacher) {
-            return [
-                'id' => $teacher->id,
-                'employee_no' => $teacher->employee_number,
-                'name' => $teacher->name,
-                'email' => $teacher->user->email,
-                'subject' => $teacher->subject,
-                'position' => $teacher->position,
-                'updated_by' => $teacher->updatedBy ? $teacher->updatedBy->name : null,
-                'updated_at' => $teacher->updated_at ? $teacher->updated_at->timezone('Asia/Manila')->format('M d, Y h:i A') : null,
-            ];
-        });
+        $search = trim((string) $request->input('search', ''));
+        $subjectFilter = $request->input('subject', 'all');
+        $positionFilter = $request->input('position', 'all');
+        $perPage = (int) $request->input('per_page', 10);
 
-        $gradeLevels = \App\Models\GradeLevel::all()->map(function ($gradeLevel) {
-            return [
-                'id' => $gradeLevel->id,
-                'name' => $gradeLevel->name,
-            ];
-        });
+        $query = Teacher::with(['user', 'updatedBy']);
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('employee_number', 'like', "%{$search}%");
+            });
+        }
+
+        if ($subjectFilter !== 'all') {
+            $query->where('subject', $subjectFilter);
+        }
+
+        if ($positionFilter !== 'all') {
+            $query->where('position', $positionFilter);
+        }
+
+        $teachers = $query->orderBy('name')
+            ->paginate($perPage)
+            ->withQueryString()
+            ->through(function ($teacher) {
+                return [
+                    'id' => $teacher->id,
+                    'employee_no' => $teacher->employee_number,
+                    'name' => $teacher->name,
+                    'email' => $teacher->user->email,
+                    'subject' => $teacher->subject,
+                    'position' => $teacher->position,
+                    'updated_by' => $teacher->updatedBy ? $teacher->updatedBy->name : null,
+                    'updated_at' => $teacher->updated_at ? $teacher->updated_at->timezone('Asia/Manila')->format('M d, Y h:i A') : null,
+                ];
+            });
+
+        // These need to come from the whole table, not just the current page,
+        // otherwise the filter dropdowns shrink as you filter/paginate.
+        $uniqueSubjects = Teacher::select('subject')->distinct()->orderBy('subject')->pluck('subject');
+        $uniquePositions = Teacher::select('position')->distinct()->orderBy('position')->pluck('position');
+
+        $gradeLevels = \App\Models\GradeLevel::all()->map(fn($g) => ['id' => $g->id, 'name' => $g->name]);
 
         $subjects = \App\Models\Subject::select('name')
             ->distinct()
             ->orderBy('name')
             ->get()
-            ->map(function ($subject) {
-                return [
-                    'name' => $subject->name,
-                ];
-            });
-
-        // $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
+            ->map(fn($subject) => ['name' => $subject->name]);
 
         $admin = Auth::user()->admin;
-        //eto ung way ata
 
         return Inertia::render('admin/user-management/teacher/page', [
             'teachers' => $teachers,
             'gradeLevels' => $gradeLevels,
             'subjects' => $subjects,
+            'uniqueSubjects' => $uniqueSubjects,
+            'uniquePositions' => $uniquePositions,
             'canAddTeacher' => $admin ? $admin->can_add_teacher : true,
+            'filters' => [
+                'search' => $search,
+                'subject' => $subjectFilter,
+                'position' => $positionFilter,
+                'per_page' => $perPage,
+            ],
         ]);
     }
 

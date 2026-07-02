@@ -26,32 +26,48 @@ class DocumentController extends Controller
     }
 
     /**
+     * Shared paginated query used by both the admin and teacher views.
+     */
+    private function paginatedDocuments(Request $request)
+    {
+        $search = $request->input('search', '');
+        $sort = $request->input('sort', 'asc'); // asc | desc by title
+        $perPage = (int) $request->input('per_page', 10);
+
+        $query = Document::with('uploadedBy');
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                    ->orWhere('file_name', 'like', "%{$search}%");
+            });
+        }
+
+        return $query->orderBy('title', $sort === 'desc' ? 'desc' : 'asc')
+            ->paginate($perPage)
+            ->withQueryString()
+            ->through(fn (Document $d) => $this->mapDocument($d));
+    }
+
+    /**
      * Admin view — upload, list, download, delete.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $documents = Document::with('uploadedBy')
-            ->orderBy('title')
-            ->get()
-            ->map(fn (Document $d) => $this->mapDocument($d));
-
         return Inertia::render('admin/documents/page', [
-            'documents' => $documents,
+            'documents' => $this->paginatedDocuments($request),
+            'filters' => $request->only(['search', 'sort', 'per_page']),
         ]);
     }
 
     /**
      * Teacher view — read-only list, download only.
      */
-    public function teacherIndex()
+    public function teacherIndex(Request $request)
     {
-        $documents = Document::with('uploadedBy')
-            ->orderBy('title')
-            ->get()
-            ->map(fn (Document $d) => $this->mapDocument($d));
-
         return Inertia::render('teacher/documents/page', [
-            'documents' => $documents,
+            'documents' => $this->paginatedDocuments($request),
+            'filters' => $request->only(['search', 'sort', 'per_page']),
         ]);
     }
 

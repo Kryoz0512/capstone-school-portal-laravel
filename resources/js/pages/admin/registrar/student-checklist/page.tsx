@@ -1,9 +1,9 @@
-import { Head } from '@inertiajs/react'
+import { Head, router } from '@inertiajs/react'
 import AdminLayout from '@/layouts/admin-layout'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Search, Download, CheckCircle2, XCircle, Clock, Users } from 'lucide-react'
 
 type Student = {
@@ -12,12 +12,47 @@ type Student = {
     name: string
     gender: string
     grade_level?: string
-    section: string
+    section: string | null
     school_year: string
     has_psa_birth_certificate: boolean
     has_sf9: boolean
     has_report_card: boolean
     has_good_moral: boolean
+}
+
+type PaginationLink = {
+    url: string | null
+    label: string
+    active: boolean
+}
+
+type PaginatedStudents = {
+    data: Student[]
+    current_page: number
+    last_page: number
+    per_page: number
+    total: number
+    from: number | null
+    to: number | null
+    links: PaginationLink[]
+}
+
+type Stats = {
+    total: number
+    complete: number
+    incomplete: number
+}
+
+type DocumentFilter = 'all' | 'psa' | 'sf9' | 'report_card' | 'good_moral'
+type SortOrder = 'asc' | 'desc'
+
+type Filters = {
+    search: string
+    grade_level: string
+    section: string
+    document: DocumentFilter
+    sort: SortOrder
+    per_page: number
 }
 
 type Props = {
@@ -33,101 +68,57 @@ type Props = {
             position: string
         }
     }
-    allStudents: Student[]
-    grade7Students: Student[]
-    grade8Students: Student[]
-    grade9Students: Student[]
-    grade10Students: Student[]
+    allStudents: PaginatedStudents
+    stats: Stats
+    gradeLevelOptions: string[]
+    sectionOptions: string[]
     pastStudents: any[]
+    filters: Filters
 }
-
-type DocumentFilter = 'all' | 'psa' | 'sf9' | 'report_card' | 'good_moral'
-type SortOrder = 'asc' | 'desc'
 
 export default function StudentChecklist({
     auth,
-    allStudents = [],
+    allStudents,
+    stats,
+    gradeLevelOptions = [],
+    sectionOptions = [],
+    filters,
 }: Props) {
-    const [searchQuery, setSearchQuery] = useState('')
-    const [currentPage, setCurrentPage] = useState(1)
-    const [sortOrder, setSortOrder] = useState<SortOrder>('asc')
-    const [gradeLevelFilter, setGradeLevelFilter] = useState('all')
-    const [sectionFilter, setSectionFilter] = useState('all')
-    const [documentFilter, setDocumentFilter] = useState<DocumentFilter>('all')
-    const itemsPerPage = 10
+    const [searchQuery, setSearchQuery] = useState(filters.search ?? '')
 
-    const getDocumentStatus = (student: Student) => {
-        const documents = [
-            student.has_psa_birth_certificate,
-            student.has_sf9,
-            student.has_report_card,
-            student.has_good_moral,
-        ]
-        const submitted = documents.filter(Boolean).length
-        const total = documents.length
-
-        return {
-            completed: submitted,
-            total,
-            percentage: (submitted / total) * 100,
-        }
+    // Push a filter change to the backend, always resetting to page 1
+    const updateFilters = (next: Partial<Filters>) => {
+        router.get(
+            window.location.pathname,
+            {
+                search: next.search ?? filters.search,
+                grade_level: next.grade_level ?? filters.grade_level,
+                section: next.section ?? filters.section,
+                document: next.document ?? filters.document,
+                sort: next.sort ?? filters.sort,
+                per_page: next.per_page ?? filters.per_page,
+            },
+            { preserveState: true, preserveScroll: true, replace: true }
+        )
     }
 
-    const matchesDocumentFilter = (student: Student, filter: DocumentFilter) => {
-        switch (filter) {
-            case 'psa': return student.has_psa_birth_certificate
-            case 'sf9': return student.has_sf9
-            case 'report_card': return student.has_report_card
-            case 'good_moral': return student.has_good_moral
-            default: return true
-        }
+    // Debounce the search box so we're not firing a request on every keystroke
+    useEffect(() => {
+        if (searchQuery === filters.search) return
+
+        const timeout = setTimeout(() => {
+            updateFilters({ search: searchQuery })
+        }, 400)
+
+        return () => clearTimeout(timeout)
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchQuery])
+
+    const goToPage = (url: string | null) => {
+        if (!url) return
+        router.get(url, {}, { preserveState: true, preserveScroll: true, replace: true })
     }
 
-    const uniqueGradeLevels = Array.from(
-        new Set(allStudents.map(s => s.grade_level).filter(Boolean))
-    ).sort()
-
-    const uniqueSections = Array.from(
-        new Set(allStudents.map(s => s.section).filter(Boolean))
-    ).sort()
-
-    const filterStudents = (students: Student[]) => {
-        let filtered = students
-
-        if (searchQuery) {
-            filtered = filtered.filter(student =>
-                student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                student.lrn.includes(searchQuery)
-            )
-        }
-
-        if (gradeLevelFilter !== 'all') {
-            filtered = filtered.filter(student => student.grade_level === gradeLevelFilter)
-        }
-
-        if (sectionFilter !== 'all') {
-            filtered = filtered.filter(student => student.section === sectionFilter)
-        }
-
-        filtered = filtered.filter(student => matchesDocumentFilter(student, documentFilter))
-
-        filtered = [...filtered].sort((a, b) => {
-            const comparison = a.name.localeCompare(b.name)
-            return sortOrder === 'asc' ? comparison : -comparison
-        })
-
-        return filtered
-    }
-
-    const filteredStudents = filterStudents(allStudents)
-    const totalPages = Math.ceil(filteredStudents.length / itemsPerPage)
-    const startIndex = (currentPage - 1) * itemsPerPage
-    const paginatedStudents = filteredStudents.slice(startIndex, startIndex + itemsPerPage)
-
-    const handleSearchChange = (value: string) => {
-        setSearchQuery(value)
-        setCurrentPage(1)
-    }
 
     return (
         <AdminLayout user={auth?.user} admin={auth?.admin}>
@@ -154,7 +145,7 @@ export default function StudentChecklist({
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm font-medium text-blue-600">Total Students</p>
-                                <p className="text-2xl font-bold text-blue-900">{allStudents.length}</p>
+                                <p className="text-2xl font-bold text-blue-900">{stats.total}</p>
                             </div>
                             <div className="w-12 h-12 bg-blue-200 rounded-full flex items-center justify-center">
                                 <Users className="w-6 h-6 text-blue-600" />
@@ -166,9 +157,7 @@ export default function StudentChecklist({
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm font-medium text-green-600">Complete Docs</p>
-                                <p className="text-2xl font-bold text-green-900">
-                                    {allStudents.filter(s => getDocumentStatus(s).percentage === 100).length}
-                                </p>
+                                <p className="text-2xl font-bold text-green-900">{stats.complete}</p>
                             </div>
                             <div className="w-12 h-12 bg-green-200 rounded-full flex items-center justify-center">
                                 <CheckCircle2 className="w-6 h-6 text-green-600" />
@@ -180,9 +169,7 @@ export default function StudentChecklist({
                         <div className="flex items-center justify-between">
                             <div>
                                 <p className="text-sm font-medium text-yellow-600">Incomplete Docs</p>
-                                <p className="text-2xl font-bold text-yellow-900">
-                                    {allStudents.filter(s => getDocumentStatus(s).percentage < 100).length}
-                                </p>
+                                <p className="text-2xl font-bold text-yellow-900">{stats.incomplete}</p>
                             </div>
                             <div className="w-12 h-12 bg-yellow-200 rounded-full flex items-center justify-center">
                                 <Clock className="w-6 h-6 text-yellow-600" />
@@ -200,24 +187,24 @@ export default function StudentChecklist({
                                 type="text"
                                 placeholder="Search by name or LRN..."
                                 value={searchQuery}
-                                onChange={(e) => handleSearchChange(e.target.value)}
+                                onChange={(e) => setSearchQuery(e.target.value)}
                                 className="pl-10 h-11"
                             />
                         </div>
 
-                        <Select value={gradeLevelFilter} onValueChange={(v) => { setGradeLevelFilter(v); setCurrentPage(1) }}>
+                        <Select value={filters.grade_level} onValueChange={(v) => updateFilters({ grade_level: v })}>
                             <SelectTrigger className="h-11 w-full md:w-44">
                                 <SelectValue placeholder="All Grades" />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All Grades</SelectItem>
-                                {uniqueGradeLevels.map(grade => (
-                                    <SelectItem key={grade} value={grade as string}>{grade}</SelectItem>
+                                {gradeLevelOptions.map(grade => (
+                                    <SelectItem key={grade} value={grade}>{grade}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
 
-                        <Select value={sortOrder} onValueChange={(v) => { setSortOrder(v as SortOrder); setCurrentPage(1) }}>
+                        <Select value={filters.sort} onValueChange={(v) => updateFilters({ sort: v as SortOrder })}>
                             <SelectTrigger className="h-11 w-full md:w-44">
                                 <SelectValue placeholder="Sort by name" />
                             </SelectTrigger>
@@ -227,19 +214,19 @@ export default function StudentChecklist({
                             </SelectContent>
                         </Select>
 
-                        <Select value={sectionFilter} onValueChange={(v) => { setSectionFilter(v); setCurrentPage(1) }}>
+                        <Select value={filters.section} onValueChange={(v) => updateFilters({ section: v })}>
                             <SelectTrigger className="h-11 w-full md:w-44">
                                 <SelectValue placeholder="All Sections" />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All Sections</SelectItem>
-                                {uniqueSections.map(section => (
+                                {sectionOptions.map(section => (
                                     <SelectItem key={section} value={section}>{section}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
 
-                        <Select value={documentFilter} onValueChange={(v) => { setDocumentFilter(v as DocumentFilter); setCurrentPage(1) }}>
+                        <Select value={filters.document} onValueChange={(v) => updateFilters({ document: v as DocumentFilter })}>
                             <SelectTrigger className="h-11 w-full md:w-56">
                                 <SelectValue placeholder="All Documents" />
                             </SelectTrigger>
@@ -284,7 +271,7 @@ export default function StudentChecklist({
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200 bg-white">
-                                {paginatedStudents.length === 0 ? (
+                                {allStudents.data.length === 0 ? (
                                     <tr>
                                         <td colSpan={7} className="px-6 py-12 text-center">
                                             <div className="flex flex-col items-center gap-2">
@@ -296,7 +283,7 @@ export default function StudentChecklist({
                                         </td>
                                     </tr>
                                 ) : (
-                                    paginatedStudents.map((student) => (
+                                    allStudents.data.map((student) => (
                                         <tr key={student.id} className="hover:bg-gray-50 transition-colors">
                                             <td className="px-6 py-4">
                                                 <div>
@@ -346,57 +333,79 @@ export default function StudentChecklist({
                     </div>
 
                     {/* Pagination */}
-                    {totalPages > 1 && (
+                    {allStudents.total > 0 && (
                         <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
-                            <div className="flex items-center justify-between">
-                                <div className="text-sm text-gray-700">
-                                    Showing <span className="font-medium">{startIndex + 1}</span> to{' '}
-                                    <span className="font-medium">{Math.min(currentPage * itemsPerPage, filteredStudents.length)}</span> of{' '}
-                                    <span className="font-medium">{filteredStudents.length}</span> results
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                        disabled={currentPage === 1}
-                                        className="h-8"
-                                    >
-                                        Previous
-                                    </Button>
-                                    <div className="flex items-center gap-1">
-                                        {Array.from({ length: totalPages }, (_, i) => i + 1)
-                                            .filter(page => {
-                                                return page === 1 ||
-                                                       page === totalPages ||
-                                                       Math.abs(page - currentPage) <= 1
-                                            })
-                                            .map((page, index, array) => (
-                                                <div key={page} className="flex items-center">
-                                                    {index > 0 && array[index - 1] !== page - 1 && (
-                                                        <span className="px-2 text-gray-400">...</span>
-                                                    )}
-                                                    <Button
-                                                        variant={currentPage === page ? "default" : "outline"}
-                                                        size="sm"
-                                                        onClick={() => setCurrentPage(page)}
-                                                        className={`h-8 w-8 p-0 ${currentPage === page ? 'bg-green-600 hover:bg-green-700' : ''}`}
-                                                    >
-                                                        {page}
-                                                    </Button>
-                                                </div>
-                                            ))}
+                            <div className="flex items-center justify-between flex-wrap gap-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm text-gray-700 whitespace-nowrap">Entries:</span>
+                                        <Select
+                                            value={String(filters.per_page)}
+                                            onValueChange={(v) => updateFilters({ per_page: Number(v) })}
+                                        >
+                                            <SelectTrigger className="h-8 w-20">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="10">10</SelectItem>
+                                                <SelectItem value="25">25</SelectItem>
+                                                <SelectItem value="50">50</SelectItem>
+                                                <SelectItem value="100">100</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        {/* <span className="text-sm text-gray-700 whitespace-nowrap">entries</span> */}
                                     </div>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                                        disabled={currentPage === totalPages}
-                                        className="h-8"
-                                    >
-                                        Next
-                                    </Button>
+
+                                    {/* <div className="text-sm text-gray-700">
+                                        Showing <span className="font-medium">{allStudents.from ?? 0}</span> to{' '}
+                                        <span className="font-medium">{allStudents.to ?? 0}</span> of{' '}
+                                        <span className="font-medium">{allStudents.total}</span> results
+                                    </div> */}
                                 </div>
+
+                                {allStudents.last_page > 1 && (
+                                    <div className="flex items-center gap-2">
+                                        {allStudents.links.map((link, index) => {
+                                            const isPrev = link.label.includes('Previous')
+                                            const isNext = link.label.includes('Next')
+                                            const label = link.label.replace('&laquo;', '«').replace('&raquo;', '»')
+
+                                            if (isPrev || isNext) {
+                                                return (
+                                                    <Button
+                                                        key={index}
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => goToPage(link.url)}
+                                                        disabled={!link.url}
+                                                        className="h-8"
+                                                    >
+                                                        {isPrev ? 'Previous' : 'Next'}
+                                                    </Button>
+                                                )
+                                            }
+
+                                            if (label === '...') {
+                                                return (
+                                                    <span key={index} className="px-2 text-gray-400">...</span>
+                                                )
+                                            }
+
+                                            return (
+                                                <Button
+                                                    key={index}
+                                                    variant={link.active ? "default" : "outline"}
+                                                    size="sm"
+                                                    onClick={() => goToPage(link.url)}
+                                                    disabled={!link.url}
+                                                    className={`h-8 w-8 p-0 ${link.active ? 'bg-green-600 hover:bg-green-700' : ''}`}
+                                                >
+                                                    {label}
+                                                </Button>
+                                            )
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}

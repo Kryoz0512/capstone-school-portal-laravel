@@ -128,10 +128,10 @@ export default function FinalReports({ schoolYears, gradeLevels, sections, stude
                             </p>
                         </div>
                     </div>
-                    <Button className="bg-green-600 hover:bg-green-700 shadow-sm" disabled={!filtersActive}>
+                    {/* <Button className="bg-green-600 hover:bg-green-700 shadow-sm" disabled={!filtersActive}>
                         <Download className="w-4 h-4 mr-2" />
                         Export Section Report
-                    </Button>
+                    </Button> */}
                 </div>
 
                 {/* Stats */}
@@ -309,9 +309,9 @@ export default function FinalReports({ schoolYears, gradeLevels, sections, stude
                                                 </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                                                        {/* <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-green-700 flex items-center justify-center text-white text-xs font-bold shrink-0">
                                                             {student.studentName.charAt(0).toUpperCase()}
-                                                        </div>
+                                                        </div> */}
                                                         <span className="text-sm font-medium text-gray-900">{student.studentName}</span>
                                                     </div>
                                                 </td>
@@ -332,14 +332,14 @@ export default function FinalReports({ schoolYears, gradeLevels, sections, stude
                                                             <Eye className="w-3.5 h-3.5" />
                                                             View
                                                         </Button>
-                                                        <Button
+                                                        {/* <Button
                                                             variant="outline"
                                                             size="sm"
                                                             className="h-8 gap-1.5 text-green-600 border-green-200 hover:bg-green-50 hover:text-green-700"
                                                         >
                                                             <Download className="w-3.5 h-3.5" />
                                                             PDF
-                                                        </Button>
+                                                        </Button> */}
                                                     </div>
                                                 </td>
                                             </tr>

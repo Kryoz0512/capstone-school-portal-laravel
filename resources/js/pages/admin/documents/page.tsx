@@ -16,8 +16,31 @@ type DocumentItem = {
     uploaded_at: string
 }
 
+// Matches Laravel's paginate()->through() JSON shape
+type PaginationLink = {
+    url: string | null
+    label: string
+    active: boolean
+}
+
+type PaginatedDocuments = {
+    data: DocumentItem[]
+    current_page: number
+    last_page: number
+    per_page: number
+    total: number
+    links: PaginationLink[]
+}
+
+type Filters = {
+    search?: string
+    sort?: string
+    per_page?: string
+}
+
 type Props = {
-    documents: DocumentItem[]
+    documents: PaginatedDocuments
+    filters?: Filters
     auth?: {
         user: { id: number; name: string; email: string; role: string }
         admin?: { role: string; position: string }
@@ -32,9 +55,10 @@ const fileTypeBadge: Record<string, string> = {
     XLSX: 'bg-green-50 text-green-700',
 }
 
-export default function Documents({ documents, auth }: Props) {
+export default function Documents({ documents, filters, auth }: Props) {
     const [showForm, setShowForm] = useState(false)
     const [deletingId, setDeletingId] = useState<number | null>(null)
+    const [search, setSearch] = useState(filters?.search ?? '')
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     const { data, setData, post, processing, errors, reset } = useForm<{
@@ -71,6 +95,29 @@ export default function Documents({ documents, auth }: Props) {
             preserveScroll: true,
             onFinish: () => setDeletingId(null),
         })
+    }
+
+    const handleSearch = (e: FormEvent) => {
+        e.preventDefault()
+        router.get(
+            '/admin/documents',
+            { search, sort: filters?.sort, per_page: filters?.per_page },
+            { preserveScroll: true, preserveState: true }
+        )
+    }
+
+    const handleSortToggle = () => {
+        const nextSort = filters?.sort === 'desc' ? 'asc' : 'desc'
+        router.get(
+            '/admin/documents',
+            { search, sort: nextSort, per_page: filters?.per_page },
+            { preserveScroll: true, preserveState: true }
+        )
+    }
+
+    const goToPage = (url: string | null) => {
+        if (!url) return
+        router.get(url, {}, { preserveScroll: true, preserveState: true })
     }
 
     return (
@@ -151,6 +198,27 @@ export default function Documents({ documents, auth }: Props) {
                 )}
 
                 <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                    <div className="flex items-center justify-between gap-4 px-6 py-4 border-b border-gray-200">
+                        <form onSubmit={handleSearch} className="flex items-center gap-2 flex-1 max-w-sm">
+                            <Input
+                                type="text"
+                                placeholder="Search by title or file name..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                className="h-9"
+                            />
+                            <Button type="submit" variant="outline" className="h-9">
+                                Search
+                            </Button>
+                        </form>
+                        <button
+                            onClick={handleSortToggle}
+                            className="text-xs font-medium text-gray-500 hover:text-gray-700 whitespace-nowrap"
+                        >
+                            Sort by title: {filters?.sort === 'desc' ? 'Z → A' : 'A → Z'}
+                        </button>
+                    </div>
+
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead className="bg-gray-50">
@@ -163,7 +231,7 @@ export default function Documents({ documents, auth }: Props) {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200 bg-white">
-                                {documents.length === 0 ? (
+                                {documents.data.length === 0 ? (
                                     <tr>
                                         <td colSpan={5} className="px-6 py-12 text-center">
                                             <FileText className="w-10 h-10 text-gray-300 mx-auto mb-3" />
@@ -172,7 +240,7 @@ export default function Documents({ documents, auth }: Props) {
                                         </td>
                                     </tr>
                                 ) : (
-                                    documents.map((doc, index) => (
+                                    documents.data.map((doc, index) => (
                                         <tr key={doc.id} className={`hover:bg-gray-50 ${index % 2 === 1 ? 'bg-gray-50/40' : ''}`}>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-2">
@@ -215,6 +283,29 @@ export default function Documents({ documents, auth }: Props) {
                             </tbody>
                         </table>
                     </div>
+
+                    {documents.data.length > 0 && documents.last_page > 1 && (
+                        <div className="flex items-center justify-between px-6 py-3 border-t border-gray-200">
+                            <p className="text-xs text-gray-500">
+                                Page {documents.current_page} of {documents.last_page} ({documents.total} total)
+                            </p>
+                            <div className="flex gap-1">
+                                {documents.links.map((link, i) => (
+                                    <button
+                                        key={i}
+                                        disabled={!link.url}
+                                        onClick={() => goToPage(link.url)}
+                                        className={`px-2.5 py-1 text-xs rounded ${
+                                            link.active
+                                                ? 'bg-green-600 text-white'
+                                                : 'text-gray-600 hover:bg-gray-100'
+                                        } disabled:opacity-40 disabled:cursor-not-allowed`}
+                                        dangerouslySetInnerHTML={{ __html: link.label }}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </AdminLayout>

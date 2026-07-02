@@ -1,4 +1,4 @@
-import { Head } from '@inertiajs/react'
+import { Head, router } from '@inertiajs/react'
 import AdminLayout from '@/layouts/admin-layout'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -6,7 +6,7 @@ import AddAdminModal from '@/components/modals/add-admin-modal'
 import EditAdminModal from '@/components/modals/edit-admin-modal'
 import DeleteAdminModal from '@/components/modals/delete-admin-modal'
 import { Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react'
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 
 type Admin = {
     id: number
@@ -23,47 +23,46 @@ type Admin = {
     updated_at: string | null
 }
 
+type PaginatedAdmins = {
+    data: Admin[]
+    current_page: number
+    last_page: number
+    per_page: number
+    total: number
+    from: number | null
+    to: number | null
+}
+
 type Props = {
-    admins: Admin[]
+    admins: PaginatedAdmins
+    totalAdmins: number
+    filters: { per_page: number }
     auth?: {
-        user: {
-            id: number
-            name: string
-            email: string
-            role: string
-        }
-        admin?: {
-            role: string
-            position: string
-        }
+        user: { id: number; name: string; email: string; role: string }
+        admin?: { role: string; position: string }
     }
 }
 
-export default function AdminManagement({ admins, auth }: Props) {
+export default function AdminManagement({ admins, totalAdmins, filters, auth }: Props) {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false)
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
     const [selectedAdmin, setSelectedAdmin] = useState<Admin | null>(null)
-    
-    // Pagination states
-    const [currentPage, setCurrentPage] = useState(1)
-    const [itemsPerPage, setItemsPerPage] = useState(10)
+    const [itemsPerPage, setItemsPerPage] = useState(filters.per_page)
 
-    const totalAdmins = admins.length
+    const goToPage = (page: number, perPage = itemsPerPage) => {
+        router.get(
+            window.location.pathname,
+            { per_page: perPage, page },
+            { preserveState: true, preserveScroll: true, replace: true }
+        )
+    }
 
-    // Paginate admins
-    const paginatedAdmins = useMemo(() => {
-        const startIndex = (currentPage - 1) * itemsPerPage
-        const endIndex = startIndex + itemsPerPage
-        return admins.slice(startIndex, endIndex)
-    }, [admins, currentPage, itemsPerPage])
-
-    const totalPages = Math.ceil(admins.length / itemsPerPage)
-
-    // Reset to page 1 when itemsPerPage changes
-    useMemo(() => {
-        setCurrentPage(1)
-    }, [itemsPerPage])
+    const handlePerPageChange = (value: string) => {
+        const newPerPage = Number(value)
+        setItemsPerPage(newPerPage)
+        goToPage(1, newPerPage)
+    }
 
     const handleEdit = (admin: Admin) => {
         setSelectedAdmin(admin)
@@ -74,6 +73,8 @@ export default function AdminManagement({ admins, auth }: Props) {
         setSelectedAdmin(admin)
         setIsDeleteModalOpen(true)
     }
+
+    const { data: adminRows, current_page: currentPage, last_page: totalPages, from, to } = admins
 
     return (
         <AdminLayout user={auth?.user} admin={auth?.admin}>
@@ -87,25 +88,14 @@ export default function AdminManagement({ admins, auth }: Props) {
                             Create and manage admin accounts with role-based access control
                         </p>
                     </div>
-                    <Button 
-                        className="bg-green-600 hover:bg-green-700 text-white"
-                        onClick={() => setIsAddModalOpen(true)}
-                    >
+                    <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={() => setIsAddModalOpen(true)}>
                         + New Admin
                     </Button>
                 </div>
 
                 <AddAdminModal open={isAddModalOpen} onOpenChange={setIsAddModalOpen} />
-                <EditAdminModal 
-                    open={isEditModalOpen} 
-                    onOpenChange={setIsEditModalOpen}
-                    admin={selectedAdmin}
-                />
-                <DeleteAdminModal 
-                    open={isDeleteModalOpen} 
-                    onOpenChange={setIsDeleteModalOpen}
-                    admin={selectedAdmin}
-                />
+                <EditAdminModal open={isEditModalOpen} onOpenChange={setIsEditModalOpen} admin={selectedAdmin} />
+                <DeleteAdminModal open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen} admin={selectedAdmin} />
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -148,8 +138,8 @@ export default function AdminManagement({ admins, auth }: Props) {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                {paginatedAdmins.length > 0 ? (
-                                    paginatedAdmins.map((admin) => (
+                                {adminRows.length > 0 ? (
+                                    adminRows.map((admin) => (
                                         <tr key={admin.id} className="hover:bg-gray-50">
                                             <td className="px-6 py-4 text-sm font-mono text-gray-900">{admin.employee_number}</td>
                                             <td className="px-6 py-4 text-sm text-gray-900">{admin.name}</td>
@@ -159,11 +149,11 @@ export default function AdminManagement({ admins, auth }: Props) {
                                                 {admin.role === 'Super Admin' ? (
                                                     <span className="text-xs text-gray-400">N/A</span>
                                                 ) : (
-                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                                        admin.can_add_teacher 
-                                                            ? 'bg-green-100 text-green-800' 
-                                                            : 'bg-red-100 text-red-800'
-                                                    }`}>
+                                                    <span
+                                                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                                            admin.can_add_teacher ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                                        }`}
+                                                    >
                                                         {admin.can_add_teacher ? 'Yes' : 'No'}
                                                     </span>
                                                 )}
@@ -180,16 +170,10 @@ export default function AdminManagement({ admins, auth }: Props) {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center justify-center gap-2">
-                                                    <button 
-                                                        className="text-gray-600 hover:text-green-600"
-                                                        onClick={() => handleEdit(admin)}
-                                                    >
+                                                    <button className="text-gray-600 hover:text-green-600" onClick={() => handleEdit(admin)}>
                                                         <Pencil className="w-4 h-4" />
                                                     </button>
-                                                    <button 
-                                                        className="text-gray-600 hover:text-red-600"
-                                                        onClick={() => handleDelete(admin)}
-                                                    >
+                                                    <button className="text-gray-600 hover:text-red-600" onClick={() => handleDelete(admin)}>
                                                         <Trash2 className="w-4 h-4" />
                                                     </button>
                                                 </div>
@@ -208,14 +192,11 @@ export default function AdminManagement({ admins, auth }: Props) {
                     </div>
 
                     {/* Pagination */}
-                    {admins.length > 0 && (
+                    {totalAdmins > 0 && (
                         <div className="p-4 border-t border-gray-200 flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <span className="text-sm text-gray-600">Show</span>
-                                <Select 
-                                    value={itemsPerPage.toString()} 
-                                    onValueChange={(value) => setItemsPerPage(Number(value))}
-                                >
+                                <Select value={itemsPerPage.toString()} onValueChange={handlePerPageChange}>
                                     <SelectTrigger className="w-20">
                                         <SelectValue />
                                     </SelectTrigger>
@@ -227,41 +208,31 @@ export default function AdminManagement({ admins, auth }: Props) {
                                     </SelectContent>
                                 </Select>
                                 <span className="text-sm text-gray-600">entries</span>
+                                <p className="text-sm text-gray-600 ml-2">
+                                    Showing {from ?? 0} to {to ?? 0} of {totalAdmins} entries
+                                </p>
                             </div>
 
                             <div className="flex items-center gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                    disabled={currentPage === 1}
-                                >
+                                <Button variant="outline" size="sm" onClick={() => goToPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1}>
                                     <ChevronLeft className="w-4 h-4" />
                                 </Button>
-                                
+
                                 <div className="flex items-center gap-1">
                                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                                        // Show first page, last page, current page, and pages around current
-                                        if (
-                                            page === 1 ||
-                                            page === totalPages ||
-                                            (page >= currentPage - 1 && page <= currentPage + 1)
-                                        ) {
+                                        if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) {
                                             return (
                                                 <Button
                                                     key={page}
-                                                    variant={currentPage === page ? "default" : "outline"}
+                                                    variant={currentPage === page ? 'default' : 'outline'}
                                                     size="sm"
-                                                    onClick={() => setCurrentPage(page)}
-                                                    className={currentPage === page ? "bg-green-600 hover:bg-green-700" : ""}
+                                                    onClick={() => goToPage(page)}
+                                                    className={currentPage === page ? 'bg-green-600 hover:bg-green-700' : ''}
                                                 >
                                                     {page}
                                                 </Button>
                                             )
-                                        } else if (
-                                            page === currentPage - 2 ||
-                                            page === currentPage + 2
-                                        ) {
+                                        } else if (page === currentPage - 2 || page === currentPage + 2) {
                                             return <span key={page} className="px-2">...</span>
                                         }
                                         return null
@@ -271,7 +242,7 @@ export default function AdminManagement({ admins, auth }: Props) {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                    onClick={() => goToPage(Math.min(totalPages, currentPage + 1))}
                                     disabled={currentPage === totalPages}
                                 >
                                     <ChevronRight className="w-4 h-4" />

@@ -1,4 +1,4 @@
-importimport { router, Link, usePage } from '@inertiajs/react'
+import { router, Link, usePage } from '@inertiajs/react'
 import { User, LogOut, ChevronDown, Bell, Menu, BookOpen, LayoutDashboard, FileSpreadsheet, Users, FileText, Calendar, File, GraduationCap } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'

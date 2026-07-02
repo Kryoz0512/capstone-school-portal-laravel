@@ -17,19 +17,21 @@ class SuperAdminController extends Controller
      * Display a listing of admins.
      * Only accessible by super admins.
      */
-    public function index()
+    public function index(Request $request)
     {
-        // Get the admin record for the current user
         $currentAdmin = Admin::where('user_id', Auth::id())->first();
-        
-        // Only super admins can access admin management
+
         if (!$currentAdmin || $currentAdmin->role !== 'Super Admin') {
             abort(403, 'Unauthorized. Only super admins can manage admin accounts.');
         }
 
+        $perPage = (int) $request->input('per_page', 10);
+
         $admins = Admin::with(['user', 'updatedBy'])
-            ->get()
-            ->map(function ($admin) {
+            ->orderBy('last_name')
+            ->paginate($perPage)
+            ->withQueryString()
+            ->through(function ($admin) {
                 return [
                     'id' => $admin->id,
                     'user_id' => $admin->user_id,
@@ -46,8 +48,14 @@ class SuperAdminController extends Controller
                 ];
             });
 
+        $totalAdmins = Admin::count();
+
         return Inertia::render('admin/user-management/admin/page', [
             'admins' => $admins,
+            'totalAdmins' => $totalAdmins,
+            'filters' => [
+                'per_page' => $perPage,
+            ],
         ]);
     }
 
@@ -59,7 +67,7 @@ class SuperAdminController extends Controller
     {
         // Get the admin record for the current user
         $currentAdmin = Admin::where('user_id', Auth::id())->first();
-        
+
         // Only super admins can create admins
         if (!$currentAdmin || $currentAdmin->role !== 'Super Admin') {
             abort(403, 'Unauthorized. Only super admins can create admin accounts.');
@@ -73,17 +81,17 @@ class SuperAdminController extends Controller
             'password' => ['required', 'string', 'min:8'],
             'can_add_teacher' => ['boolean'],
         ]);
-        
+
         // Check if this employee number belongs to a teacher who is already an admin
         $teacher = DB::table('tbl_teachers')
             ->where('employee_number', $validated['employee_number'])
             ->first();
-        
+
         if ($teacher) {
             $isAlreadyAdmin = DB::table('tbl_admins')
                 ->where('user_id', $teacher->user_id)
                 ->exists();
-            
+
             if ($isAlreadyAdmin) {
                 return back()->withErrors(['employee_number' => 'This teacher is already an admin.']);
             }
@@ -143,7 +151,7 @@ class SuperAdminController extends Controller
     {
         // Get the admin record for the current user
         $currentAdmin = Admin::where('user_id', Auth::id())->first();
-        
+
         // Only super admins can update admins
         if (!$currentAdmin || $currentAdmin->role !== 'Super Admin') {
             abort(403, 'Unauthorized. Only super admins can update admin accounts.');
@@ -212,7 +220,7 @@ class SuperAdminController extends Controller
     {
         // Get the admin record for the current user
         $currentAdmin = Admin::where('user_id', Auth::id())->first();
-        
+
         // Only super admins can delete admins
         if (!$currentAdmin || $currentAdmin->role !== 'Super Admin') {
             abort(403, 'Unauthorized. Only super admins can delete admin accounts.');
@@ -221,7 +229,7 @@ class SuperAdminController extends Controller
         DB::beginTransaction();
         try {
             $adminName = $admin->first_name . ' ' . $admin->last_name;
-            
+
             // Delete the user (will cascade delete admin record)
             $admin->user->delete();
 

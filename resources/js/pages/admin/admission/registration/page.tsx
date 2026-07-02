@@ -894,25 +894,25 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                                 <div className="text-xs text-amber-800 space-y-1">
                                                     {activeTab === 'new' && (
                                                         <>
-                                                            <p>• <strong>Form 138 (Report Card)</strong> is required</p>
-                                                            <p>• <strong>Form 137 (SF9)</strong> — please submit as soon as possible</p>
+                                                            <p>• <strong>Form 138 (SF9)</strong> is required</p>
+                                                            <p>• <strong>Form 137 (SF10)</strong> — please submit as soon as possible</p>
                                                             <p>• Other documents can be submitted as follow-up</p>
                                                         </>
                                                     )}
                                                     {activeTab === 'transferee' && (
                                                         <>
-                                                            <p>• <strong>Form 138 (Report Card)</strong> is required</p>
+                                                            <p>• <strong>Form 138 (SF9)</strong> is required</p>
                                                             <p>• <strong>Good Moral Certificate</strong> is required for transferees</p>
-                                                            <p>• <strong>Form 137 (SF9)</strong> — please submit as soon as possible</p>
+                                                            <p>• <strong>Form 137 (SF10)</strong> — please submit as soon as possible</p>
                                                             <p>• Other documents can be submitted as follow-up</p>
                                                         </>
                                                     )}
                                                     {activeTab === 'old' && (
                                                         <>
-                                                            <p>• <strong>Form 138 (Report Card)</strong> is required</p>
+                                                            <p>• <strong>Form 138 (SF9)</strong> is required</p>
                                                             <p>• <strong>PSA Birth Certificate</strong> is required</p>
                                                             <p>• <strong>Good Moral Certificate</strong> is required</p>
-                                                            <p>• <strong>Form 137 (SF9)</strong> — please submit as soon as possible</p>
+                                                            <p>• <strong>Form 137 (SF10)</strong> — please submit as soon as possible</p>
                                                         </>
                                                     )}
                                                 </div>
@@ -948,7 +948,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                             {errors.has_psa_birth_certificate && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_psa_birth_certificate}</p>}
                                         </div>
 
-                                        {/* Form 138 (SF9) */}
+                                        {/* Form 137 (SF10) */}
                                         <div className="bg-white border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl p-4 transition-colors">
                                             <div className="flex items-start gap-3">
                                                 <input
@@ -960,7 +960,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                                 />
                                                 <label htmlFor="sf9" className="flex-1 cursor-pointer">
                                                     <div className="flex items-center gap-2 mb-1">
-                                                        <span className="text-sm font-semibold text-gray-900">Form 137 (SF9)</span>
+                                                        <span className="text-sm font-semibold text-gray-900">Form 137 (SF10)</span>
                                                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Optional But Submit ASAP</span>
                                                     </div>
                                                     <p className="text-xs text-gray-600">Learner's Permanent Academic Record — not required at enrollment but must be submitted as soon as possible</p>
@@ -969,7 +969,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                             {errors.has_sf9 && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_sf9}</p>}
                                         </div>
 
-                                        {/* Form 137 (Report Card) */}
+                                        {/* Form 138 (SF9) */}
                                         <div className="bg-white border-2 border-red-300 bg-gradient-to-br from-red-50 to-pink-50 rounded-xl p-4 transition-colors">
                                             <div className="flex items-start gap-3">
                                                 <input
@@ -981,10 +981,10 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                                 />
                                                 <label htmlFor="report_card" className="flex-1 cursor-pointer">
                                                     <div className="flex items-center gap-2 mb-1">
-                                                        <span className="text-sm font-semibold text-gray-900">Form 138 (Report Card)</span>
+                                                        <span className="text-sm font-semibold text-gray-900">Form 138 (SF9)</span>
                                                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Required</span>
                                                     </div>
-                                                    <p className="text-xs text-gray-600">Official learner's permanent academic record / report card</p>
+                                                    <p className="text-xs text-gray-600">Learner's Progress Report Card (Report Card)</p>
                                                 </label>
                                             </div>
                                             {errors.has_report_card && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_report_card}</p>}

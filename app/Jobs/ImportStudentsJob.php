@@ -158,8 +158,8 @@ class ImportStudentsJob implements ShouldQueue
                             'current_grade_level_id' => $gradeLevel->id,
                             'school_year' => $row['School Year'] ?? '',
                             'has_psa_birth_certificate' => isset($row['PSA Birth Certificate']) && strtolower($row['PSA Birth Certificate']) === 'yes',
-                            'has_sf9' => isset($row['SF9']) && strtolower($row['SF9']) === 'yes',
-                            'has_report_card' => isset($row['Report Card']) && strtolower($row['Report Card']) === 'yes',
+                            'has_sf9' => $this->isSubmitted($row, ['Form 137 (SF10)', 'SF10', 'SF9']),
+                            'has_report_card' => $this->isSubmitted($row, ['Form 138 (SF9)', 'Report Card']),
                             'has_good_moral' => isset($row['Good Moral']) && strtolower($row['Good Moral']) === 'yes',
                         ]);
 
@@ -216,5 +216,26 @@ class ImportStudentsJob implements ShouldQueue
                 Storage::delete($this->filePath);
             }
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @param  list<string>  $columns
+     */
+    private function isSubmitted(array $row, array $columns): bool
+    {
+        foreach ($columns as $column) {
+            if (! isset($row[$column])) {
+                continue;
+            }
+
+            $value = strtolower(trim((string) $row[$column]));
+
+            if (in_array($value, ['yes', 'submitted', 'true', '1'], true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

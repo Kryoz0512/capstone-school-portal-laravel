@@ -41,26 +41,33 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        if (DB::table('tbl_grade_levels')->count() === 0) {
-            DB::table('tbl_grade_levels')->insert([
-                [
-                    'name' => 'Grade 7',
-                    'description' => 'First year of junior high school. Students begin their secondary education with foundational subjects.',
-                ],
-                [
-                    'name' => 'Grade 8',
-                    'description' => 'Second year of junior high school. Students continue building on core academic skills and knowledge.',
-                ],
-                [
-                    'name' => 'Grade 9',
-                    'description' => 'Third year of junior high school. Students prepare for more advanced topics and develop critical thinking skills.',
-                ],
-                [
-                    'name' => 'Grade 10',
-                    'description' => 'Fourth and final year of junior high school. Students complete their basic education and prepare for senior high school.',
-                ],
+        // Create Super Admin (Principal) account
+        $email = 'SNHS-TEJANO-MICHAEL';
+
+        if (!User::where('email', $email)->exists()) {
+            // Create super admin user account
+            $superAdminUser = User::create([
+                'name' => 'Michael Tejano',
+                'email' => $email,
+                'password' => Hash::make('tejano123'),
+                'role' => 'admin',
+                'email_verified_at' => now(),
+                'password_changed' => true,
+            ]);
+
+            // Create admin record with 'Super Admin' role
+            Admin::create([
+                'user_id' => $superAdminUser->id,
+                'employee_number' => '1111111',
+                'first_name' => 'Michael',
+                'last_name' => 'Tejano',
+                'role' => 'Super Admin',
+                'position' => 'School Principal',
+                'updated_by' => $superAdminUser->id,
             ]);
         }
+
+
 
         if (!User::where('email', 'SNHS-BAYUDANG-MARK')->exists()) {
             $user = User::create([
@@ -82,6 +89,31 @@ class DatabaseSeeder extends Seeder
                 'role' => 'Admin',
                 'created_at' => now(),
                 'updated_at' => now(),
+            ]);
+        }
+
+
+
+
+
+        if (DB::table('tbl_grade_levels')->count() === 0) {
+            DB::table('tbl_grade_levels')->insert([
+                [
+                    'name' => 'Grade 7',
+                    'description' => 'First year of junior high school. Students begin their secondary education with foundational subjects.',
+                ],
+                [
+                    'name' => 'Grade 8',
+                    'description' => 'Second year of junior high school. Students continue building on core academic skills and knowledge.',
+                ],
+                [
+                    'name' => 'Grade 9',
+                    'description' => 'Third year of junior high school. Students prepare for more advanced topics and develop critical thinking skills.',
+                ],
+                [
+                    'name' => 'Grade 10',
+                    'description' => 'Fourth and final year of junior high school. Students complete their basic education and prepare for senior high school.',
+                ],
             ]);
         }
 
@@ -515,7 +547,7 @@ class DatabaseSeeder extends Seeder
                 $studentStatus = $statuses[array_rand($statuses)];
 
                 // Generate documents based on student status
-                // SF9 (Form 138) is REQUIRED for all students
+                // Form 138 (SF9) is REQUIRED for all students
                 // Other documents vary by status
 
                 $hasSf9 = true; // ALWAYS REQUIRED
@@ -524,14 +556,14 @@ class DatabaseSeeder extends Seeder
                 $hasPsaBirth = rand(0, 1); // Optional for new/transferee, required for returning
 
                 if ($studentStatus === 'transferee') {
-                    // Transferees: SF9 (required) + Good Moral (required)
+                    // Transferees: Form 138/SF9 (required) + Good Moral (required)
                     $hasGoodMoral = true; // Always required for transferees
                 } elseif ($studentStatus === 'returning') {
-                    // Returning: SF9 (required) + PSA Birth Cert (required) + Good Moral (required)
+                    // Returning: Form 138/SF9 (required) + PSA Birth Cert (required) + Good Moral (required)
                     $hasPsaBirth = true; // Required for returning
                     $hasGoodMoral = true; // Required for returning
                 }
-                // For 'new' students: only SF9 is required, others are optional
+                // For 'new' students: only Form 138 (SF9) is required, Form 137 (SF10) is optional
 
                 // Create student record
                 $studentId = DB::table('tbl_students')->insertGetId([
@@ -622,9 +654,9 @@ class DatabaseSeeder extends Seeder
                 $studentStatus = $statuses[array_rand($statuses)];
 
                 // Generate documents based on student status
-                // New students: At least 1 document (SF9 or Report Card)
-                // Transferees: At least 2 documents (SF9/Report Card + Good Moral)
-                // Returning: SF9 (required) + PSA Birth Cert (required) + Good Moral (required)
+                // New students: Form 138 (SF9) required
+                // Transferees: Form 138 (SF9) + Good Moral
+                // Returning: Form 138 (SF9) + PSA Birth Cert + Good Moral
 
                 $hasSf9 = true; // ALWAYS REQUIRED
                 $hasReportCard = rand(0, 1); // Optional - can be submitted as follow-up
@@ -632,14 +664,14 @@ class DatabaseSeeder extends Seeder
                 $hasPsaBirth = rand(0, 1); // Optional for new/transferee, required for returning
 
                 if ($studentStatus === 'transferee') {
-                    // Transferees: SF9 (required) + Good Moral (required)
+                    // Transferees: Form 138/SF9 (required) + Good Moral (required)
                     $hasGoodMoral = true; // Always required for transferees
                 } elseif ($studentStatus === 'returning') {
-                    // Returning: SF9 (required) + PSA Birth Cert (required) + Good Moral (required)
+                    // Returning: Form 138/SF9 (required) + PSA Birth Cert (required) + Good Moral (required)
                     $hasPsaBirth = true; // Required for returning
                     $hasGoodMoral = true; // Required for returning
                 }
-                // For 'new' students: only SF9 is required, others are optional
+                // For 'new' students: only Form 138 (SF9) is required, Form 137 (SF10) is optional
 
                 // Create student record WITHOUT section assignment
                 $studentId = DB::table('tbl_students')->insertGetId([

@@ -635,8 +635,8 @@ class StudentController extends Controller
         ];
 
         $messages = [
-            'has_report_card.required' => 'Form 138 (Report Card) is required when enrolling.',
-            'has_report_card.accepted' => 'Form 138 (Report Card) must be submitted.',
+            'has_report_card.required' => 'Form 138 (SF9) is required when enrolling.',
+            'has_report_card.accepted' => 'Form 138 (SF9) must be submitted.',
         ];
 
         // Conditional validation based on student status
@@ -1112,8 +1112,8 @@ class StudentController extends Controller
                 'Grade Level',
                 'School Year',
                 'PSA Birth Certificate',
-                'Form 137 (SF9)',
-                'Form 138 (Report Card)',
+                'Form 137 (SF10)',
+                'Form 138 (SF9)',
                 'Good Moral',
             ]);
 
@@ -1223,7 +1223,7 @@ class StudentController extends Controller
                 }
 
                 if (!$hasReportCard) {
-                    $errors[] = "Row {$rowNum}: Form 138 (Report Card) is required.";
+                    $errors[] = "Row {$rowNum}: Form 138 (SF9) is required.";
                     $errorCount++;
                     continue;
                 }
@@ -1403,8 +1403,8 @@ class StudentController extends Controller
                 'Grade Level',
                 'School Year',
                 'PSA Birth Certificate',
-                'Form 137 (SF9)',
-                'Form 138 (Report Card)',
+                'Form 137 (SF10)',
+                'Form 138 (SF9)',
                 'Good Moral',
             ],
             [

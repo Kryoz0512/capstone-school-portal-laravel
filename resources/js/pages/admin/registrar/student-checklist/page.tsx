@@ -246,8 +246,8 @@ export default function StudentChecklist({
                             <SelectContent>
                                 <SelectItem value="all">All Documents</SelectItem>
                                 <SelectItem value="psa">PSA Birth Certificate</SelectItem>
-                                <SelectItem value="sf9">Form 137 (SF9)</SelectItem>
-                                <SelectItem value="report_card">Form 138 (Report Card)</SelectItem>
+                                <SelectItem value="sf9">Form 137 (SF10)</SelectItem>
+                                <SelectItem value="report_card">Form 138 (SF9)</SelectItem>
                                 <SelectItem value="good_moral">Good Moral Certificate</SelectItem>
                             </SelectContent>
                         </Select>
@@ -273,10 +273,10 @@ export default function StudentChecklist({
                                         PSA Birth Cert
                                     </th>
                                     <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                        Form 137 (SF9)
+                                        Form 137 (SF10)
                                     </th>
                                     <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                                        Form 138 (Report Card)
+                                        Form 138 (SF9)
                                     </th>
                                     <th className="px-6 py-4 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
                                         Good Moral

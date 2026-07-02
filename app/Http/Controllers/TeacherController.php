@@ -166,6 +166,47 @@ class TeacherController extends Controller
         }
     }
 
+    public function create()
+    {
+        $currentAdmin = \App\Models\Admin::where('user_id', Auth::id())->first();
+
+        if ($currentAdmin && !$currentAdmin->can_add_teacher) {
+            return redirect()->route('admin.user-management.teacher')
+                ->withErrors(['error' => 'You do not have permission to add teachers. Please contact the Super Admin.']);
+        }
+
+        $subjects = \App\Models\Subject::select('name')
+            ->distinct()
+            ->orderBy('name')
+            ->get()
+            ->map(fn($subject) => ['name' => $subject->name]);
+
+        return Inertia::render('admin/user-management/teacher/create/page', [
+            'subjects' => $subjects,
+        ]);
+    }
+
+    public function edit(Teacher $teacher)
+    {
+        $subjects = \App\Models\Subject::select('name')
+            ->distinct()
+            ->orderBy('name')
+            ->get()
+            ->map(fn($subject) => ['name' => $subject->name]);
+
+        return Inertia::render('admin/user-management/teacher/edit/page', [
+            'teacher' => [
+                'id' => $teacher->id,
+                'employee_number' => $teacher->employee_number,
+                'name' => $teacher->name,
+                'email' => $teacher->user->email,
+                'subject' => $teacher->subject,
+                'position' => $teacher->position,
+            ],
+            'subjects' => $subjects,
+        ]);
+    }
+
     public function update(Request $request, Teacher $teacher)
     {
         $validated = $request->validate([

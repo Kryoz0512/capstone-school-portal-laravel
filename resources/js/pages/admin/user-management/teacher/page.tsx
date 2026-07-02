@@ -1,10 +1,10 @@
-import { Head } from '@inertiajs/react'
+import { Head, Link } from '@inertiajs/react'
 import AdminLayout from '@/layouts/admin-layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import AddTeacherModal from '@/components/modals/add-teacher-modal'
-import EditTeacherModal from '@/components/modals/edit-teacher-modal'
+// import AddTeacherModal from '@/components/modals/add-teacher-modal'
+// import EditTeacherModal from '@/components/modals/edit-teacher-modal'
 import DeleteTeacherModal from '@/components/modals/delete-teacher-modal'
 import { Pencil, Trash2, Search, ChevronLeft, ChevronRight } from 'lucide-react'
 import { useState, useMemo } from 'react'
@@ -55,12 +55,12 @@ export default function TeacherManagement({ auth, teachers = [], gradeLevels = [
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
     const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null)
-    
+
     // Filter states
     const [searchQuery, setSearchQuery] = useState('')
     const [subjectFilter, setSubjectFilter] = useState('all')
     const [positionFilter, setPositionFilter] = useState('all')
-    
+
     // Pagination states
     const [currentPage, setCurrentPage] = useState(1)
     const [itemsPerPage, setItemsPerPage] = useState(10)
@@ -79,10 +79,10 @@ export default function TeacherManagement({ auth, teachers = [], gradeLevels = [
     // Filter teachers
     const filteredTeachers = useMemo(() => {
         return teachers.filter(teacher => {
-            const matchesSearch = searchQuery === '' || 
+            const matchesSearch = searchQuery === '' ||
                 teacher.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 teacher.employee_no.toLowerCase().includes(searchQuery.toLowerCase())
-            
+
             const matchesSubject = subjectFilter === 'all' || teacher.subject === subjectFilter
             const matchesPosition = positionFilter === 'all' || teacher.position === positionFilter
 
@@ -129,14 +129,15 @@ export default function TeacherManagement({ auth, teachers = [], gradeLevels = [
                             Create and manage teacher accounts with assignment tracking
                         </p>
                     </div>
-                    <Button 
-                        className="bg-green-600 hover:bg-green-700 text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                        onClick={() => setIsModalOpen(true)}
-                        disabled={!canAddTeacher}
-                        title={!canAddTeacher ? 'You do not have permission to add teachers' : ''}
-                    >
-                        + New Teacher
-                    </Button>
+                    <Link href={canAddTeacher ? '/admin/user-management/teacher/create' : '#'}>
+                        <Button
+                            className="bg-green-600 hover:bg-green-700 text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={!canAddTeacher}
+                            title={!canAddTeacher ? 'You do not have permission to add teachers' : ''}
+                        >
+                            + New Teacher
+                        </Button>
+                    </Link>
                 </div>
 
                 {!canAddTeacher && (
@@ -146,20 +147,6 @@ export default function TeacherManagement({ auth, teachers = [], gradeLevels = [
                         </p>
                     </div>
                 )}
-
-                <AddTeacherModal 
-                    open={isModalOpen} 
-                    onOpenChange={setIsModalOpen} 
-                    gradeLevels={gradeLevels}
-                    subjects={subjects} 
-                />
-                <EditTeacherModal 
-                    open={isEditModalOpen} 
-                    onOpenChange={setIsEditModalOpen} 
-                    teacher={selectedTeacher}
-                    gradeLevels={gradeLevels}
-                    subjects={subjects}
-                />
                 <DeleteTeacherModal
                     open={isDeleteModalOpen}
                     onOpenChange={setIsDeleteModalOpen}
@@ -280,14 +267,14 @@ export default function TeacherManagement({ auth, teachers = [], gradeLevels = [
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-center">
                                                 <div className="flex items-center justify-center gap-2">
-                                                    <button 
+                                                    <Link
+                                                        href={`/admin/user-management/teacher/${teacher.id}/edit`}
                                                         className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors"
-                                                        onClick={() => handleEdit(teacher)}
                                                         title="Edit teacher"
                                                     >
                                                         <Pencil className="w-4 h-4" />
-                                                    </button>
-                                                    <button 
+                                                    </Link>
+                                                    <button
                                                         className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                                                         onClick={() => handleDelete(teacher)}
                                                         title="Delete teacher"
@@ -306,13 +293,13 @@ export default function TeacherManagement({ auth, teachers = [], gradeLevels = [
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                                                 </svg>
                                                 <p className="text-sm font-medium text-gray-900 mb-1">
-                                                    {searchQuery || subjectFilter !== 'all' || positionFilter !== 'all' 
+                                                    {searchQuery || subjectFilter !== 'all' || positionFilter !== 'all'
                                                         ? 'No teachers found'
                                                         : 'No teachers yet'
                                                     }
                                                 </p>
                                                 <p className="text-sm text-gray-500">
-                                                    {searchQuery || subjectFilter !== 'all' || positionFilter !== 'all' 
+                                                    {searchQuery || subjectFilter !== 'all' || positionFilter !== 'all'
                                                         ? 'Try adjusting your filters to find what you\'re looking for.'
                                                         : 'Click "+ New Teacher" to add your first teacher.'
                                                     }
@@ -331,8 +318,8 @@ export default function TeacherManagement({ auth, teachers = [], gradeLevels = [
                             <div className="flex items-center gap-4">
                                 <div className="flex items-center gap-2">
                                     <span className="text-sm text-gray-600">Show</span>
-                                    <Select 
-                                        value={itemsPerPage.toString()} 
+                                    <Select
+                                        value={itemsPerPage.toString()}
                                         onValueChange={(value) => setItemsPerPage(Number(value))}
                                     >
                                         <SelectTrigger className="w-20">
@@ -360,7 +347,7 @@ export default function TeacherManagement({ auth, teachers = [], gradeLevels = [
                                 >
                                     <ChevronLeft className="w-4 h-4" />
                                 </Button>
-                                
+
                                 <div className="flex items-center gap-1">
                                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
                                         // Show first page, last page, current page, and pages around current

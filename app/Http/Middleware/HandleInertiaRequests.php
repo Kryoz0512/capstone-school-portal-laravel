@@ -64,8 +64,24 @@ class HandleInertiaRequests extends Middleware
                         $profilePicture = $teacher->profilePicture?->file_path
                             ? asset('storage/' . $teacher->profilePicture->file_path)
                             : null;
+
+                        $schoolYear = \App\Models\Student::orderBy('school_year', 'desc')
+                            ->value('school_year') ?? date('Y') . '-' . (date('Y') + 1);
+
+                        $advisoryAssignment = \App\Models\AdviserSection::where('teacher_id', $teacher->id)
+                            ->where('school_year', $schoolYear)
+                            ->with('classSection.gradeLevel')
+                            ->first();
+
                         $userTypeData = [
                             'profile_picture' => $profilePicture,
+                            'is_adviser' => (bool) $advisoryAssignment,
+                            'advisory_section' => $advisoryAssignment ? [
+                                'id' => $advisoryAssignment->class_section_id,
+                                'name' => $advisoryAssignment->classSection?->section_name,
+                                'grade_level' => $advisoryAssignment->classSection?->gradeLevel?->name,
+                                'school_year' => $advisoryAssignment->school_year,
+                            ] : null,
                         ];
                     }
                     break;

@@ -9,11 +9,13 @@ type Props = {
     status?: string
     slides?: string[]
     role?: 'student' | 'teacher' | 'staff'
+    redirectTo?: string
+    portalLabel?: string
 }
 
 type Role = 'student' | 'teacher' | 'staff'
 
-export default function Login({ status, slides = [], role = 'student' }: Props) {
+export default function Login({ status, slides = [], role = 'student', redirectTo, portalLabel }: Props) {
     const [showPassword, setShowPassword] = useState(false)
     const [currentSlide, setCurrentSlide] = useState(0)
     const [lockStatus, setLockStatus] = useState<{
@@ -30,6 +32,7 @@ export default function Login({ status, slides = [], role = 'student' }: Props) 
         password: '',
         role: role,
         remember: false,
+        redirect_to: redirectTo ?? '',
     })
 
     // Slideshow effect
@@ -263,8 +266,10 @@ export default function Login({ status, slides = [], role = 'student' }: Props) 
                         </Link>
 
                         <div className="mb-8 text-center">
-                            <h1 className="text-3xl font-bold text-gray-900 mb-2">{currentRole.label} Login</h1>
-                            <p className="text-gray-600 text-sm">Enter your account details</p>
+                            <h1 className="text-3xl font-bold text-gray-900 mb-2">{portalLabel ?? `${currentRole.label} Login`}</h1>
+                            <p className="text-gray-600 text-sm">
+                                {portalLabel ? 'Sign in with your teacher account to manage your advisory class' : 'Enter your account details'}
+                            </p>
                         </div>
 
                         <form onSubmit={handleLogin} className="space-y-5">

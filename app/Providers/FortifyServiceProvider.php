@@ -28,7 +28,19 @@ class FortifyServiceProvider extends ServiceProvider
                 public function toResponse($request)
                 {
                     $user = Auth::user();
-                    
+
+                    $redirectTo = $request->input('redirect_to');
+                    $allowedRedirects = [
+                        '/adviser/dashboard',
+                        '/teacher/dashboard',
+                        '/student/dashboard',
+                        '/admin/dashboard',
+                    ];
+
+                    if ($redirectTo && in_array($redirectTo, $allowedRedirects, true)) {
+                        return redirect()->intended($redirectTo);
+                    }
+
                     // Redirect based on user role
                     $redirectUrl = match ($user->role ?? 'student') {
                         'admin' => '/admin/dashboard',

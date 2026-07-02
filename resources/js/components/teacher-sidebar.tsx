@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react'
+import { Link, usePage } from '@inertiajs/react'
 import {
     LayoutDashboard,
     Calendar,
@@ -6,10 +6,9 @@ import {
     FileText,
     FileSpreadsheet,
     GraduationCap,
-    ClipboardList,
-    ShieldCheck,
     Users,
-    File
+    File,
+    ShieldCheck,
 } from 'lucide-react'
 
 type SidebarProps = {
@@ -37,6 +36,7 @@ const navItems = [
 ]
 
 export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+    const { auth } = usePage<{ auth: { teacher?: { is_adviser?: boolean } } }>().props
     const getCurrentPath = () =>
         typeof window !== 'undefined' ? window.location.pathname : ''
     const isActive = (path: string) => getCurrentPath() === path
@@ -75,6 +75,20 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                     </Link>
                 ))}
             </nav>
+            {auth?.teacher?.is_adviser && (
+                <div className="p-3 border-t border-blue-700/50">
+                    <Link
+                        href="/adviser/dashboard"
+                        onClick={onNavigate}
+                        className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-100 hover:bg-blue-700/50 transition-colors"
+                    >
+                        <div className="p-2 rounded-lg bg-blue-700/30">
+                            <ShieldCheck className="w-4 h-4" />
+                        </div>
+                        <span className="font-medium text-sm">Adviser Portal</span>
+                    </Link>
+                </div>
+            )}
         </div>
     )
 }

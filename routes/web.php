@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminProfileController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\TeacherController;
+use App\Http\Controllers\AdviserController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\TeacherSubjectController;
@@ -65,6 +66,23 @@ Route::get('/login/teacher', function () {
         'role' => 'teacher'
     ]);
 })->name('login.teacher');
+
+Route::get('/login/adviser', function () {
+    $slides = \App\Models\LoginSlide::where('is_active', true)
+        ->orderBy('order')
+        ->get()
+        ->map(function ($slide) {
+            return \Illuminate\Support\Facades\Storage::url($slide->image_path);
+        })
+        ->toArray();
+
+    return \Inertia\Inertia::render('auth/login', [
+        'slides' => $slides,
+        'role' => 'teacher',
+        'redirectTo' => '/adviser/dashboard',
+        'portalLabel' => 'Adviser Portal',
+    ]);
+})->name('login.adviser');
 
 // Admin login with hashed URL for security
 Route::get('/admin-access-' . md5('snhs-admin-portal-2026'), function () {
@@ -132,6 +150,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 
     Route::post('teacher/student-clearance/toggle', [\App\Http\Controllers\ClearanceController::class, 'toggle'])->name('teacher.student-clearance.toggle');
+
+    // Adviser routes (same teacher account — advisory class only)
+    Route::get('adviser/dashboard', [AdviserController::class, 'dashboard'])->name('adviser.dashboard');
+    Route::get('adviser/class-list', [AdviserController::class, 'classList'])->name('adviser.class-list');
+    Route::get('adviser/advisory-clearance', [AdviserController::class, 'advisoryClearance'])->name('adviser.advisory-clearance');
+    Route::post('adviser/advisory-clearance/toggle', [AdviserController::class, 'toggleClearance'])->name('adviser.advisory-clearance.toggle');
+    Route::get('adviser/advisory-grades', [AdviserController::class, 'advisoryGrades'])->name('adviser.advisory-grades');
 
 
 

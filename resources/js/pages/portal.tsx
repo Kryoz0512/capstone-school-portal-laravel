@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react'
-import { GraduationCap, BookOpen, Target, Eye, Heart, ChevronDown, ArrowRight, Shield, BarChart3, Calendar } from 'lucide-react'
+import { GraduationCap, BookOpen, Target, Eye, Heart, ChevronDown, ArrowRight, Shield, BarChart3, Calendar, ShieldCheck } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
 type Props = {
@@ -250,6 +250,20 @@ export default function Portal({ slides = [] }: Props) {
                                                 <div className="text-xs text-gray-500">View grades & schedules</div>
                                             </div>
                                             <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-violet-600 group-hover:translate-x-1 transition-all" />
+                                        </Link>
+
+                                        <Link
+                                            href="/login/adviser"
+                                            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-emerald-50 transition-colors group"
+                                        >
+                                            <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center text-white">
+                                                <ShieldCheck className="w-5 h-5" />
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="font-semibold text-gray-900 text-sm">Adviser Portal</div>
+                                                <div className="text-xs text-gray-500">Manage your advisory class</div>
+                                            </div>
+                                            <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-emerald-600 group-hover:translate-x-1 transition-all" />
                                         </Link>
 
                                         <Link

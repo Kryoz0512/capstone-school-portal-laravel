@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react'
-import { GraduationCap, BookOpen, Target, Eye, Heart, ChevronDown, ArrowRight, Shield, BarChart3, Calendar, ShieldCheck } from 'lucide-react'
+import { GraduationCap, BookOpen, Target, Eye, Heart, ChevronDown, ArrowRight, Shield, BarChart3, Calendar, ShieldCheck, Menu, X } from 'lucide-react'
 import { useState, useEffect } from 'react'
 
 type Props = {
@@ -11,6 +11,7 @@ export default function Portal({ slides = [] }: Props) {
     const [scrolled, setScrolled] = useState(false)
     const [activeSection, setActiveSection] = useState('home')
     const [showPortalDropdown, setShowPortalDropdown] = useState(false)
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
     useEffect(() => {
         if (slides.length <= 1) return
@@ -36,7 +37,16 @@ export default function Portal({ slides = [] }: Props) {
         return () => window.removeEventListener('scroll', handleScroll)
     }, [])
 
+    // Lock body scroll while the mobile menu is open
+    useEffect(() => {
+        document.body.style.overflow = mobileMenuOpen ? 'hidden' : ''
+        return () => {
+            document.body.style.overflow = ''
+        }
+    }, [mobileMenuOpen])
+
     const scrollToSection = (id: string) => {
+        setMobileMenuOpen(false)
         document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
     }
 
@@ -44,6 +54,36 @@ export default function Portal({ slides = [] }: Props) {
         { id: 'home', label: 'Home' },
         { id: 'about', label: 'About' },
         { id: 'features', label: 'Features' },
+    ]
+
+    const portalLinks = [
+        {
+            href: '/login/student',
+            label: 'Student Portal',
+            desc: 'View grades & schedules',
+            icon: <GraduationCap className="w-5 h-5" />,
+            color: 'from-violet-500 to-violet-600',
+            hoverBg: 'hover:bg-violet-50',
+            hoverText: 'group-hover:text-violet-600',
+        },
+        {
+            href: '/login/adviser',
+            label: 'Adviser Portal',
+            desc: 'Manage your advisory class',
+            icon: <ShieldCheck className="w-5 h-5" />,
+            color: 'from-emerald-500 to-emerald-600',
+            hoverBg: 'hover:bg-emerald-50',
+            hoverText: 'group-hover:text-emerald-600',
+        },
+        {
+            href: '/login/teacher',
+            label: 'Teacher Portal',
+            desc: 'Manage classes & grades',
+            icon: <BookOpen className="w-5 h-5" />,
+            color: 'from-sky-500 to-sky-600',
+            hoverBg: 'hover:bg-sky-50',
+            hoverText: 'group-hover:text-sky-600',
+        },
     ]
 
     const features = [
@@ -87,14 +127,6 @@ export default function Portal({ slides = [] }: Props) {
             bg: 'bg-rose-50',
             border: 'border-rose-100',
         },
-        // {
-        //     icon: <Trophy className="w-6 h-6" />,
-        //     title: 'Accreditation Support',
-        //     desc: 'Built-in tools and compliance features designed to support school accreditation requirements seamlessly.',
-        //     color: 'from-teal-500 to-teal-600',
-        //     bg: 'bg-teal-50',
-        //     border: 'border-teal-100',
-        // },
     ]
 
     return (
@@ -135,12 +167,17 @@ export default function Portal({ slides = [] }: Props) {
                     0%, 100% { transform: translateY(0px) scale(1); }
                     50% { transform: translateY(-12px) scale(1.02); }
                 }
+                @keyframes slideDown {
+                    from { opacity: 0; transform: translateY(-8px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
 
                 .animate-fade-up { animation: fadeUp 0.7s ease forwards; }
                 .animate-fade-up-delay-1 { animation: fadeUp 0.7s 0.15s ease forwards; opacity: 0; }
                 .animate-fade-up-delay-2 { animation: fadeUp 0.7s 0.3s ease forwards; opacity: 0; }
                 .animate-fade-in { animation: fadeIn 1s ease forwards; }
                 .animate-float { animation: floatBubble 6s ease-in-out infinite; }
+                .animate-slide-down { animation: slideDown 0.25s ease forwards; }
 
                 .card-hover {
                     transition: transform 0.25s ease, box-shadow 0.25s ease;
@@ -200,14 +237,14 @@ export default function Portal({ slides = [] }: Props) {
             `}</style>
 
             {/* ── NAVBAR ── */}
-            <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-400 ${scrolled
-                    ? 'bg-green-800/80 backdrop-blur-xl shadow-lg shadow-green-950/20'
+            <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-400 ${scrolled || mobileMenuOpen
+                    ? 'bg-green-800/90 backdrop-blur-xl shadow-lg shadow-green-950/20'
                     : 'bg-transparent'
                 }`}>
-                <div className="max-w-7xl mx-auto px-6 lg:px-8">
-                    <div className="flex items-center justify-between h-20">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex items-center justify-between h-16 md:h-20">
                         <div className="flex items-center gap-3">
-                            <img src="/SNHS-logo-2.png" alt="SNHS DigiStar" className="h-20 w-auto" />
+                            <img src="/SNHS-logo-2.png" alt="SNHS DigiStar" className="h-12 md:h-20 w-auto" />
                         </div>
 
                         <div className="hidden md:flex items-center gap-1">
@@ -225,66 +262,98 @@ export default function Portal({ slides = [] }: Props) {
                             ))}
                         </div>
 
-                        <div className="relative">
-                            <button
-                                onClick={() => setShowPortalDropdown(!showPortalDropdown)}
-                                onBlur={() => setTimeout(() => setShowPortalDropdown(false), 200)}
-                                className="hidden md:flex items-center gap-2 bg-white text-green-800 px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-green-50 transition-all shadow-sm hover:shadow-md"
-                            >
-                                Access Portal
-                                <ChevronDown className={`w-4 h-4 transition-transform ${showPortalDropdown ? 'rotate-180' : ''}`} />
-                            </button>
+                        <div className="flex items-center gap-2">
+                            {/* Desktop portal dropdown */}
+                            <div className="relative hidden md:block">
+                                <button
+                                    onClick={() => setShowPortalDropdown(!showPortalDropdown)}
+                                    onBlur={() => setTimeout(() => setShowPortalDropdown(false), 200)}
+                                    className="flex items-center gap-2 bg-white text-green-800 px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-green-50 transition-all shadow-sm hover:shadow-md"
+                                >
+                                    Access Portal
+                                    <ChevronDown className={`w-4 h-4 transition-transform ${showPortalDropdown ? 'rotate-180' : ''}`} />
+                                </button>
 
-                            {showPortalDropdown && (
-                                <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden z-50">
-                                    <div className="p-2">
-                                        <Link
-                                            href="/login/student"
-                                            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-violet-50 transition-colors group"
-                                        >
-                                            <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-violet-600 rounded-lg flex items-center justify-center text-white">
-                                                <GraduationCap className="w-5 h-5" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="font-semibold text-gray-900 text-sm">Student Portal</div>
-                                                <div className="text-xs text-gray-500">View grades & schedules</div>
-                                            </div>
-                                            <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-violet-600 group-hover:translate-x-1 transition-all" />
-                                        </Link>
-
-                                        <Link
-                                            href="/login/adviser"
-                                            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-emerald-50 transition-colors group"
-                                        >
-                                            <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center text-white">
-                                                <ShieldCheck className="w-5 h-5" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="font-semibold text-gray-900 text-sm">Adviser Portal</div>
-                                                <div className="text-xs text-gray-500">Manage your advisory class</div>
-                                            </div>
-                                            <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-emerald-600 group-hover:translate-x-1 transition-all" />
-                                        </Link>
-
-                                        <Link
-                                            href="/login/teacher"
-                                            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-sky-50 transition-colors group"
-                                        >
-                                            <div className="w-10 h-10 bg-gradient-to-br from-sky-500 to-sky-600 rounded-lg flex items-center justify-center text-white">
-                                                <BookOpen className="w-5 h-5" />
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="font-semibold text-gray-900 text-sm">Teacher Portal</div>
-                                                <div className="text-xs text-gray-500">Manage classes & grades</div>
-                                            </div>
-                                            <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-sky-600 group-hover:translate-x-1 transition-all" />
-                                        </Link>
+                                {showPortalDropdown && (
+                                    <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden z-50">
+                                        <div className="p-2">
+                                            {portalLinks.map((p) => (
+                                                <Link
+                                                    key={p.href}
+                                                    href={p.href}
+                                                    className={`flex items-center gap-3 px-4 py-3 rounded-lg ${p.hoverBg} transition-colors group`}
+                                                >
+                                                    <div className={`w-10 h-10 bg-gradient-to-br ${p.color} rounded-lg flex items-center justify-center text-white shrink-0`}>
+                                                        {p.icon}
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <div className="font-semibold text-gray-900 text-sm">{p.label}</div>
+                                                        <div className="text-xs text-gray-500">{p.desc}</div>
+                                                    </div>
+                                                    <ArrowRight className={`w-4 h-4 text-gray-400 ${p.hoverText} group-hover:translate-x-1 transition-all shrink-0`} />
+                                                </Link>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
+                            </div>
+
+                            {/* Mobile hamburger toggle */}
+                            <button
+                                onClick={() => setMobileMenuOpen((v) => !v)}
+                                aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+                                aria-expanded={mobileMenuOpen}
+                                className="md:hidden flex items-center justify-center w-10 h-10 rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors"
+                            >
+                                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                            </button>
                         </div>
                     </div>
                 </div>
+
+                {/* Mobile menu panel */}
+                {mobileMenuOpen && (
+                    <div className="md:hidden animate-slide-down border-t border-white/10 bg-green-800/95 backdrop-blur-xl max-h-[calc(100vh-4rem)] overflow-y-auto">
+                        <div className="px-4 py-4 space-y-1">
+                            {navLinks.map(({ id, label }) => (
+                                <button
+                                    key={id}
+                                    onClick={() => scrollToSection(id)}
+                                    className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${activeSection === id
+                                            ? 'text-white bg-white/10'
+                                            : 'text-white/70 hover:text-white hover:bg-white/10'
+                                        }`}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="px-4 pb-5 pt-2 border-t border-white/10">
+                            <p className="text-white/50 text-xs font-semibold uppercase tracking-widest mb-3 px-1">
+                                Access Portal
+                            </p>
+                            <div className="space-y-2">
+                                {portalLinks.map((p) => (
+                                    <Link
+                                        key={p.href}
+                                        href={p.href}
+                                        className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white hover:bg-green-50 transition-colors group"
+                                    >
+                                        <div className={`w-10 h-10 bg-gradient-to-br ${p.color} rounded-lg flex items-center justify-center text-white shrink-0`}>
+                                            {p.icon}
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="font-semibold text-gray-900 text-sm">{p.label}</div>
+                                            <div className="text-xs text-gray-500">{p.desc}</div>
+                                        </div>
+                                        <ArrowRight className="w-4 h-4 text-gray-400 group-hover:translate-x-1 transition-all shrink-0" />
+                                    </Link>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </nav>
 
             <div className="min-h-screen overflow-x-hidden">
@@ -318,54 +387,61 @@ export default function Portal({ slides = [] }: Props) {
                     }} />
 
                     {/* Floating orbs */}
-                    <div className="animate-float absolute top-1/4 right-1/5 w-64 h-64 rounded-full opacity-20 blur-2xl"
+                    <div className="animate-float absolute top-1/4 right-1/5 w-40 h-40 md:w-64 md:h-64 rounded-full opacity-20 blur-2xl"
                         style={{ background: 'radial-gradient(circle, #34d399, transparent)', animationDelay: '0s' }} />
-                    <div className="animate-float absolute bottom-1/3 left-1/6 w-48 h-48 rounded-full opacity-15 blur-2xl"
+                    <div className="animate-float absolute bottom-1/3 left-1/6 w-32 h-32 md:w-48 md:h-48 rounded-full opacity-15 blur-2xl"
                         style={{ background: 'radial-gradient(circle, #6ee7b7, transparent)', animationDelay: '2s' }} />
 
                     {/* Hero Content */}
-                    <div className="relative z-10 flex flex-col items-center justify-center flex-1 px-6 py-32 text-center">
+                    <div className="relative z-10 flex flex-col items-center justify-center flex-1 px-4 sm:px-6 pt-28 pb-20 md:py-32 text-center">
                         {/* Pill badge */}
-                        <div className="animate-fade-up mb-8">
-                            <span className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 text-green-200 text-xs font-medium px-4 py-2 rounded-full">
-                                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                        <div className="animate-fade-up mb-6 md:mb-8">
+                            <span className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 text-green-200 text-xs font-medium px-4 py-2 rounded-full text-center">
+                                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse shrink-0" />
                                 Santor National High School — Digital Platform
                             </span>
                         </div>
 
                         {/* Logo + headline */}
-                        <div className="animate-fade-up-delay-1">
+                        <div className="animate-fade-up-delay-1 w-full">
                             <img
                                 src="/SNHS-logo-2.png"
                                 alt="SNHS DigiStar"
-                                className="w-auto h-32 md:h-44 mx-auto object-contain mb-8 drop-shadow-2xl"
+                                className="w-auto h-20 sm:h-28 md:h-44 mx-auto object-contain mb-6 md:mb-8 drop-shadow-2xl"
                             />
-                            <h1 className="font-display text-5xl md:text-7xl lg:text-8xl leading-[1.05] mb-6">
+                            <h1 className="font-display text-4xl sm:text-5xl md:text-7xl lg:text-8xl leading-[1.05] mb-4 md:mb-6">
                                 <span className="gradient-text">Empowering</span>
                                 <br />
                                 <span className="text-white">Education</span>
                             </h1>
-                            <p className="text-green-100/80 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed mb-10">
+                            <p className="text-green-100/80 text-base sm:text-lg md:text-xl max-w-2xl mx-auto leading-relaxed mb-8 md:mb-10 px-2">
                                 A comprehensive digital platform built to streamline school operations,
                                 elevate student outcomes, and connect every part of your school community.
                             </p>
                         </div>
 
                         {/* CTAs */}
-                        <div className="animate-fade-up-delay-2 flex flex-col sm:flex-row items-center gap-4">
+                        <div className="animate-fade-up-delay-2 w-full flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
                             <button
                                 onClick={() => scrollToSection('about')}
-                                className="flex items-center gap-2 bg-white text-green-800 px-8 py-4 rounded-2xl font-semibold text-base hover:bg-green-50 transition-all shadow-xl shadow-black/20 hover:shadow-2xl hover:scale-[1.02]"
+                                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white text-green-800 px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-semibold text-sm sm:text-base hover:bg-green-50 transition-all shadow-xl shadow-black/20 hover:shadow-2xl hover:scale-[1.02]"
                             >
                                 Learn More
                                 <ArrowRight className="w-5 h-5" />
+                            </button>
+                            <button
+                                onClick={() => setMobileMenuOpen(true)}
+                                className="md:hidden w-full sm:w-auto flex items-center justify-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 text-white px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-semibold text-sm sm:text-base hover:bg-white/20 transition-all"
+                            >
+                                Access Portal
+                                <ChevronDown className="w-5 h-5" />
                             </button>
                         </div>
                     </div>
 
                     {/* Slide dots */}
                     {slides.length > 1 && (
-                        <div className="relative z-10 flex justify-center gap-2 pb-8">
+                        <div className="relative z-10 flex justify-center gap-2 pb-6 md:pb-8">
                             {slides.map((_, i) => (
                                 <button
                                     key={i}
@@ -386,14 +462,14 @@ export default function Portal({ slides = [] }: Props) {
                 </section>
 
                 {/* ── ABOUT ── */}
-                <section id="about" className="bg-white py-24 lg:py-32">
-                    <div className="max-w-7xl mx-auto px-6 lg:px-8">
-                        <div className="max-w-2xl mb-16">
+                <section id="about" className="bg-white py-16 sm:py-24 lg:py-32">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="max-w-2xl mb-12 md:mb-16">
                             <p className="section-label mb-4">Who We Are</p>
-                            <h2 className="font-display text-4xl md:text-5xl text-gray-900 leading-tight mb-6">
+                            <h2 className="font-display text-3xl sm:text-4xl md:text-5xl text-gray-900 leading-tight mb-6">
                                 Built for schools that believe in better
                             </h2>
-                            <p className="text-gray-500 text-lg leading-relaxed">
+                            <p className="text-gray-500 text-base sm:text-lg leading-relaxed">
                                 DIGISTAR is an integrated digital platform developed
                                 specifically for the purpose of upgrading and modernizing
                                 the educational and administrative experience at Santor National High School (SNHS)
@@ -403,7 +479,7 @@ export default function Portal({ slides = [] }: Props) {
                             </p>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 sm:gap-6">
                             {[
                                 {
                                     icon: <Target className="w-6 h-6 text-violet-600" />,
@@ -429,7 +505,7 @@ export default function Portal({ slides = [] }: Props) {
                             ].map((card) => (
                                 <div
                                     key={card.title}
-                                    className={`card-hover bg-white border border-stone-200 rounded-2xl p-8 hover:border-stone-300 hover:shadow-lg`}
+                                    className={`card-hover bg-white border border-stone-200 rounded-2xl p-6 sm:p-8 hover:border-stone-300 hover:shadow-lg`}
                                 >
                                     <div className={`${card.iconBg} w-12 h-12 rounded-xl flex items-center justify-center mb-5`}>
                                         {card.icon}
@@ -443,14 +519,14 @@ export default function Portal({ slides = [] }: Props) {
                 </section>
 
                 {/* ── FEATURES ── */}
-                <section id="features" className="bg-stone-50 py-24 lg:py-32">
-                    <div className="max-w-7xl mx-auto px-6 lg:px-8">
-                        <div className="text-center max-w-2xl mx-auto mb-16">
+                <section id="features" className="bg-stone-50 py-16 sm:py-24 lg:py-32">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="text-center max-w-2xl mx-auto mb-12 md:mb-16">
                             <p className="section-label mb-4">Platform Features</p>
-                            <h2 className="font-display text-4xl md:text-5xl text-gray-900 leading-tight mb-4">
+                            <h2 className="font-display text-3xl sm:text-4xl md:text-5xl text-gray-900 leading-tight mb-4">
                                 Everything your school needs
                             </h2>
-                            <p className="text-gray-500 text-lg">
+                            <p className="text-gray-500 text-base sm:text-lg">
                                 Powerful tools that make administration effortless and learning meaningful.
                             </p>
                         </div>
@@ -459,7 +535,7 @@ export default function Portal({ slides = [] }: Props) {
                             {features.map((f) => (
                                 <div
                                     key={f.title}
-                                    className="card-hover bg-white rounded-2xl p-7 border border-stone-200 hover:shadow-lg hover:border-stone-300 group"
+                                    className="card-hover bg-white rounded-2xl p-6 sm:p-7 border border-stone-200 hover:shadow-lg hover:border-stone-300 group"
                                 >
                                     <div className={`${f.bg} ${f.border} border w-12 h-12 rounded-xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300`}>
                                         <div className={`bg-gradient-to-br ${f.color} rounded-lg w-full h-full flex items-center justify-center text-white`}>
@@ -476,11 +552,11 @@ export default function Portal({ slides = [] }: Props) {
 
                 {/* ── FOOTER ── */}
                 <footer className="bg-gray-950 text-white">
-                    <div className="max-w-7xl mx-auto px-6 lg:px-8 pt-16 pb-8">
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-12">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-16 pb-8">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 sm:gap-10 mb-10 sm:mb-12">
                             {/* Brand */}
-                            <div className="md:col-span-2">
-                                <img src="/SNHS-logo-2.png" alt="SNHS DigiStar" className="h-16 w-auto mb-4 opacity-90" />
+                            <div className="sm:col-span-2 md:col-span-2">
+                                <img src="/SNHS-logo-2.png" alt="SNHS DigiStar" className="h-14 sm:h-16 w-auto mb-4 opacity-90" />
                                 <p className="text-gray-400 text-sm leading-relaxed max-w-xs">
                                     Empowering the Santor National High School community through thoughtful digital innovation and academic excellence.
                                 </p>
@@ -510,7 +586,7 @@ export default function Portal({ slides = [] }: Props) {
                                     <li>Bongabon, Nueva Ecija</li>
                                     <li>Philippines 3128</li>
                                     <li>
-                                        <a href="mailto:info@snhs.edu.ph" className="hover:text-white transition-colors">
+                                        <a href="mailto:info@snhs.edu.ph" className="hover:text-white transition-colors break-all">
                                             info@snhs.edu.ph
                                         </a>
                                     </li>
@@ -523,7 +599,7 @@ export default function Portal({ slides = [] }: Props) {
                             </div>
                         </div>
 
-                        <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-gray-600 text-xs">
+                        <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-gray-600 text-xs text-center">
                             <p>&copy; 2026 Santor National High School. All rights reserved.</p>
                             <p>Powered by SNHS DigiStar</p>
                         </div>

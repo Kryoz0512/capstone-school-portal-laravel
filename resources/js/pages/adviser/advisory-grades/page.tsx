@@ -66,7 +66,17 @@ export default function AdvisoryGrades({ advisorySection, subjects, schoolYears,
                     .no-print { display: none !important; }
                     table { border-collapse: collapse; width: 100%; }
                     th, td { border: 1px solid #000; padding: 8px; text-align: left; }
-                    th { background-color: #f3f4f6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    th {
+                        background-color: #f3f4f6 !important;
+                        color: #000 !important;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
+                    thead {
+                        background: #f3f4f6 !important;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
                 }
             `}</style>
 
@@ -127,17 +137,17 @@ export default function AdvisoryGrades({ advisorySection, subjects, schoolYears,
                             </div>
                             <div className="overflow-x-auto">
                                 <table className="w-full min-w-[700px]">
-                                    <thead className={teacherTableHeaderClass}>
+                                    <thead className="bg-gradient-to-r from-blue-900 via-blue-800 to-blue-900">
                                         <tr>
-                                            <th className={teacherTableHeaderCellClass}>No.</th>
-                                            <th className={teacherTableHeaderCellClass}>LRN</th>
-                                            <th className={teacherTableHeaderCellClass}>Student Name</th>
-                                            <th className={teacherTableHeaderCellCenterClass}>Q1</th>
-                                            <th className={teacherTableHeaderCellCenterClass}>Q2</th>
-                                            <th className={teacherTableHeaderCellCenterClass}>Q3</th>
-                                            <th className={teacherTableHeaderCellCenterClass}>Q4</th>
-                                            <th className={teacherTableHeaderCellCenterClass}>Final</th>
-                                            <th className={teacherTableHeaderCellCenterClass}>Remarks</th>
+                                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-blue-100 uppercase tracking-wider">No.</th>
+                                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-blue-100 uppercase tracking-wider">LRN</th>
+                                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-semibold text-blue-100 uppercase tracking-wider">Student Name</th>
+                                            <th className="px-3 sm:px-6 py-3 text-center text-xs font-semibold text-blue-100 uppercase tracking-wider">Q1</th>
+                                            <th className="px-3 sm:px-6 py-3 text-center text-xs font-semibold text-blue-100 uppercase tracking-wider">Q2</th>
+                                            <th className="px-3 sm:px-6 py-3 text-center text-xs font-semibold text-blue-100 uppercase tracking-wider">Q3</th>
+                                            <th className="px-3 sm:px-6 py-3 text-center text-xs font-semibold text-blue-100 uppercase tracking-wider">Q4</th>
+                                            <th className="px-3 sm:px-6 py-3 text-center text-xs font-semibold text-blue-100 uppercase tracking-wider">Final</th>
+                                            <th className="px-3 sm:px-6 py-3 text-center text-xs font-semibold text-blue-100 uppercase tracking-wider">Remarks</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-200">

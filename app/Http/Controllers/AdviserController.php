@@ -42,6 +42,18 @@ class AdviserController extends Controller
             return redirect()->route('login.teacher')->withErrors(['error' => 'Teacher profile not found.']);
         }
 
+        // Only bounce them out of the adviser portal entirely if they've never
+        // been assigned as an adviser at all. If they HAVE an assignment (just
+        // not for the currently-selected year), let the page render an empty
+        // state instead of redirecting away.
+        $hasAnyAssignment = AdviserSection::where('teacher_id', $teacher->id)->exists();
+
+        if (!$hasAnyAssignment) {
+            return redirect()
+                ->route('teacher.dashboard')
+                ->withErrors(['error' => 'You are not assigned as a class adviser.']);
+        }
+
         $schoolYear = $this->currentSchoolYear($request->input('school_year'));
 
         $adviserSection = AdviserSection::where('teacher_id', $teacher->id)
@@ -49,12 +61,9 @@ class AdviserController extends Controller
             ->with(['classSection.gradeLevel'])
             ->first();
 
-        if (!$adviserSection) {
-            return redirect()
-                ->route('teacher.dashboard')
-                ->withErrors(['error' => 'You are not assigned as a class adviser for the selected school year.']);
-        }
-
+        // $adviserSection may be null here — that's expected when the teacher
+        // isn't advising a section for the selected year. Each page below
+        // decides how to render that (empty state, not a redirect).
         return [$teacher, $adviserSection, $schoolYear];
     }
 
@@ -75,7 +84,7 @@ class AdviserController extends Controller
         $allYears = array_unique(array_merge($generatedYears, $dbSchoolYears));
         rsort($allYears);
 
-        return collect($allYears)->map(fn ($year) => [
+        return collect($allYears)->map(fn($year) => [
             'value' => $year,
             'label' => $year,
         ]);
@@ -106,7 +115,7 @@ class AdviserController extends Controller
             ->distinct()
             ->orderBy('tbl_subjects.name')
             ->get()
-            ->map(fn ($subject) => [
+            ->map(fn($subject) => [
                 'id' => $subject->id,
                 'name' => $subject->name,
                 'subject_code' => $subject->subject_code,
@@ -124,6 +133,20 @@ class AdviserController extends Controller
         }
 
         [$teacher, $adviserSection, $schoolYear] = $context;
+
+        if (!$adviserSection) {
+            return Inertia::render('adviser/dashboard/page', [
+                'stats' => [
+                    'totalStudents' => 0,
+                    'subjectsCount' => 0,
+                    'clearedStudents' => 0,
+                    'currentSchoolYear' => $schoolYear,
+                ],
+                'advisorySection' => null,
+                'noAssignment' => true,
+            ]);
+        }
+
         $section = $this->mapAdvisorySection($adviserSection);
         $sectionId = $section['id'];
 
@@ -152,6 +175,7 @@ class AdviserController extends Controller
                 'currentSchoolYear' => $schoolYear,
             ],
             'advisorySection' => $section,
+            'noAssignment' => false,
         ]);
     }
 
@@ -164,8 +188,23 @@ class AdviserController extends Controller
         }
 
         [$teacher, $adviserSection, $schoolYear] = $context;
-        $section = $this->mapAdvisorySection($adviserSection);
         $perPage = (int) $request->input('per_page', 10);
+
+        if (!$adviserSection) {
+            return Inertia::render('adviser/class-list/page', [
+                'advisorySection' => null,
+                'schoolYears' => $this->getSchoolYears(),
+                'students' => [],
+                'pagination' => null,
+                'filters' => [
+                    'school_year' => $schoolYear,
+                    'per_page' => $perPage,
+                ],
+                'noAssignment' => true,
+            ]);
+        }
+
+        $section = $this->mapAdvisorySection($adviserSection);
 
         $paginated = Student::where('current_section_id', $section['id'])
             ->where('school_year', $schoolYear)
@@ -197,6 +236,7 @@ class AdviserController extends Controller
                 'school_year' => $schoolYear,
                 'per_page' => $perPage,
             ],
+            'noAssignment' => false,
         ]);
     }
 
@@ -209,110 +249,153 @@ class AdviserController extends Controller
         }
 
         [$teacher, $adviserSection, $schoolYear] = $context;
+        $search = trim((string) $request->input('search', ''));
+        $studentId = $request->input('student_id');
+        $perPage = (int) $request->input('per_page', 10);
+
+        if (!$adviserSection) {
+            return Inertia::render('adviser/advisory-clearance/page', [
+                'advisorySection' => null,
+                'students' => [],
+                'pagination' => null,
+                'stats' => ['total' => 0, 'cleared' => 0, 'pending' => 0, 'not_cleared' => 0],
+                'schoolYears' => $this->getSchoolYears(),
+                'selectedStudent' => null,
+                'subjectClearances' => [],
+                'filters' => [
+                    'school_year' => $schoolYear,
+                    'search' => $search,
+                    'student_id' => null,
+                    'per_page' => $perPage,
+                ],
+                'noAssignment' => true,
+            ]);
+        }
+
         $section = $this->mapAdvisorySection($adviserSection);
         $sectionId = $section['id'];
 
-        $subjectId = $request->input('subject_id');
-        $search = trim((string) $request->input('search', ''));
-        $status = $request->input('status', 'all');
-        $perPage = (int) $request->input('per_page', 10);
+        $sectionSubjects = collect($this->getSectionSubjects($sectionId));
+        $totalSubjects = $sectionSubjects->count();
 
-        $subjects = collect($this->getSectionSubjects($sectionId))->map(function ($subject) use ($section) {
+        $allClearances = Clearance::where('class_section_id', $sectionId)
+            ->where('school_year', $schoolYear)
+            ->get()
+            ->groupBy('student_id');
+
+        $overallStatusFor = function ($clearancesForStudent) use ($totalSubjects) {
+            $clearancesForStudent = $clearancesForStudent ?? collect();
+            $hasNotCleared = $clearancesForStudent->contains(fn($c) => $c->status === 'not_cleared');
+            $clearedCount = $clearancesForStudent->where('status', 'cleared')->count();
+
+            if ($hasNotCleared) {
+                return 'not_cleared';
+            }
+
+            if ($totalSubjects > 0 && $clearedCount >= $totalSubjects) {
+                return 'cleared';
+            }
+
+            return 'pending';
+        };
+
+        $allStudentIds = Student::where('current_section_id', $sectionId)
+            ->where('school_year', $schoolYear)
+            ->pluck('id');
+
+        $stats = ['total' => $allStudentIds->count(), 'cleared' => 0, 'pending' => 0, 'not_cleared' => 0];
+        foreach ($allStudentIds as $sid) {
+            $status = $overallStatusFor($allClearances->get($sid));
+            $stats[$status]++;
+        }
+
+        $query = Student::where('current_section_id', $sectionId)
+            ->where('school_year', $schoolYear)
+            ->with('profilePicture');
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('lrn', 'like', "%{$search}%");
+            });
+        }
+
+        $paginated = $query->orderBy('last_name')->paginate($perPage);
+
+        $students = collect($paginated->items())->map(function ($student) use ($allClearances, $overallStatusFor) {
             return [
-                'id' => $subject['id'],
-                'subject_name' => $subject['name'],
-                'subject_code' => $subject['subject_code'],
-                'grade_level' => $section['grade_level_name'],
-                'section' => $section['name'],
-                'section_id' => $section['id'],
+                'id' => $student->id,
+                'student_id' => $student->lrn,
+                'firstName' => $student->first_name,
+                'lastName' => $student->last_name,
+                'middleName' => $student->middle_name ?? null,
+                'profile_picture' => $student->profilePicture
+                    ? asset('storage/' . $student->profilePicture->file_path)
+                    : null,
+                'overall_status' => $overallStatusFor($allClearances->get($student->id)),
             ];
         })->values();
 
-        $students = collect();
-        $pagination = null;
-        $stats = ['total' => 0, 'cleared' => 0, 'pending' => 0, 'not_cleared' => 0];
+        $pagination = [
+            'current_page' => $paginated->currentPage(),
+            'last_page' => $paginated->lastPage(),
+            'per_page' => $paginated->perPage(),
+            'total' => $paginated->total(),
+        ];
 
-        if ($subjectId) {
-            $clearances = Clearance::where('subject_id', $subjectId)
-                ->where('class_section_id', $sectionId)
+        $selectedStudent = null;
+        $subjectClearances = [];
+
+        if ($studentId) {
+            $student = Student::where('id', $studentId)
+                ->where('current_section_id', $sectionId)
                 ->where('school_year', $schoolYear)
-                ->get()
-                ->keyBy('student_id');
+                ->first();
 
-            $allIds = Student::where('current_section_id', $sectionId)
-                ->where('school_year', $schoolYear)
-                ->pluck('id');
+            if ($student) {
+                $studentClearances = Clearance::where('student_id', $studentId)
+                    ->where('class_section_id', $sectionId)
+                    ->where('school_year', $schoolYear)
+                    ->get()
+                    ->keyBy('subject_id');
 
-            foreach ($allIds as $id) {
-                $clearanceStatus = $clearances->get($id)?->status ?? 'pending';
-                $stats['total']++;
-                $stats[$clearanceStatus] = ($stats[$clearanceStatus] ?? 0) + 1;
-            }
+                $subjectClearances = $sectionSubjects->map(function ($subject) use ($studentClearances) {
+                    $clearance = $studentClearances->get($subject['id']);
 
-            $query = Student::where('current_section_id', $sectionId)
-                ->where('school_year', $schoolYear)
-                ->with(['gradeLevel', 'section', 'profilePicture']);
+                    return [
+                        'subject_id' => $subject['id'],
+                        'subject_name' => $subject['name'],
+                        'subject_code' => $subject['subject_code'],
+                        'status' => $clearance?->status ?? 'pending',
+                    ];
+                })->values();
 
-            if ($search !== '') {
-                $query->where(function ($q) use ($search) {
-                    $q->where('first_name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%")
-                        ->orWhere('lrn', 'like', "%{$search}%");
-                });
-            }
-
-            if ($status !== 'all') {
-                $matchingIds = $clearances->filter(fn ($c) => $c->status === $status)->pluck('student_id');
-                if ($status === 'pending') {
-                    $nonPendingIds = $clearances->filter(fn ($c) => $c->status !== 'pending')->pluck('student_id');
-                    $query->where(fn ($q) => $q->whereIn('id', $matchingIds)->orWhereNotIn('id', $nonPendingIds));
-                } else {
-                    $query->whereIn('id', $matchingIds);
-                }
-            }
-
-            $paginated = $query->orderBy('last_name')->paginate($perPage);
-
-            $students = collect($paginated->items())->map(function ($student) use ($clearances) {
-                $clearance = $clearances->get($student->id);
-
-                return [
+                $selectedStudent = [
                     'id' => $student->id,
                     'student_id' => $student->lrn,
                     'firstName' => $student->first_name,
                     'lastName' => $student->last_name,
                     'middleName' => $student->middle_name ?? null,
-                    'grade_level' => $student->gradeLevel?->name ?? 'N/A',
-                    'section' => $student->section?->section_name ?? 'N/A',
-                    'clearance_status' => $clearance?->status ?? 'pending',
-                    'profile_picture' => $student->profilePicture
-                        ? asset('storage/' . $student->profilePicture->file_path)
-                        : null,
                 ];
-            })->values();
-
-            $pagination = [
-                'current_page' => $paginated->currentPage(),
-                'last_page' => $paginated->lastPage(),
-                'per_page' => $paginated->perPage(),
-                'total' => $paginated->total(),
-            ];
+            }
         }
 
         return Inertia::render('adviser/advisory-clearance/page', [
             'advisorySection' => $section,
-            'subjects' => $subjects,
             'students' => $students,
-            'stats' => $stats,
             'pagination' => $pagination,
+            'stats' => $stats,
             'schoolYears' => $this->getSchoolYears(),
+            'selectedStudent' => $selectedStudent,
+            'subjectClearances' => $subjectClearances,
             'filters' => [
-                'subject_id' => $subjectId ? (int) $subjectId : null,
                 'school_year' => $schoolYear,
                 'search' => $search,
-                'status' => $status,
+                'student_id' => $studentId ? (int) $studentId : null,
                 'per_page' => $perPage,
             ],
+            'noAssignment' => false,
         ]);
     }
 
@@ -325,10 +408,27 @@ class AdviserController extends Controller
         }
 
         [$teacher, $adviserSection, $schoolYear] = $context;
-        $section = $this->mapAdvisorySection($adviserSection);
-        $sectionId = $section['id'];
         $subjectId = $request->input('subject_id');
         $perPage = (int) $request->input('per_page', 10);
+
+        if (!$adviserSection) {
+            return Inertia::render('adviser/advisory-grades/page', [
+                'advisorySection' => null,
+                'subjects' => [],
+                'schoolYears' => $this->getSchoolYears(),
+                'students' => [],
+                'pagination' => null,
+                'filters' => [
+                    'subject_id' => $subjectId ? (int) $subjectId : null,
+                    'school_year' => $schoolYear,
+                    'per_page' => $perPage,
+                ],
+                'noAssignment' => true,
+            ]);
+        }
+
+        $section = $this->mapAdvisorySection($adviserSection);
+        $sectionId = $section['id'];
 
         $subjects = $this->getSectionSubjects($sectionId);
         $students = [];
@@ -397,6 +497,7 @@ class AdviserController extends Controller
                 'school_year' => $schoolYear,
                 'per_page' => $perPage,
             ],
+            'noAssignment' => false,
         ]);
     }
 
@@ -409,6 +510,11 @@ class AdviserController extends Controller
         }
 
         [$teacher, $adviserSection, $schoolYear] = $context;
+
+        if (!$adviserSection) {
+            return back()->withErrors(['error' => 'You are not assigned as a class adviser for the selected school year.']);
+        }
+
         $sectionId = $adviserSection->class_section_id;
 
         $validated = $request->validate([

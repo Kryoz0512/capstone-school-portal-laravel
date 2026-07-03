@@ -21,15 +21,15 @@ export function AdviserSidebarContent({ onNavigate }: { onNavigate?: () => void 
     const isActive = (path: string) => getCurrentPath() === path
 
     return (
-        <div className="flex flex-col h-full text-white bg-gradient-to-b from-emerald-900 via-emerald-800 to-emerald-900">
-            <div className="p-6 bg-gradient-to-r from-emerald-800/50 to-emerald-700/30 border-b border-emerald-700/50">
+        <div className="flex flex-col h-full text-white bg-gradient-to-b from-blue-900 via-blue-800 to-blue-900">
+            <div className="p-6 bg-gradient-to-r from-blue-800/50 to-blue-700/30 border-b border-blue-700/50">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg shrink-0">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shrink-0">
                         <ShieldCheck className="w-5 h-5 text-white" />
                     </div>
                     <div>
                         <h2 className="text-lg font-bold text-white tracking-wide">Adviser Portal</h2>
-                        <p className="text-xs text-emerald-200">Advisory Class Only</p>
+                        <p className="text-xs text-blue-200">Advisory Class Only</p>
                     </div>
                 </div>
             </div>
@@ -42,12 +42,12 @@ export function AdviserSidebarContent({ onNavigate }: { onNavigate?: () => void 
                         onClick={onNavigate}
                         className={`flex items-center gap-3 px-4 py-3 mb-1 rounded-xl transition-all duration-300 group ${
                             isActive(href)
-                                ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 shadow-lg shadow-emerald-500/30'
-                                : 'text-emerald-100 hover:bg-emerald-700/50 hover:translate-x-1'
+                                ? 'bg-gradient-to-r from-blue-600 to-blue-500 shadow-lg shadow-blue-500/30'
+                                : 'text-blue-100 hover:bg-blue-700/50 hover:translate-x-1'
                         }`}
                     >
                         <div className={`p-2 rounded-lg transition-all duration-300 ${
-                            isActive(href) ? 'bg-white/20' : 'bg-emerald-700/30 group-hover:bg-emerald-600/40'
+                            isActive(href) ? 'bg-white/20' : 'bg-blue-700/30 group-hover:bg-blue-600/40'
                         }`}>
                             <Icon className="w-4 h-4" />
                         </div>
@@ -56,13 +56,13 @@ export function AdviserSidebarContent({ onNavigate }: { onNavigate?: () => void 
                 ))}
             </nav>
 
-            <div className="p-3 border-t border-emerald-700/50">
+            <div className="p-3 border-t border-blue-700/50">
                 <Link
                     href="/teacher/dashboard"
                     onClick={onNavigate}
-                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-emerald-100 hover:bg-emerald-700/50 transition-colors"
+                    className="flex items-center gap-3 px-4 py-3 rounded-xl text-blue-100 hover:bg-blue-700/50 transition-colors"
                 >
-                    <div className="p-2 rounded-lg bg-emerald-700/30">
+                    <div className="p-2 rounded-lg bg-blue-700/30">
                         <BookOpen className="w-4 h-4" />
                     </div>
                     <span className="font-medium text-sm">Teacher Portal</span>
@@ -74,7 +74,7 @@ export function AdviserSidebarContent({ onNavigate }: { onNavigate?: () => void 
 
 export default function AdviserSidebar() {
     return (
-        <aside className="hidden lg:flex w-72 shrink-0 fixed left-0 top-0 h-screen flex-col shadow-2xl border-r border-emerald-700/50 z-30">
+        <aside className="hidden lg:flex w-72 shrink-0 fixed left-0 top-0 h-screen flex-col shadow-2xl border-r border-blue-700/50 z-30">
             <AdviserSidebarContent />
         </aside>
     )

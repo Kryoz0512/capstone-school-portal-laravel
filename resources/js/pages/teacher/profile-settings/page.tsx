@@ -23,12 +23,26 @@ export default function ProfileSettings({ teacher, auth }: Props) {
     const videoRef = useRef<HTMLVideoElement>(null)
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const streamRef = useRef<MediaStream | null>(null)
+    const [showPasswordSuccessDialog, setShowPasswordSuccessDialog] = useState(false)
 
     const profileForm = useForm({ firstName: teacher.firstName, lastName: teacher.lastName, phone: teacher.phone, address: teacher.address })
     const passwordForm = useForm({ current_password: '', new_password: '', new_password_confirmation: '' })
 
     const handleProfileSubmit = (e: React.FormEvent) => { e.preventDefault(); profileForm.put('/teacher/profile-settings', { preserveScroll: true }) }
-    const handlePasswordSubmit = (e: React.FormEvent) => { e.preventDefault(); passwordForm.put('/teacher/profile-settings/password', { preserveScroll: true, onSuccess: () => passwordForm.reset() }) }
+    const handlePasswordSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        passwordForm.put('/teacher/profile-settings/password', {
+            preserveScroll: true,
+            onSuccess: () => {
+                passwordForm.reset()
+                setShowPasswordSuccessDialog(true)
+            },
+        })
+    }
+
+    const handleLogoutAfterPasswordChange = () => {
+        router.post('/logout')
+    }
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -90,6 +104,14 @@ export default function ProfileSettings({ teacher, auth }: Props) {
         document.addEventListener('mousedown', handler)
         return () => document.removeEventListener('mousedown', handler)
     }, [showUploadOptions])
+
+    useEffect(() => {
+        if (!showPasswordSuccessDialog) return
+        const timer = setTimeout(() => {
+            router.post('/logout')
+        }, 3000)
+        return () => clearTimeout(timer)
+    }, [showPasswordSuccessDialog])
 
     return (
         <TeacherLayout user={auth?.user}>
@@ -228,6 +250,28 @@ export default function ProfileSettings({ teacher, auth }: Props) {
                             <Button variant="outline" onClick={() => { stopCamera(); setShowCameraDialog(false) }}><X className="w-4 h-4 mr-2" />Cancel</Button>
                             <Button onClick={capturePhoto} disabled={!isCameraActive} className="bg-green-600 hover:bg-green-700 text-white"><Camera className="w-4 h-4 mr-2" />Capture Photo</Button>
                         </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+            <Dialog open={showPasswordSuccessDialog} onOpenChange={(open) => { if (!open) handleLogoutAfterPasswordChange() }}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <div className="flex items-center justify-center mb-4">
+                            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                            </div>
+                        </div>
+                        <DialogTitle className="text-center text-xl">Password Changed Successfully!</DialogTitle>
+                        <DialogDescription className="text-center">
+                            For your security, you'll be logged out now. Please sign in again using your new password.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex justify-center mt-4">
+                        <Button onClick={handleLogoutAfterPasswordChange} className="bg-green-600 hover:bg-green-700 text-white">
+                            Log In Again
+                        </Button>
                     </div>
                 </DialogContent>
             </Dialog>

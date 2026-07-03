@@ -74,13 +74,13 @@ export default function AdviserHeader({ user, teacher }: HeaderProps) {
                                 <Menu className="w-5 h-5" />
                             </Button>
                         </SheetTrigger>
-                        <SheetContent side="left" className="p-0 w-72 border-r border-emerald-700/50 [&>button]:text-white [&>button]:top-4 [&>button]:right-4">
+                        <SheetContent side="left" className="p-0 w-72 border-r border-blue-700/50 [&>button]:text-white [&>button]:top-4 [&>button]:right-4">
                             <AdviserSidebarContent onNavigate={() => setSheetOpen(false)} />
                         </SheetContent>
                     </Sheet>
                     <div className="hidden sm:block">
                         <p className="text-sm text-gray-500">{currentDate}</p>
-                        <p className="text-xs text-emerald-700 font-medium truncate">{advisoryLabel}</p>
+                        <p className="text-xs text-blue-700 font-medium truncate">{advisoryLabel}</p>
                     </div>
                 </div>
 
@@ -99,16 +99,16 @@ export default function AdviserHeader({ user, teacher }: HeaderProps) {
                                 <div className="p-4 border-b border-gray-200 flex items-center justify-between">
                                     <h3 className="font-semibold text-gray-900">Notifications</h3>
                                     {unreadCount > 0 && (
-                                        <button onClick={() => markAllAsRead()} className="text-xs text-emerald-600 hover:text-emerald-700 font-medium">
+                                        <button onClick={() => markAllAsRead()} className="text-xs text-blue-600 hover:text-blue-700 font-medium">
                                             Mark all as read
                                         </button>
                                     )}
                                 </div>
                                 <div className="overflow-y-auto flex-1">
                                     {notifications.length > 0 ? notifications.map(n => (
-                                        <button key={n.id} onClick={() => handleNotificationClick(n)} className={`w-full text-left p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors ${!n.is_read ? 'bg-emerald-50' : ''}`}>
+                                        <button key={n.id} onClick={() => handleNotificationClick(n)} className={`w-full text-left p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors ${!n.is_read ? 'bg-blue-50' : ''}`}>
                                             <div className="flex items-start gap-3">
-                                                <div className={`w-2 h-2 rounded-full mt-1 ${!n.is_read ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                                                <div className={`w-2 h-2 rounded-full mt-1 ${!n.is_read ? 'bg-blue-500' : 'bg-gray-300'}`} />
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-sm font-medium text-gray-900 truncate">{n.title}</p>
                                                     <p className="text-sm text-gray-600 truncate">{n.message}</p>
@@ -130,9 +130,9 @@ export default function AdviserHeader({ user, teacher }: HeaderProps) {
                     <div className="relative" ref={dropdownRef}>
                         <button onClick={() => setIsDropdownOpen(!isDropdownOpen)} className="flex items-center gap-2 sm:gap-3 px-2 sm:px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors">
                             {profilePicture ? (
-                                <img src={profilePicture} alt="Profile" className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-emerald-600" />
+                                <img src={profilePicture} alt="Profile" className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover border-2 border-blue-600" />
                             ) : (
-                                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-emerald-600 rounded-full flex items-center justify-center shrink-0">
+                                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-600 rounded-full flex items-center justify-center shrink-0">
                                     <User className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
                                 </div>
                             )}
@@ -148,9 +148,9 @@ export default function AdviserHeader({ user, teacher }: HeaderProps) {
                                     <User className="w-4 h-4 text-gray-600" />
                                     <span className="text-sm text-gray-700">Profile</span>
                                 </Link>
-                                <Link href="/teacher/dashboard" className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 transition-colors">
+                                {/* <Link href="/teacher/dashboard" className="flex items-center gap-3 px-4 py-2 hover:bg-gray-100 transition-colors">
                                     <span className="text-sm text-gray-700">Teacher Portal</span>
-                                </Link>
+                                </Link> */}
                                 <div className="border-t border-gray-200 my-2" />
                                 <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-2 hover:bg-red-50 transition-colors text-left">
                                     <LogOut className="w-4 h-4 text-red-600" />

@@ -40,7 +40,7 @@ const TAB_OPTIONS = [
     { value: 'all', label: 'All' },
     { value: 'teacher', label: 'Teachers' },
     { value: 'admin', label: 'Admins' },
-    { value: 'student', label: 'Students' },
+    // { value: 'student', label: 'Students' },
     { value: 'subject', label: 'Subjects' },
     { value: 'room', label: 'Rooms' },
 ]
@@ -86,6 +86,11 @@ function getTypeBadgeClass(type: string) {
         case 'Room': return 'bg-cyan-100 text-cyan-800 hover:bg-cyan-100'
         default: return 'bg-gray-100 text-gray-800 hover:bg-gray-100'
     }
+}
+
+/** Tabs whose records don't have a meaningful email (Subjects, Rooms). */
+function tabHasEmailColumn(tabValue: string): boolean {
+    return tabValue !== 'subject' && tabValue !== 'room'
 }
 
 export default function ArchivePage({ auth, archives = [], counts = {}, currentTab = 'all' }: Props) {
@@ -224,6 +229,7 @@ export default function ArchivePage({ auth, archives = [], counts = {}, currentT
                                 }}
                                 onRestore={setRestoreTarget}
                                 onForceDelete={setDeleteTarget}
+                                showEmailColumn={tabHasEmailColumn(tab.value)}
                             />
                         </TabsContent>
                     ))}
@@ -266,6 +272,7 @@ function ArchiveTable({
     onItemsPerPageChange,
     onRestore,
     onForceDelete,
+    showEmailColumn = true,
 }: {
     archives: ArchiveItem[]
     totalCount: number
@@ -276,6 +283,7 @@ function ArchiveTable({
     onItemsPerPageChange: (value: number) => void
     onRestore: (item: ArchiveItem) => void
     onForceDelete: (item: ArchiveItem) => void
+    showEmailColumn?: boolean
 }) {
     return (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
@@ -285,7 +293,9 @@ function ArchiveTable({
                         <tr>
                             <th className="px-6 py-3 text-left text-sm font-medium text-white">Type</th>
                             <th className="px-6 py-3 text-left text-sm font-medium text-white">Deleted Item</th>
-                            <th className="px-6 py-3 text-left text-sm font-medium text-white">Email</th>
+                            {showEmailColumn && (
+                                <th className="px-6 py-3 text-left text-sm font-medium text-white">Email</th>
+                            )}
                             <th className="px-6 py-3 text-left text-sm font-medium text-white">Archived By</th>
                             <th className="px-6 py-3 text-left text-sm font-medium text-white">Archived At</th>
                             <th className="px-6 py-3 text-left text-sm font-medium text-white">Actions</th>
@@ -302,7 +312,9 @@ function ArchiveTable({
                                         )}
                                     </td>
                                     <td className="px-6 py-4 text-sm text-gray-900">{archive.name}</td>
-                                    <td className="px-6 py-4 text-sm text-gray-600">{archive.email}</td>
+                                    {showEmailColumn && (
+                                        <td className="px-6 py-4 text-sm text-gray-600">{archive.email}</td>
+                                    )}
                                     <td className="px-6 py-4 text-sm text-gray-600">{archive.archived_by}</td>
                                     <td className="px-6 py-4 text-sm text-gray-600">{archive.archived_at}</td>
                                     <td className="px-6 py-4">
@@ -330,7 +342,10 @@ function ArchiveTable({
                             ))
                         ) : (
                             <tr>
-                                <td colSpan={6} className="px-6 py-8 text-center text-sm text-gray-500">
+                                <td
+                                    colSpan={showEmailColumn ? 6 : 5}
+                                    className="px-6 py-8 text-center text-sm text-gray-500"
+                                >
                                     No archived records found.
                                 </td>
                             </tr>

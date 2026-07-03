@@ -7,7 +7,6 @@ use App\Models\User;
 use App\Models\Student;
 use App\Models\Schedule;
 use App\Models\ActivityLog;
-use App\Models\Archive;
 use App\Models\ProfilePicture;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -319,36 +318,22 @@ class TeacherController extends Controller
         DB::beginTransaction();
 
         try {
-            // Archive the teacher data before deletion
-            Archive::create([
-                'archivable_type' => Teacher::class,
-                'archivable_id' => $teacher->id,
-                'data' => [
-                    'name' => $teacher->name,
-                    'email' => $teacher->user->email,
-                    'password' => $teacher->user->password, // Store hashed password
-                    'employee_number' => $teacher->employee_number,
-                    'subject' => $teacher->subject,
-                    'position' => $teacher->position,
-                    'phone' => $teacher->phone,
-                    'address' => $teacher->address,
-                ],
-                'archived_by' => Auth::id(),
-                'reason' => 'Deleted by admin',
+            $teacher->archiveWithMetadata('Deleted by admin');
+
+            ActivityLog::create([
+                'user_id' => Auth::id(),
+                'action' => 'archived',
+                'description' => 'Archived teacher: ' . $teacher->name,
+                'changes' => null,
             ]);
-
-            // Delete teacher record
-            $teacher->delete();
-
-            // Delete user account
-            $teacher->user->delete();
 
             DB::commit();
 
-            return redirect()->back()->with('success', 'Teacher deleted and archived successfully');
+            return redirect()->back()->with('success', 'Teacher archived successfully');
         } catch (\Exception $e) {
             DB::rollBack();
-            return back()->withErrors(['error' => 'Failed to delete teacher: ' . $e->getMessage()]);
+
+            return back()->withErrors(['error' => 'Failed to archive teacher: ' . $e->getMessage()]);
         }
     }
 

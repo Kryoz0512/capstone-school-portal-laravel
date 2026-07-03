@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\PreventsDirectDeletion;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Schedule extends Model
 {
-    use HasFactory;
+    use HasFactory, PreventsDirectDeletion, SoftDeletes;
 
     protected $table = 'tbl_schedules';
 
@@ -29,7 +31,6 @@ class Schedule extends Model
         ];
     }
 
-    // Relationships
     public function classSection()
     {
         return $this->belongsTo(ClassSection::class, 'class_section_id');
@@ -50,9 +51,6 @@ class Schedule extends Model
         return $this->belongsTo(Room::class, 'room_id');
     }
 
-    /**
-     * Get all grade sheets for this schedule (polymorphic).
-     */
     public function gradeSheets()
     {
         return $this->morphMany(GradeSheet::class, 'gradeable');

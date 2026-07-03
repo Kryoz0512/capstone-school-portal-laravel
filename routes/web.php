@@ -285,10 +285,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('admin/user-management/student', [StudentController::class, 'userManagement'])->name('admin.user-management.student');
     Route::put('admin/user-management/students/{student}/reset-password', [StudentController::class, 'resetPassword'])->name('admin.user-management.students.reset-password');
 
-    // Admin Archive routes
-    Route::get('admin/archive', [App\Http\Controllers\ArchiveController::class, 'index'])->name('admin.archive');
-    Route::post('admin/archive/{id}/restore', [App\Http\Controllers\ArchiveController::class, 'restore'])->name('admin.archive.restore');
-    Route::delete('admin/archive/{id}', [App\Http\Controllers\ArchiveController::class, 'destroy'])->name('admin.archive.destroy');
+    // Admin Archive routes (Super Admin only)
+    Route::middleware(App\Http\Middleware\EnsureSuperAdmin::class)->group(function () {
+        Route::get('admin/archive', [App\Http\Controllers\ArchiveController::class, 'index'])->name('admin.archive');
+        Route::post('admin/archive/{source}/{id}/restore', [App\Http\Controllers\ArchiveController::class, 'restore'])->name('admin.archive.restore');
+        Route::delete('admin/archive/{source}/{id}', [App\Http\Controllers\ArchiveController::class, 'destroy'])->name('admin.archive.destroy');
+    });
 
     // Admin Documents route
     Route::get('admin/documents', [DocumentController::class, 'index'])->name('admin.documents');

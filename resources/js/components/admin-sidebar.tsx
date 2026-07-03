@@ -370,7 +370,8 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                     <span className="font-medium">Documents</span>
                 </Link>
 
-                {/* Archive */}
+                {/* Archive — Super Admin only */}
+                {admin?.role === 'Super Admin' && (
                 <Link
                     href="/admin/archive"
                     className={`flex items-center gap-3 px-4 py-3 mb-1 rounded-xl transition-all duration-300 group ${
@@ -388,6 +389,7 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                     </div>
                     <span className="font-medium">Archive</span>
                 </Link>
+                )}
 
                 {/* Maintenance */}
                 <div className="mb-1">

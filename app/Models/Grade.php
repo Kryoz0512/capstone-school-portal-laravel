@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\ProtectsAcademicRecords;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Grade extends Model
 {
-    use HasFactory;
+    use HasFactory, ProtectsAcademicRecords;
 
     protected $table = 'tbl_grades';
 
@@ -36,7 +37,6 @@ class Grade extends Model
         ];
     }
 
-    // Relationships
     public function student()
     {
         return $this->belongsTo(Student::class, 'student_id');
@@ -54,6 +54,6 @@ class Grade extends Model
 
     public function teacher()
     {
-        return $this->belongsTo(Teacher::class, 'teacher_id');
+        return $this->belongsTo(Teacher::class, 'teacher_id')->withTrashed();
     }
 }

@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\PreventsDirectDeletion;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ProfilePicture extends Model
 {
-    use HasFactory;
+    use HasFactory, PreventsDirectDeletion, SoftDeletes;
 
     protected $table = 'tbl_profile_pictures';
 
@@ -20,9 +22,6 @@ class ProfilePicture extends Model
         'file_size',
     ];
 
-    /**
-     * Get the owning profileable model (Admin, Teacher, or Student).
-     */
     public function profileable()
     {
         return $this->morphTo();

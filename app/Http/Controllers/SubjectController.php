@@ -4,9 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Subject;
 use App\Models\GradeLevel;
-use App\Models\Archive;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class SubjectController extends Controller
@@ -90,23 +88,8 @@ class SubjectController extends Controller
 
     public function destroy(Subject $subject)
     {
-        // Archive the subject before deletion
-        Archive::create([
-            'archivable_type' => Subject::class,
-            'archivable_id' => $subject->id,
-            'data' => [
-                'code' => $subject->code,
-                'name' => $subject->name,
-                'description' => $subject->description,
-                'grade_level_id' => $subject->grade_level_id,
-                'grade_level' => $subject->gradeLevel ? $subject->gradeLevel->name : null,
-            ],
-            'archived_by' => Auth::id(),
-            'reason' => 'Subject deleted',
-        ]);
+        $subject->archiveWithMetadata('Subject deleted');
 
-        $subject->delete();
-
-        return redirect()->back()->with('success', 'Subject deleted successfully');
+        return redirect()->back()->with('success', 'Subject archived successfully');
     }
 }

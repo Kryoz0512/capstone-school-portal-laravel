@@ -2,123 +2,323 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Archive;
-use App\Models\Teacher;
 use App\Models\Admin;
-use App\Models\Student;
+use App\Models\Archive;
+use App\Models\Grade;
 use App\Models\Room;
+use App\Models\Student;
+use App\Models\Subject;
+use App\Models\Teacher;
 use App\Models\User;
+use App\Support\ArchiveAuthorization;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 
 class ArchiveController extends Controller
 {
+    /** @var array<string, class-string<\Illuminate\Database\Eloquent\Model>> */
+    private const ARCHIVABLE_MODELS = [
+        'teacher' => Teacher::class,
+        'admin' => Admin::class,
+        'student' => Student::class,
+        'subject' => Subject::class,
+        'room' => Room::class,
+    ];
+
     public function index(Request $request)
     {
-        $type = $request->input('type', 'all');
-        
-        $query = Archive::with('archivedBy');
-        
-        if ($type !== 'all') {
-            $query->where('archivable_type', $type);
-        }
-        
-        $archives = $query->orderBy('created_at', 'desc')->get()->map(function ($archive) {
-            $data = is_array($archive->data) ? $archive->data : json_decode($archive->data, true);
-            $type = class_basename($archive->archivable_type);
-            
-            // Determine the display name based on type
-            $name = '';
-            if ($type === 'Subject') {
-                $code = $data['code'] ?? '';
-                $subjectName = $data['name'] ?? '';
-                $name = $code && $subjectName ? "$code - $subjectName" : ($subjectName ?: $code);
-            } elseif ($type === 'Room') {
-                $roomNumber = $data['room_number'] ?? '';
-                $capacity = $data['capacity'] ?? '';
-                $name = $roomNumber ? "Room $roomNumber (Capacity: $capacity)" : 'Unknown Room';
-            } elseif (isset($data['name']) && !empty($data['name'])) {
-                $name = $data['name'];
-            } elseif (isset($data['first_name']) || isset($data['last_name'])) {
-                $firstName = $data['first_name'] ?? '';
-                $lastName = $data['last_name'] ?? '';
-                $name = trim("$firstName $lastName");
-            }
-            
-            if (empty($name)) {
-                $name = 'Unknown';
-            }
-            
-            return [
-                'id' => $archive->id,
-                'type' => $type,
-                'name' => $name,
-                'email' => $data['email'] ?? 'N/A',
-                'archived_by' => $archive->archivedBy ? $archive->archivedBy->name : 'Unknown',
-                'archived_at' => $archive->created_at->timezone('Asia/Manila')->format('M d, Y h:i A'),
-                'reason' => $archive->reason,
-                'data' => $data,
-            ];
-        });
-        
-        $admin = Admin::where('user_id', Auth::id())->first();
+        $tab = $request->input('tab', 'all');
+
+        $groups = $this->collectSoftDeletedRecords();
+        $legacyArchives = $this->collectLegacyArchives();
+
+        $allRecords = collect($groups)
+            ->flatten(1)
+            ->merge($legacyArchives)
+            ->sortByDesc('archived_at')
+            ->values();
+
+        $counts = [
+            'all' => $allRecords->count(),
+            'teacher' => $allRecords->where('type', 'Teacher')->count(),
+            'admin' => $allRecords->where('type', 'Admin')->count(),
+            'student' => $allRecords->where('type', 'Student')->count(),
+            'subject' => $allRecords->where('type', 'Subject')->count(),
+            'room' => $allRecords->where('type', 'Room')->count(),
+        ];
+
+        $filtered = $tab === 'all'
+            ? $allRecords
+            : $allRecords->filter(fn ($item) => strtolower($item['type']) === $tab)->values();
 
         return Inertia::render('admin/archive/page', [
-            'archives' => $archives,
-            'currentType' => $type,
+            'archives' => $filtered,
+            'counts' => $counts,
+            'currentTab' => $tab,
+            'isSuperAdmin' => true,
         ]);
     }
 
-    public function restore($id)
+    public function restore(Request $request, string $source, int $id)
     {
-        $archive = Archive::findOrFail($id);
-        
-        DB::beginTransaction();
-        
-        try {
-            $data = $archive->data;
-            $type = $archive->archivable_type;
-            
-            // Restore based on type
-            if ($type === 'App\\Models\\Teacher') {
-                $this->restoreTeacher($data);
-            } elseif ($type === 'App\\Models\\Admin') {
-                $this->restoreAdmin($data);
-            } elseif ($type === 'App\\Models\\Student') {
-                $this->restoreStudent($data);
-            } elseif ($type === 'App\\Models\\Subject') {
-                $this->restoreSubject($data);
-            } elseif ($type === 'App\\Models\\Room') {
-                $this->restoreRoom($data);
+        ArchiveAuthorization::authorizeSuperAdmin();
+
+        return DB::transaction(function () use ($source, $id) {
+            if ($source === 'legacy') {
+                $this->restoreLegacyArchive($id);
+            } else {
+                $this->restoreSoftDeletedRecord($source, $id);
             }
-            
-            // Delete from archive
-            $archive->delete();
-            
-            DB::commit();
-            
-            return redirect()->back()->with('success', 'Record restored successfully');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->withErrors(['error' => 'Failed to restore: ' . $e->getMessage()]);
-        }
+
+            return redirect()->back()->with('success', 'Record restored successfully.');
+        });
     }
 
-    private function restoreTeacher($data)
+    public function destroy(Request $request, string $source, int $id)
     {
-        // Restore user
+        ArchiveAuthorization::authorizeSuperAdmin();
+
+        return DB::transaction(function () use ($source, $id) {
+            if ($source === 'legacy') {
+                Archive::findOrFail($id)->delete();
+            } else {
+                $this->forceDeleteSoftDeletedRecord($source, $id);
+            }
+
+            return redirect()->back()->with('success', 'Record permanently deleted.');
+        });
+    }
+
+    private function collectSoftDeletedRecords(): array
+    {
+        return [
+            'teachers' => $this->mapSoftDeletedTeachers(),
+            'admins' => $this->mapSoftDeletedAdmins(),
+            'students' => $this->mapSoftDeletedStudents(),
+            'subjects' => $this->mapSoftDeletedSubjects(),
+            'rooms' => $this->mapSoftDeletedRooms(),
+        ];
+    }
+
+    private function mapSoftDeletedTeachers(): array
+    {
+        return Teacher::onlyTrashed()
+            ->whereNull('purged_at')
+            ->with(['user' => fn ($q) => $q->withTrashed(), 'archivedByUser'])
+            ->orderByDesc('deleted_at')
+            ->get()
+            ->map(fn (Teacher $teacher) => [
+                'id' => $teacher->id,
+                'source' => 'soft',
+                'type' => 'Teacher',
+                'name' => $teacher->name,
+                'email' => $teacher->user?->email ?? 'N/A',
+                'archived_by' => $teacher->archivedByUser?->name ?? 'Unknown',
+                'archived_at' => $teacher->deleted_at?->timezone('Asia/Manila')->format('M d, Y h:i A'),
+                'reason' => $teacher->archive_reason,
+                'has_academic_records' => $teacher->hasAcademicRecords(),
+            ])
+            ->all();
+    }
+
+    private function mapSoftDeletedAdmins(): array
+    {
+        return Admin::onlyTrashed()
+            ->whereNull('purged_at')
+            ->with(['user' => fn ($q) => $q->withTrashed(), 'archivedByUser'])
+            ->orderByDesc('deleted_at')
+            ->get()
+            ->map(fn (Admin $admin) => [
+                'id' => $admin->id,
+                'source' => 'soft',
+                'type' => 'Admin',
+                'name' => trim("{$admin->first_name} {$admin->last_name}"),
+                'email' => $admin->user?->email ?? 'N/A',
+                'archived_by' => $admin->archivedByUser?->name ?? 'Unknown',
+                'archived_at' => $admin->deleted_at?->timezone('Asia/Manila')->format('M d, Y h:i A'),
+                'reason' => $admin->archive_reason,
+                'has_academic_records' => false,
+            ])
+            ->all();
+    }
+
+    private function mapSoftDeletedStudents(): array
+    {
+        return Student::onlyTrashed()
+            ->whereNull('purged_at')
+            ->with(['user' => fn ($q) => $q->withTrashed(), 'archivedByUser'])
+            ->orderByDesc('deleted_at')
+            ->get()
+            ->map(fn (Student $student) => [
+                'id' => $student->id,
+                'source' => 'soft',
+                'type' => 'Student',
+                'name' => trim("{$student->first_name} {$student->last_name}"),
+                'email' => $student->user?->email ?? 'N/A',
+                'archived_by' => $student->archivedByUser?->name ?? 'Unknown',
+                'archived_at' => $student->deleted_at?->timezone('Asia/Manila')->format('M d, Y h:i A'),
+                'reason' => $student->archive_reason,
+                'has_academic_records' => Grade::where('student_id', $student->id)->exists(),
+            ])
+            ->all();
+    }
+
+    private function mapSoftDeletedSubjects(): array
+    {
+        return Subject::onlyTrashed()
+            ->whereNull('purged_at')
+            ->with('archivedByUser')
+            ->orderByDesc('deleted_at')
+            ->get()
+            ->map(fn (Subject $subject) => [
+                'id' => $subject->id,
+                'source' => 'soft',
+                'type' => 'Subject',
+                'name' => $subject->code && $subject->name
+                    ? "{$subject->code} - {$subject->name}"
+                    : ($subject->name ?: $subject->code),
+                'email' => 'N/A',
+                'archived_by' => $subject->archivedByUser?->name ?? 'Unknown',
+                'archived_at' => $subject->deleted_at?->timezone('Asia/Manila')->format('M d, Y h:i A'),
+                'reason' => $subject->archive_reason,
+                'has_academic_records' => Grade::where('subject_id', $subject->id)->exists(),
+            ])
+            ->all();
+    }
+
+    private function mapSoftDeletedRooms(): array
+    {
+        return Room::onlyTrashed()
+            ->whereNull('purged_at')
+            ->with('archivedByUser')
+            ->orderByDesc('deleted_at')
+            ->get()
+            ->map(fn (Room $room) => [
+                'id' => $room->id,
+                'source' => 'soft',
+                'type' => 'Room',
+                'name' => "Room {$room->room_name} (Capacity: {$room->capacity})",
+                'email' => 'N/A',
+                'archived_by' => $room->archivedByUser?->name ?? 'Unknown',
+                'archived_at' => $room->deleted_at?->timezone('Asia/Manila')->format('M d, Y h:i A'),
+                'reason' => $room->archive_reason,
+                'has_academic_records' => false,
+            ])
+            ->all();
+    }
+
+    private function collectLegacyArchives(): array
+    {
+        return Archive::with('archivedBy')
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function (Archive $archive) {
+                $data = is_array($archive->data) ? $archive->data : json_decode($archive->data, true);
+                $type = class_basename($archive->archivable_type);
+
+                return [
+                    'id' => $archive->id,
+                    'source' => 'legacy',
+                    'type' => $type,
+                    'name' => $this->resolveLegacyName($type, $data),
+                    'email' => $data['email'] ?? 'N/A',
+                    'archived_by' => $archive->archivedBy?->name ?? 'Unknown',
+                    'archived_at' => $archive->created_at->timezone('Asia/Manila')->format('M d, Y h:i A'),
+                    'reason' => $archive->reason,
+                    'has_academic_records' => false,
+                ];
+            })
+            ->all();
+    }
+
+    private function resolveLegacyName(string $type, array $data): string
+    {
+        if ($type === 'Subject') {
+            $code = $data['code'] ?? '';
+            $subjectName = $data['name'] ?? '';
+
+            return $code && $subjectName ? "$code - $subjectName" : ($subjectName ?: $code ?: 'Unknown');
+        }
+
+        if ($type === 'Room') {
+            $roomName = $data['room_name'] ?? $data['room_number'] ?? '';
+
+            return $roomName ? "Room {$roomName}" : 'Unknown Room';
+        }
+
+        if (! empty($data['name'])) {
+            return $data['name'];
+        }
+
+        $firstName = $data['first_name'] ?? '';
+        $lastName = $data['last_name'] ?? '';
+        $fullName = trim("$firstName $lastName");
+
+        return $fullName !== '' ? $fullName : 'Unknown';
+    }
+
+    private function restoreSoftDeletedRecord(string $type, int $id): void
+    {
+        $modelClass = self::ARCHIVABLE_MODELS[$type] ?? null;
+
+        if (! $modelClass) {
+            abort(404, 'Invalid archive type.');
+        }
+
+        /** @var Teacher|Admin|Student|Subject|Room $record */
+        $record = $modelClass::onlyTrashed()->findOrFail($id);
+
+        $record->purged_at = null;
+        $record->save();
+
+        if ($type === 'teacher') {
+            /** @var Teacher $record */
+            $record->restore();
+            // Grades remain untouched by design.
+            return;
+        }
+
+        $record->restore();
+    }
+
+    private function restoreLegacyArchive(int $id): void
+    {
+        $archive = Archive::findOrFail($id);
+        $data = $archive->data;
+        $type = $archive->archivable_type;
+
+        match ($type) {
+            Teacher::class => $this->restoreLegacyTeacher($data),
+            Admin::class => $this->restoreLegacyAdmin($data),
+            Student::class => $this->restoreLegacyStudent($data),
+            Subject::class => Subject::create([
+                'code' => $data['code'],
+                'name' => $data['name'],
+                'description' => $data['description'] ?? null,
+                'grade_level_id' => $data['grade_level_id'],
+            ]),
+            Room::class => Room::create([
+                'room_name' => $data['room_name'] ?? $data['room_number'] ?? '',
+                'capacity' => $data['capacity'],
+                'status' => $data['status'] ?? 'Active',
+            ]),
+            default => abort(422, 'Unsupported legacy archive type.'),
+        };
+
+        $archive->delete();
+    }
+
+    private function restoreLegacyTeacher(array $data): void
+    {
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => $data['password'],
             'role' => 'teacher',
-            'password_changed' => false, // Force password change on first login after restore
+            'password_changed' => false,
         ]);
-        
-        // Restore teacher
+
         Teacher::create([
             'user_id' => $user->id,
             'name' => $data['name'],
@@ -127,22 +327,19 @@ class ArchiveController extends Controller
             'position' => $data['position'],
             'phone' => $data['phone'] ?? null,
             'address' => $data['address'] ?? null,
-            'updated_by' => Auth::id(),
         ]);
     }
 
-    private function restoreAdmin($data)
+    private function restoreLegacyAdmin(array $data): void
     {
-        // Restore user
         $user = User::create([
-            'name' => $data['first_name'] . ' ' . $data['last_name'],
+            'name' => ($data['first_name'] ?? '') . ' ' . ($data['last_name'] ?? ''),
             'email' => $data['email'],
             'password' => $data['password'],
             'role' => 'admin',
-            'password_changed' => true, // Admins don't need to change password
+            'password_changed' => true,
         ]);
-        
-        // Restore admin
+
         Admin::create([
             'user_id' => $user->id,
             'first_name' => $data['first_name'],
@@ -152,58 +349,76 @@ class ArchiveController extends Controller
         ]);
     }
 
-    private function restoreStudent($data)
+    private function restoreLegacyStudent(array $data): void
     {
-        // Restore user
         $user = User::create([
-            'name' => $data['first_name'] . ' ' . $data['last_name'],
+            'name' => ($data['first_name'] ?? '') . ' ' . ($data['last_name'] ?? ''),
             'email' => $data['email'],
             'password' => $data['password'],
             'role' => 'student',
-            'password_changed' => false, // Force password change on first login after restore
+            'password_changed' => false,
         ]);
-        
-        // Restore student
+
         Student::create([
             'user_id' => $user->id,
             'lrn' => $data['lrn'],
             'first_name' => $data['first_name'],
             'last_name' => $data['last_name'],
             'middle_name' => $data['middle_name'] ?? null,
-            'date_of_birth' => $data['date_of_birth'] ?? null,
+            'birth_date' => $data['date_of_birth'] ?? $data['birth_date'] ?? null,
             'gender' => $data['gender'] ?? null,
-            'contact_number' => $data['contact_number'] ?? null,
             'current_section_id' => $data['current_section_id'] ?? null,
             'school_year' => $data['school_year'] ?? null,
         ]);
     }
 
-    private function restoreSubject($data)
+    private function forceDeleteSoftDeletedRecord(string $type, int $id): void
     {
-        // Restore subject
-        \App\Models\Subject::create([
-            'code' => $data['code'],
-            'name' => $data['name'],
-            'description' => $data['description'] ?? null,
-            'grade_level_id' => $data['grade_level_id'],
-        ]);
+        $modelClass = self::ARCHIVABLE_MODELS[$type] ?? null;
+
+        if (! $modelClass) {
+            abort(404, 'Invalid archive type.');
+        }
+
+        if ($type === 'teacher') {
+            $this->forceDeleteTeacher($id);
+
+            return;
+        }
+
+        /** @var Admin|Student|Subject|Room $record */
+        $record = $modelClass::onlyTrashed()->findOrFail($id);
+        $record->forceDelete();
     }
 
-    private function restoreRoom($data)
+    private function forceDeleteTeacher(int $id): void
     {
-        // Restore room
-        Room::create([
-            'room_number' => $data['room_number'],
-            'capacity' => $data['capacity'],
-            'status' => $data['status'] ?? 'Active',
-        ]);
-    }
+        /** @var Teacher $teacher */
+        $teacher = Teacher::onlyTrashed()->with(['user' => fn ($q) => $q->withTrashed()])->findOrFail($id);
+        $hasAcademicRecords = $teacher->hasAcademicRecords();
 
-    public function destroy($id)
-    {
-        $archive = Archive::findOrFail($id);
-        $archive->delete();
-        
-        return redirect()->back()->with('success', 'Archive permanently deleted');
+        $teacher->teacherSubjectRecords()->onlyTrashed()->get()->each->forceDelete();
+        $teacher->schedules()->onlyTrashed()->get()->each->forceDelete();
+        $teacher->adviserSections()->onlyTrashed()->get()->each->forceDelete();
+
+        if ($teacher->profilePicture()->withTrashed()->exists()) {
+            $teacher->profilePicture()->withTrashed()->first()?->forceDelete();
+        }
+
+        if ($teacher->user) {
+            $teacher->user->markDeletingFromCascade()->forceDelete();
+            $teacher->user_id = null;
+            $teacher->save();
+        }
+
+        if ($hasAcademicRecords) {
+            // Preserve teacher row and grade FK references for academic history.
+            $teacher->purged_at = now();
+            $teacher->save();
+
+            return;
+        }
+
+        $teacher->forceDelete();
     }
 }

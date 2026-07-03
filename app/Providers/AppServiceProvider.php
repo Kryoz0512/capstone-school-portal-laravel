@@ -25,6 +25,16 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureMorphMap();
+        $this->configureGates();
+    }
+
+    protected function configureGates(): void
+    {
+        \Illuminate\Support\Facades\Gate::define('manageArchive', function ($user) {
+            $admin = \App\Models\Admin::where('user_id', $user->id)->first();
+
+            return $admin !== null && $admin->role === 'Super Admin';
+        });
     }
 
     /**

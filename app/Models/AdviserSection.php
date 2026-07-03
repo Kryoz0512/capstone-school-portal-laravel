@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\PreventsDirectDeletion;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class AdviserSection extends Model
 {
-    use HasFactory;
+    use HasFactory, PreventsDirectDeletion, SoftDeletes;
 
     protected $table = 'tbl_adviser_section';
 
@@ -17,7 +19,6 @@ class AdviserSection extends Model
         'school_year',
     ];
 
-    // Relationships
     public function teacher()
     {
         return $this->belongsTo(Teacher::class, 'teacher_id');

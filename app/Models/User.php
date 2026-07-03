@@ -2,9 +2,10 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Traits\PreventsDirectDeletion;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
@@ -12,7 +13,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, TwoFactorAuthenticatable;
+    use HasFactory, Notifiable, PreventsDirectDeletion, SoftDeletes, TwoFactorAuthenticatable;
 
     protected $fillable = [
         'name',
@@ -22,6 +23,9 @@ class User extends Authenticatable
         'password_changed',
         'failed_login_attempts',
         'locked_until',
+        'archived_by',
+        'archive_reason',
+        'purged_at',
     ];
 
     protected $hidden = [
@@ -40,10 +44,10 @@ class User extends Authenticatable
             'password_changed'        => 'boolean',
             'failed_login_attempts'   => 'integer',
             'locked_until'            => 'datetime',
+            'purged_at'               => 'datetime',
         ];
     }
 
-    // Relationships
     public function student()
     {
         return $this->hasOne(Student::class, 'user_id');
@@ -59,7 +63,11 @@ class User extends Authenticatable
         return $this->hasOne(Admin::class, 'user_id');
     }
 
-    // Role helpers
+    public function archivedByUser()
+    {
+        return $this->belongsTo(self::class, 'archived_by');
+    }
+
     public function isStudent(): bool
     {
         return $this->role === 'student';

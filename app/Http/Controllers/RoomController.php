@@ -88,20 +88,8 @@ class RoomController extends Controller
     public function destroy($id)
     {
         $room = Room::findOrFail($id);
+        $room->archiveWithMetadata('Room deleted');
 
-        \App\Models\Archive::create([
-            'archivable_type' => Room::class,
-            'archivable_id' => $room->id,
-            'data' => json_encode([
-                'room_name' => $room->room_name,
-                'capacity' => $room->capacity,
-                'status' => $room->status,
-            ]),
-            'archived_by' => Auth::id(),
-        ]);
-
-        $room->delete();
-
-        return redirect()->back()->with('success', 'Room deleted successfully');
+        return redirect()->back()->with('success', 'Room archived successfully');
     }
 }

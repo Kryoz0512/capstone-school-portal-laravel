@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\PreventsDirectDeletion;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class StudentProfile extends Model
 {
-    use HasFactory;
+    use HasFactory, PreventsDirectDeletion, SoftDeletes;
 
     protected $table = 'tbl_student_profiles';
 
@@ -49,9 +51,6 @@ class StudentProfile extends Model
         'guardian_extension_name',
     ];
 
-    /**
-     * Get the student that owns the profile.
-     */
     public function student()
     {
         return $this->belongsTo(Student::class, 'profileable_id');

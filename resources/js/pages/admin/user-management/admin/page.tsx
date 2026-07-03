@@ -146,17 +146,12 @@ export default function AdminManagement({ admins, totalAdmins, filters, auth }: 
                                             <td className="px-6 py-4 text-sm text-gray-900">{admin.email}</td>
                                             <td className="px-6 py-4 text-sm text-gray-900">{admin.position}</td>
                                             <td className="px-6 py-4 text-center">
-                                                {admin.role === 'Super Admin' ? (
-                                                    <span className="text-xs text-gray-400">N/A</span>
-                                                ) : (
-                                                    <span
-                                                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                                            admin.can_add_teacher ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                                <span
+                                                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${admin.can_add_teacher ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                                                         }`}
-                                                    >
-                                                        {admin.can_add_teacher ? 'Yes' : 'No'}
-                                                    </span>
-                                                )}
+                                                >
+                                                    {admin.can_add_teacher ? 'Yes' : 'No'}
+                                                </span>
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-600">
                                                 {admin.updated_by && admin.updated_at ? (
@@ -173,9 +168,18 @@ export default function AdminManagement({ admins, totalAdmins, filters, auth }: 
                                                     <button className="text-gray-600 hover:text-green-600" onClick={() => handleEdit(admin)}>
                                                         <Pencil className="w-4 h-4" />
                                                     </button>
-                                                    <button className="text-gray-600 hover:text-red-600" onClick={() => handleDelete(admin)}>
-                                                        <Trash2 className="w-4 h-4" />
-                                                    </button>
+                                                    {admin.user_id === auth?.user.id ? (
+                                                        <span
+                                                            className="text-gray-300 cursor-not-allowed"
+                                                            title="You cannot delete your own account"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </span>
+                                                    ) : (
+                                                        <button className="text-gray-600 hover:text-red-600" onClick={() => handleDelete(admin)}>
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>

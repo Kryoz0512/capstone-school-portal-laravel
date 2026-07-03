@@ -28,6 +28,7 @@ class SuperAdminController extends Controller
         $perPage = (int) $request->input('per_page', 10);
 
         $admins = Admin::with(['user', 'updatedBy'])
+            ->where('role', '!=', 'Super Admin')
             ->orderBy('last_name')
             ->paginate($perPage)
             ->withQueryString()
@@ -48,7 +49,7 @@ class SuperAdminController extends Controller
                 ];
             });
 
-        $totalAdmins = Admin::count();
+        $totalAdmins = Admin::where('role', '!=', 'Super Admin')->count();
 
         return Inertia::render('admin/user-management/admin/page', [
             'admins' => $admins,
@@ -152,9 +153,12 @@ class SuperAdminController extends Controller
         // Get the admin record for the current user
         $currentAdmin = Admin::where('user_id', Auth::id())->first();
 
-        // Only super admins can update admins
         if (!$currentAdmin || $currentAdmin->role !== 'Super Admin') {
             abort(403, 'Unauthorized. Only super admins can update admin accounts.');
+        }
+
+        if ($admin->role === 'Super Admin') {
+            abort(403, 'Unauthorized. Cannot modify a Super Admin account here.');
         }
 
         $validated = $request->validate([
@@ -218,12 +222,18 @@ class SuperAdminController extends Controller
      */
     public function destroy(Admin $admin)
     {
-        // Get the admin record for the current user
         $currentAdmin = Admin::where('user_id', Auth::id())->first();
 
-        // Only super admins can delete admins
         if (!$currentAdmin || $currentAdmin->role !== 'Super Admin') {
             abort(403, 'Unauthorized. Only super admins can delete admin accounts.');
+        }
+
+        if ($admin->role === 'Super Admin') {
+            abort(403, 'Unauthorized. Cannot delete a Super Admin account here.');
+        }
+
+        if ($admin->user_id === Auth::id()) {
+            return back()->withErrors(['error' => 'You cannot delete your own admin account.']);
         }
 
         DB::beginTransaction();

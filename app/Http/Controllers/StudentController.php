@@ -1353,11 +1353,12 @@ class StudentController extends Controller
                 $gender = isset($values[6]) ? strtolower(trim((string) $values[6])) : null;
                 $studentStatus = isset($values[7]) ? strtolower(trim((string) $values[7])) : null;
                 $gradeLevelName = isset($values[8]) ? trim((string) $values[8]) : null;
-                $schoolYear = isset($values[9]) ? trim((string) $values[9]) : null;
-                $hasPsa = isset($values[10]) ? strtolower(trim((string) $values[10])) === 'submitted' : false;
-                $hasSf9 = isset($values[11]) ? strtolower(trim((string) $values[11])) === 'submitted' : false;
-                $hasReportCard = isset($values[12]) ? strtolower(trim((string) $values[12])) === 'submitted' : false;
-                $hasGoodMoral = isset($values[13]) ? strtolower(trim((string) $values[13])) === 'submitted' : false;
+                $sectionName = isset($values[9]) ? trim((string) $values[9]) : null;
+                $schoolYear = isset($values[10]) ? trim((string) $values[10]) : null;
+                $hasPsa = isset($values[11]) ? strtolower(trim((string) $values[11])) === 'submitted' : false;
+                $hasSf9 = isset($values[12]) ? strtolower(trim((string) $values[12])) === 'submitted' : false;
+                $hasReportCard = isset($values[13]) ? strtolower(trim((string) $values[13])) === 'submitted' : false;
+                $hasGoodMoral = isset($values[14]) ? strtolower(trim((string) $values[14])) === 'submitted' : false;
 
                 // Safely parse birth date whether it's a string or DateTimeImmutable
                 $birthDate = null;
@@ -1423,6 +1424,21 @@ class StudentController extends Controller
                     $gradeLevel = \App\Models\GradeLevel::where('name', 'Grade 7')->first();
                 }
 
+                // Resolve section if provided
+                $section = null;
+                if (!empty($sectionName)) {
+                    // Find section by name and grade level
+                    $section = \App\Models\ClassSection::where('section_name', $sectionName)
+                        ->where('grade_level_id', $gradeLevel?->id)
+                        ->first();
+                    
+                    if (!$section) {
+                        $errors[] = "'{$sectionName}' is not on the system.";
+                        $errorCount++;
+                        continue;
+                    }
+                }
+
                 DB::beginTransaction();
                 try {
                     $existingStudent = Student::where('lrn', $lrn)->first();
@@ -1441,6 +1457,7 @@ class StudentController extends Controller
                             $existingStudent->update([
                                 'school_year' => $schoolYear,
                                 'current_grade_level_id' => $gradeLevel?->id,
+                                'current_section_id' => $section?->id,
                                 'student_status' => 'returning',
                                 'has_psa_birth_certificate' => $hasPsa,
                                 'has_sf9' => $hasSf9,
@@ -1483,6 +1500,7 @@ class StudentController extends Controller
                         'gender' => $gender,
                         'birth_date' => $birthDate,
                         'current_grade_level_id' => $gradeLevel?->id,
+                        'current_section_id' => $section?->id,
                         'has_psa_birth_certificate' => $hasPsa,
                         'has_sf9' => $hasSf9,
                         'has_report_card' => $hasReportCard,
@@ -1565,6 +1583,7 @@ class StudentController extends Controller
                 'Gender',
                 'Student Status',
                 'Grade Level',
+                'Section',
                 'School Year',
                 'PSA Birth Certificate',
                 'Form 137 (SF10)',
@@ -1581,6 +1600,7 @@ class StudentController extends Controller
                 'male',
                 'new',
                 'Grade 7',
+                'Section A',
                 '2026-2027',
                 'Submitted',
                 'Not Submitted',
@@ -1597,6 +1617,7 @@ class StudentController extends Controller
                 'female',
                 'transferee',
                 'Grade 8',
+                'Section B',
                 '2026-2027',
                 'Submitted',
                 'Not Submitted',

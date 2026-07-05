@@ -10,36 +10,34 @@ class Announcement extends Model
     protected $fillable = [
         'title',
         'content',
-        'status',
         'created_by',
-        'approved_by',
-        'approved_at',
-        'rejection_reason',
+        'teacher_id',
+        'section_id',
+        'subject_id',
         'is_active',
     ];
 
     protected $casts = [
-        'approved_at' => 'datetime',
         'is_active' => 'boolean',
     ];
 
-    public function creator(): BelongsTo
+    public function teacher(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(Teacher::class, 'teacher_id');
     }
 
-    public function approver(): BelongsTo
+    public function section(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'approved_by');
+        return $this->belongsTo(ClassSection::class, 'section_id');
     }
 
-    public function scopeApproved($query)
+    public function subject(): BelongsTo
     {
-        return $query->where('status', 'approved')->where('is_active', true);
+        return $this->belongsTo(Subject::class, 'subject_id');
     }
 
-    public function scopePending($query)
+    public function scopeActive($query)
     {
-        return $query->where('status', 'pending');
+        return $query->where('is_active', true);
     }
 }

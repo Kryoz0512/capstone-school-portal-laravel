@@ -9,6 +9,7 @@ import {
     Users,
     File,
     ShieldCheck,
+    Megaphone,
 } from 'lucide-react'
 
 type SidebarProps = {
@@ -29,6 +30,7 @@ const navItems = [
     { href: '/teacher/dashboard',         label: 'Dashboard',         Icon: LayoutDashboard },
     { href: '/teacher/schedule',          label: 'Schedule',          Icon: Calendar },
     { href: '/teacher/class-list',        label: 'Class List',        Icon: Users },
+    { href: '/teacher/announcements',     label: 'Announcements',     Icon: Megaphone },
     { href: '/teacher/grade-sheets',      label: 'Grade Management',  Icon: FileSpreadsheet },
     { href: '/teacher/student-clearance', label: 'Student Clearance', Icon: GraduationCap },
     { href: '/teacher/documents',         label: 'Documents',         Icon: File },

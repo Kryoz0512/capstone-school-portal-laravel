@@ -120,6 +120,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Teacher routes
     Route::get('teacher/dashboard', [TeacherController::class, 'dashboard'])->name('teacher.dashboard');
 
+    // Teacher Announcements routes
+    Route::get('teacher/announcements', [AnnouncementController::class, 'index'])->name('teacher.announcements');
+    Route::post('teacher/announcements', [AnnouncementController::class, 'store'])->name('teacher.announcements.store');
+    Route::put('teacher/announcements/{announcement}', [AnnouncementController::class, 'update'])->name('teacher.announcements.update');
+    Route::delete('teacher/announcements/{announcement}', [AnnouncementController::class, 'destroy'])->name('teacher.announcements.destroy');
+    Route::post('teacher/announcements/{announcement}/toggle', [AnnouncementController::class, 'toggleActive'])->name('teacher.announcements.toggle');
+
     // Grade Management (unified grade sheets and final report)
     Route::get('teacher/grade-sheets', [App\Http\Controllers\GradeController::class, 'unifiedIndex'])->name('teacher.grade-sheets');
     Route::post('teacher/grade-sheets', [App\Http\Controllers\GradeController::class, 'store'])->name('teacher.grade-sheets.store');
@@ -308,15 +315,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('admin/maintenance/login-slides/{slide}', [App\Http\Controllers\LoginSlideController::class, 'destroy'])->name('admin.maintenance.login-slides.destroy');
     Route::post('admin/maintenance/login-slides/order', [App\Http\Controllers\LoginSlideController::class, 'updateOrder'])->name('admin.maintenance.login-slides.order');
     Route::post('admin/maintenance/login-slides/{slide}/toggle', [App\Http\Controllers\LoginSlideController::class, 'toggleActive'])->name('admin.maintenance.login-slides.toggle');
-
-    // Announcements routes
-    Route::get('admin/maintenance/announcements', [AnnouncementController::class, 'index'])->name('admin.maintenance.announcements');
-    Route::post('admin/maintenance/announcements', [AnnouncementController::class, 'store'])->name('admin.maintenance.announcements.store');
-    Route::put('admin/maintenance/announcements/{announcement}', [AnnouncementController::class, 'update'])->name('admin.maintenance.announcements.update');
-    Route::delete('admin/maintenance/announcements/{announcement}', [AnnouncementController::class, 'destroy'])->name('admin.maintenance.announcements.destroy');
-    Route::post('admin/maintenance/announcements/{announcement}/approve', [AnnouncementController::class, 'approve'])->name('admin.maintenance.announcements.approve');
-    Route::post('admin/maintenance/announcements/{announcement}/reject', [AnnouncementController::class, 'reject'])->name('admin.maintenance.announcements.reject');
-    Route::post('admin/maintenance/announcements/{announcement}/toggle', [AnnouncementController::class, 'toggleActive'])->name('admin.maintenance.announcements.toggle');
 
     // API route for getting approved announcements
     Route::get('api/announcements/approved', [AnnouncementController::class, 'getApproved'])->name('api.announcements.approved');

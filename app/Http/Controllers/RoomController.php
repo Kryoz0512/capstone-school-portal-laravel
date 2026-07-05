@@ -3,13 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Models\Room;
+use App\Models\ClassSection;
+use App\Models\Subject;
+use App\Models\Teacher;
+use App\Models\GradeLevel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
 use Inertia\Inertia;
 
 class RoomController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, $room = null)
     {
         $search = $request->input('search', '');
         $capacity = $request->input('capacity');
@@ -19,7 +25,8 @@ class RoomController extends Controller
         $rooms = Room::withCount([
             'sections as students_count' => function ($query) {
                 $query->join('tbl_students', 'tbl_class_sections.id', '=', 'tbl_students.current_section_id');
-            }
+            },
+            'schedules as schedules_count',
         ])
             ->when($search, fn($q) => $q->where('room_name', 'like', "%{$search}%"))
             ->when($capacity, fn($q) => $q->where('capacity', $capacity))
@@ -28,14 +35,162 @@ class RoomController extends Controller
             ->paginate($perPage)
             ->withQueryString();
 
-        return Inertia::render('admin/enrollment/room-listings/page', [
+        return Inertia::render('admin/enrollment/schedule-management/page', [
             'rooms' => $rooms,
             'filters' => [
                 'search' => $search,
                 'capacity' => $capacity,
                 'status' => $status,
             ],
+            'activeRoom' => $room ? $this->buildRoomScheduleData($room) : null,
         ]);
+    }
+
+    private function buildRoomScheduleData($id): array
+    {
+        $room = Room::findOrFail($id);
+
+        $schedules = $room->schedules()
+            ->with(['classSection.gradeLevel', 'subject', 'teacher'])
+            ->get()
+            ->map(function ($schedule) {
+                return [
+                    'id' => $schedule->id,
+                    'subject_id' => $schedule->subject_id,
+                    'subject' => $schedule->subject->name ?? 'N/A',
+                    'teacher_id' => $schedule->teacher_id,
+                    'teacher' => $schedule->teacher->name ?? 'N/A',
+                    'class_section_id' => $schedule->class_section_id,
+                    'grade_level_id' => $schedule->classSection->grade_level_id ?? null,
+                    'day' => $schedule->day_of_week,
+                    'start_time' => $schedule->start_time ? Carbon::parse($schedule->start_time)->format('H:i') : '',
+                    'end_time' => $schedule->end_time ? Carbon::parse($schedule->end_time)->format('H:i') : '',
+                    'time' => Carbon::parse($schedule->start_time)->format('g:i A') . ' - ' . Carbon::parse($schedule->end_time)->format('g:i A'),
+                    'section' => $schedule->classSection->section_name ?? 'N/A',
+                    'gradeLevel' => $schedule->classSection->gradeLevel->name ?? 'N/A',
+                ];
+            });
+
+        $gradeLevels = GradeLevel::all()->map(fn($g) => ['id' => $g->id, 'name' => $g->name]);
+
+        $classSections = ClassSection::with('gradeLevel')->get()->map(fn($s) => [
+            'id' => $s->id,
+            'name' => $s->section_name,
+            'grade_level_id' => $s->grade_level_id,
+        ]);
+
+        $subjects = Subject::all()->map(fn($s) => [
+            'id' => $s->id,
+            'name' => $s->name,
+            'grade_level_id' => $s->grade_level_id,
+        ]);
+
+        $teachers = Teacher::all()->map(fn($t) => ['id' => $t->id, 'name' => $t->name]);
+
+        $teacherSubjects = DB::table('tbl_teacher_subjects')
+            ->join('tbl_subjects', 'tbl_teacher_subjects.subject_id', '=', 'tbl_subjects.id')
+            ->select('tbl_teacher_subjects.teacher_id', 'tbl_subjects.id as subject_id', 'tbl_subjects.name as subject_name', 'tbl_subjects.grade_level_id')
+            ->get()
+            ->groupBy('teacher_id')
+            ->map(fn($rows) => [
+                'subjects' => $rows->map(fn($r) => [
+                    'subject_id' => $r->subject_id,
+                    'subject_name' => $r->subject_name,
+                    'grade_level_id' => $r->grade_level_id,
+                ])->values(),
+            ]);
+
+        return [
+            'room' => ['id' => $room->id, 'room_name' => $room->room_name, 'capacity' => $room->capacity],
+            'schedules' => $schedules,
+            'gradeLevels' => $gradeLevels,
+            'classSections' => $classSections,
+            'subjects' => $subjects,
+            'teachers' => $teachers,
+            'teacherSubjects' => $teacherSubjects,
+        ];
+    }
+
+
+    /**
+     * Returns a single room's schedule plus the lookup data needed to
+     * add/edit schedules for this room, all as JSON for the inline
+     * schedule view on the schedule-management page.
+     */
+    public function schedule($id)
+    {
+        $room = Room::findOrFail($id);
+
+        $schedules = $room->schedules()
+            ->with(['classSection.gradeLevel', 'subject', 'teacher'])
+            ->get()
+            ->map(function ($schedule) {
+                return [
+                    'id' => $schedule->id,
+                    'subject_id' => $schedule->subject_id,
+                    'subject' => $schedule->subject->name ?? 'N/A',
+                    'teacher_id' => $schedule->teacher_id,
+                    'teacher' => $schedule->teacher->name ?? 'N/A',
+                    'class_section_id' => $schedule->class_section_id,
+                    'grade_level_id' => $schedule->classSection->grade_level_id ?? null,
+                    'day' => $schedule->day_of_week,
+                    'start_time' => $schedule->start_time ? Carbon::parse($schedule->start_time)->format('H:i') : '',
+                    'end_time' => $schedule->end_time ? Carbon::parse($schedule->end_time)->format('H:i') : '',
+                    'time' => Carbon::parse($schedule->start_time)->format('g:i A') . ' - ' . Carbon::parse($schedule->end_time)->format('g:i A'),
+                    'section' => $schedule->classSection->section_name ?? 'N/A',
+                    'gradeLevel' => $schedule->classSection->gradeLevel->name ?? 'N/A',
+                ];
+            });
+
+        $gradeLevels = GradeLevel::all()->map(fn($g) => ['id' => $g->id, 'name' => $g->name]);
+
+        $classSections = ClassSection::with('gradeLevel')->get()->map(function ($section) {
+            return [
+                'id' => $section->id,
+                'name' => $section->section_name,
+                'grade_level_id' => $section->grade_level_id,
+            ];
+        });
+
+        $subjects = Subject::all()->map(function ($subject) {
+            return [
+                'id' => $subject->id,
+                'name' => $subject->name,
+                'grade_level_id' => $subject->grade_level_id,
+            ];
+        });
+
+        $teachers = Teacher::all()->map(fn($t) => ['id' => $t->id, 'name' => $t->name]);
+
+        $teacherSubjects = DB::table('tbl_teacher_subjects')
+            ->join('tbl_subjects', 'tbl_teacher_subjects.subject_id', '=', 'tbl_subjects.id')
+            ->select('tbl_teacher_subjects.teacher_id', 'tbl_subjects.id as subject_id', 'tbl_subjects.name as subject_name', 'tbl_subjects.grade_level_id')
+            ->get()
+            ->groupBy('teacher_id')
+            ->map(function ($rows) {
+                return [
+                    'subjects' => $rows->map(fn($r) => [
+                        'subject_id' => $r->subject_id,
+                        'subject_name' => $r->subject_name,
+                        'grade_level_id' => $r->grade_level_id,
+                    ])->values(),
+                ];
+            });
+
+        // return response()->json([
+        //     'room' => [
+        //         'id' => $room->id,
+        //         'room_name' => $room->room_name,
+        //         'capacity' => $room->capacity,
+        //     ],
+        //     'schedules' => $schedules,
+        //     'gradeLevels' => $gradeLevels,
+        //     'classSections' => $classSections,
+        //     'subjects' => $subjects,
+        //     'teachers' => $teachers,
+        //     'teacherSubjects' => $teacherSubjects,
+        // ]);
+        return response()->json($this->buildRoomScheduleData($id));
     }
 
     public function checkRoomNumber(Request $request)
@@ -67,7 +222,7 @@ class RoomController extends Controller
 
         Room::create($validated);
 
-        return redirect()->route('admin.enrollment.room-listings')->with('success', 'Room created successfully');
+        return redirect()->route('admin.enrollment.schedule-management')->with('success', 'Room created successfully');
     }
 
     public function update(Request $request, $id)
@@ -82,7 +237,7 @@ class RoomController extends Controller
 
         $room->update($validated);
 
-        return redirect()->route('admin.enrollment.room-listings')->with('success', 'Room updated successfully');
+        return redirect()->route('admin.enrollment.schedule-management')->with('success', 'Room updated successfully');
     }
 
     public function destroy($id)

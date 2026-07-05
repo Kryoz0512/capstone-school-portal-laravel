@@ -249,6 +249,8 @@ class ScheduleController extends Controller
 
     public function store(Request $request)
     {
+        $isApi = !$request->header('X-Inertia');
+
         $validated = $request->validate([
             'class_section_id' => 'required|exists:tbl_class_sections,id',
             'subject_id' => 'required|exists:tbl_subjects,id',
@@ -259,24 +261,19 @@ class ScheduleController extends Controller
             'end_time' => 'required',
         ]);
 
-        // Convert day to day_of_week for database
         $validated['day_of_week'] = $validated['day'];
         unset($validated['day']);
 
-        // Ensure times are in correct format
         if (!str_contains($validated['start_time'], ':')) {
-            return redirect()->back()->withErrors(['start_time' => 'Invalid time format'])->withInput();
+            return $this->scheduleError($isApi, 'start_time', 'Invalid time format');
         }
         if (!str_contains($validated['end_time'], ':')) {
-            return redirect()->back()->withErrors(['end_time' => 'Invalid time format'])->withInput();
+            return $this->scheduleError($isApi, 'end_time', 'Invalid time format');
         }
 
-        // Check for teacher schedule conflicts
         $teacherConflict = Schedule::where('teacher_id', $validated['teacher_id'])
             ->where('day_of_week', $validated['day_of_week'])
             ->where(function ($query) use ($validated) {
-                // Check if new schedule overlaps with existing schedule
-                // Overlap occurs if: (new_start < existing_end) AND (new_end > existing_start)
                 $query->where('start_time', '<', $validated['end_time'])
                     ->where('end_time', '>', $validated['start_time']);
             })
@@ -285,17 +282,13 @@ class ScheduleController extends Controller
 
         if ($teacherConflict) {
             $conflictTime = \Carbon\Carbon::parse($teacherConflict->start_time)->format('g:i A') . ' - ' . \Carbon\Carbon::parse($teacherConflict->end_time)->format('g:i A');
-            return redirect()->back()->withErrors([
-                'start_time' => "Teacher {$teacherConflict->teacher->name} already has a class scheduled on {$validated['day_of_week']} at {$conflictTime} ({$teacherConflict->subject->name} - {$teacherConflict->classSection->gradeLevel->name} {$teacherConflict->classSection->section_name})."
-            ])->withInput();
+            return $this->scheduleError($isApi, 'start_time', "Teacher {$teacherConflict->teacher->name} already has a class scheduled on {$validated['day_of_week']} at {$conflictTime} ({$teacherConflict->subject->name} - {$teacherConflict->classSection->gradeLevel->name} {$teacherConflict->classSection->section_name}).");
         }
 
-        // Check for room schedule conflicts
         if ($validated['room_id']) {
             $roomConflict = Schedule::where('room_id', $validated['room_id'])
                 ->where('day_of_week', $validated['day_of_week'])
                 ->where(function ($query) use ($validated) {
-                    // Check if new schedule overlaps with existing schedule
                     $query->where('start_time', '<', $validated['end_time'])
                         ->where('end_time', '>', $validated['start_time']);
                 })
@@ -304,17 +297,13 @@ class ScheduleController extends Controller
 
             if ($roomConflict) {
                 $conflictTime = \Carbon\Carbon::parse($roomConflict->start_time)->format('g:i A') . ' - ' . \Carbon\Carbon::parse($roomConflict->end_time)->format('g:i A');
-                return redirect()->back()->withErrors([
-                    'start_time' => "Room {$roomConflict->room->room_name} is already occupied on {$validated['day_of_week']} at {$conflictTime} ({$roomConflict->subject->name} - {$roomConflict->classSection->gradeLevel->name} {$roomConflict->classSection->section_name})."
-                ])->withInput();
+                return $this->scheduleError($isApi, 'start_time', "Room {$roomConflict->room->room_name} is already occupied on {$validated['day_of_week']} at {$conflictTime} ({$roomConflict->subject->name} - {$roomConflict->classSection->gradeLevel->name} {$roomConflict->classSection->section_name}).");
             }
         }
 
-        // Check for section schedule conflicts
         $sectionConflict = Schedule::where('class_section_id', $validated['class_section_id'])
             ->where('day_of_week', $validated['day_of_week'])
             ->where(function ($query) use ($validated) {
-                // Check if new schedule overlaps with existing schedule
                 $query->where('start_time', '<', $validated['end_time'])
                     ->where('end_time', '>', $validated['start_time']);
             })
@@ -323,31 +312,32 @@ class ScheduleController extends Controller
 
         if ($sectionConflict) {
             $conflictTime = \Carbon\Carbon::parse($sectionConflict->start_time)->format('g:i A') . ' - ' . \Carbon\Carbon::parse($sectionConflict->end_time)->format('g:i A');
-            return redirect()->back()->withErrors([
-                'start_time' => "Section {$sectionConflict->classSection->gradeLevel->name} {$sectionConflict->classSection->section_name} already has a class scheduled on {$validated['day_of_week']} at {$conflictTime} ({$sectionConflict->subject->name} with {$sectionConflict->teacher->name})."
-            ])->withInput();
+            return $this->scheduleError($isApi, 'start_time', "Section {$sectionConflict->classSection->gradeLevel->name} {$sectionConflict->classSection->section_name} already has a class scheduled on {$validated['day_of_week']} at {$conflictTime} ({$sectionConflict->subject->name} with {$sectionConflict->teacher->name}).");
         }
 
-        // Validate room capacity if room is selected
         if ($validated['room_id']) {
             $room = Room::find($validated['room_id']);
             $section = ClassSection::find($validated['class_section_id']);
             $studentCount = $section->students()->count();
 
             if ($studentCount > $room->capacity) {
-                return redirect()->back()->withErrors([
-                    'room_id' => "Room capacity exceeded. Room capacity: {$room->capacity}, Section has {$studentCount} students."
-                ])->withInput();
+                return $this->scheduleError($isApi, 'room_id', "Room capacity exceeded. Room capacity: {$room->capacity}, Section has {$studentCount} students.");
             }
         }
 
-        Schedule::create($validated);
+        $schedule = Schedule::create($validated);
+
+        if ($isApi) {
+            return response()->json(['success' => true, 'schedule_id' => $schedule->id]);
+        }
 
         return redirect()->route('admin.enrollment.load-scheduling')->with('success', 'Schedule created successfully');
     }
 
     public function update(Request $request, Schedule $schedule)
     {
+        $isApi = !$request->header('X-Inertia');
+
         $validated = $request->validate([
             'class_section_id' => 'required|exists:tbl_class_sections,id',
             'subject_id' => 'required|exists:tbl_subjects,id',
@@ -358,12 +348,10 @@ class ScheduleController extends Controller
             'end_time' => 'required|date_format:H:i|after:start_time',
         ]);
 
-        // Check for teacher schedule conflicts (excluding current schedule)
         $teacherConflict = Schedule::where('teacher_id', $validated['teacher_id'])
             ->where('day_of_week', $validated['day_of_week'])
             ->where('id', '!=', $schedule->id)
             ->where(function ($query) use ($validated) {
-                // Check if new schedule overlaps with existing schedule
                 $query->where(function ($q) use ($validated) {
                     $q->where('start_time', '<', $validated['end_time'])
                         ->where('end_time', '>', $validated['start_time']);
@@ -374,18 +362,14 @@ class ScheduleController extends Controller
 
         if ($teacherConflict) {
             $conflictTime = \Carbon\Carbon::parse($teacherConflict->start_time)->format('g:i A') . ' - ' . \Carbon\Carbon::parse($teacherConflict->end_time)->format('g:i A');
-            return redirect()->back()->withErrors([
-                'start_time' => "Teacher {$teacherConflict->teacher->name} already has a class scheduled on {$validated['day_of_week']} at {$conflictTime} ({$teacherConflict->subject->name} - {$teacherConflict->classSection->gradeLevel->name} {$teacherConflict->classSection->section_name})."
-            ])->withInput();
+            return $this->scheduleError($isApi, 'start_time', "Teacher {$teacherConflict->teacher->name} already has a class scheduled on {$validated['day_of_week']} at {$conflictTime} ({$teacherConflict->subject->name} - {$teacherConflict->classSection->gradeLevel->name} {$teacherConflict->classSection->section_name}).");
         }
 
-        // Check for room schedule conflicts (excluding current schedule)
         if ($validated['room_id']) {
             $roomConflict = Schedule::where('room_id', $validated['room_id'])
                 ->where('day_of_week', $validated['day_of_week'])
                 ->where('id', '!=', $schedule->id)
                 ->where(function ($query) use ($validated) {
-                    // Check if new schedule overlaps with existing schedule
                     $query->where(function ($q) use ($validated) {
                         $q->where('start_time', '<', $validated['end_time'])
                             ->where('end_time', '>', $validated['start_time']);
@@ -396,18 +380,14 @@ class ScheduleController extends Controller
 
             if ($roomConflict) {
                 $conflictTime = \Carbon\Carbon::parse($roomConflict->start_time)->format('g:i A') . ' - ' . \Carbon\Carbon::parse($roomConflict->end_time)->format('g:i A');
-                return redirect()->back()->withErrors([
-                    'start_time' => "Room {$roomConflict->room->room_name} is already occupied on {$validated['day_of_week']} at {$conflictTime} ({$roomConflict->subject->name} - {$roomConflict->classSection->gradeLevel->name} {$roomConflict->classSection->section_name})."
-                ])->withInput();
+                return $this->scheduleError($isApi, 'start_time', "Room {$roomConflict->room->room_name} is already occupied on {$validated['day_of_week']} at {$conflictTime} ({$roomConflict->subject->name} - {$roomConflict->classSection->gradeLevel->name} {$roomConflict->classSection->section_name}).");
             }
         }
 
-        // Check for section schedule conflicts (excluding current schedule)
         $sectionConflict = Schedule::where('class_section_id', $validated['class_section_id'])
             ->where('day_of_week', $validated['day_of_week'])
             ->where('id', '!=', $schedule->id)
             ->where(function ($query) use ($validated) {
-                // Check if new schedule overlaps with existing schedule
                 $query->where(function ($q) use ($validated) {
                     $q->where('start_time', '<', $validated['end_time'])
                         ->where('end_time', '>', $validated['start_time']);
@@ -418,32 +398,35 @@ class ScheduleController extends Controller
 
         if ($sectionConflict) {
             $conflictTime = \Carbon\Carbon::parse($sectionConflict->start_time)->format('g:i A') . ' - ' . \Carbon\Carbon::parse($sectionConflict->end_time)->format('g:i A');
-            return redirect()->back()->withErrors([
-                'start_time' => "Section {$sectionConflict->classSection->gradeLevel->name} {$sectionConflict->classSection->section_name} already has a class scheduled on {$validated['day_of_week']} at {$conflictTime} ({$sectionConflict->subject->name} with {$sectionConflict->teacher->name})."
-            ])->withInput();
+            return $this->scheduleError($isApi, 'start_time', "Section {$sectionConflict->classSection->gradeLevel->name} {$sectionConflict->classSection->section_name} already has a class scheduled on {$validated['day_of_week']} at {$conflictTime} ({$sectionConflict->subject->name} with {$sectionConflict->teacher->name}).");
         }
 
-        // Validate room capacity if room is selected
         if ($validated['room_id']) {
             $room = Room::find($validated['room_id']);
             $section = ClassSection::find($validated['class_section_id']);
             $studentCount = $section->students()->count();
 
             if ($studentCount > $room->capacity) {
-                return redirect()->back()->withErrors([
-                    'room_id' => "Room capacity exceeded. Room capacity: {$room->capacity}, Section has {$studentCount} students."
-                ])->withInput();
+                return $this->scheduleError($isApi, 'room_id', "Room capacity exceeded. Room capacity: {$room->capacity}, Section has {$studentCount} students.");
             }
         }
 
         $schedule->update($validated);
 
+        if ($isApi) {
+            return response()->json(['success' => true]);
+        }
+
         return redirect()->back()->with('success', 'Schedule updated successfully');
     }
 
-    public function destroy(Schedule $schedule)
+    public function destroy(Request $request, Schedule $schedule)
     {
         $schedule->delete();
+
+        if (!$request->header('X-Inertia')) {
+            return response()->json(['success' => true]);
+        }
 
         return redirect()->back()->with('success', 'Schedule deleted successfully');
     }
@@ -504,5 +487,14 @@ class ScheduleController extends Controller
             ],
             'schedules' => $schedules,
         ]);
+    }
+
+    private function scheduleError(bool $isApi, string $field, string $message)
+    {
+        if ($isApi) {
+            return response()->json(['errors' => [$field => [$message]]], 422);
+        }
+
+        return redirect()->back()->withErrors([$field => $message])->withInput();
     }
 }

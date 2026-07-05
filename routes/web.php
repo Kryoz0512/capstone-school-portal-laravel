@@ -169,14 +169,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('admin/dashboard', [AdminController::class, 'dashboard'])->name('admin.dashboard');
 
     // Admin Enrollment routes
-    Route::get('admin/enrollment/room-listings', [RoomController::class, 'index'])->name('admin.enrollment.room-listings');
+    Route::get('admin/enrollment/schedule-management', [RoomController::class, 'index'])->name('admin.enrollment.schedule-management');
+    Route::get('admin/enrollment/schedule-management/rooms/{room}', [RoomController::class, 'index'])->name('admin.enrollment.schedule-management.room');
     Route::post('admin/enrollment/rooms', [RoomController::class, 'store'])->name('admin.enrollment.rooms.store');
     Route::put('admin/enrollment/rooms/{id}', [RoomController::class, 'update'])->name('admin.enrollment.rooms.update');
     Route::delete('admin/enrollment/rooms/{id}', [RoomController::class, 'destroy'])->name('admin.enrollment.rooms.destroy');
     Route::post('admin/enrollment/rooms/check-room-number', [RoomController::class, 'checkRoomNumber'])->name('admin.enrollment.rooms.check-room-number');
-
-    Route::get('admin/enrollment/room-schedule', [App\Http\Controllers\ScheduleController::class, 'roomSchedule'])->name('admin.enrollment.room-schedule');
-    Route::get('admin/enrollment/room-schedule/{room}', [App\Http\Controllers\ScheduleController::class, 'showRoomSchedule'])->name('admin.enrollment.room-schedule.show');
+    Route::get('admin/enrollment/rooms/{id}/schedule', [RoomController::class, 'schedule'])->name('admin.enrollment.rooms.schedule');
 
     Route::get('admin/enrollment/class-sections', [ClassSectionController::class, 'index'])->name('admin.enrollment.class-sections');
     Route::post('admin/enrollment/class-sections', [ClassSectionController::class, 'store'])->name('admin.enrollment.class-sections.store');

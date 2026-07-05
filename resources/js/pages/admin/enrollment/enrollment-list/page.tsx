@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Pagination } from '@/components/pagination'
 import { useState, useMemo, useEffect, useRef } from 'react'
+import { ArrowRight, Users } from 'lucide-react'
 
 type Student = {
     id: number
@@ -20,6 +21,7 @@ type Student = {
 type GradeLevel = {
     id: number
     name: string
+    student_count?: number
 }
 
 type Section = {
@@ -66,7 +68,7 @@ type Props = {
 }
 
 export default function EnrollmentList({ auth, students, gradeLevels = [], sections = [], filters }: Props) {
-    const [gradeLevelFilter, setGradeLevelFilter] = useState<string>(filters.grade_level?.toString() || 'all')
+    const [selectedGradeLevel, setSelectedGradeLevel] = useState<number | null>(filters.grade_level || null)
     const [sectionInput, setSectionInput] = useState('')
     const [selectedSectionId, setSelectedSectionId] = useState<number | null>(filters.section || null)
     const [searchTerm, setSearchTerm] = useState(filters.search || '')
@@ -95,8 +97,8 @@ export default function EnrollmentList({ auth, students, gradeLevels = [], secti
         let filtered = sections
 
         // Filter by grade level
-        if (gradeLevelFilter !== 'all') {
-            const selectedGrade = gradeLevels.find(g => g.id.toString() === gradeLevelFilter)
+        if (selectedGradeLevel) {
+            const selectedGrade = gradeLevels.find(g => g.id === selectedGradeLevel)
             filtered = filtered.filter(s => s.grade_level === selectedGrade?.name)
         }
 
@@ -108,19 +110,19 @@ export default function EnrollmentList({ auth, students, gradeLevels = [], secti
         }
 
         return filtered
-    }, [gradeLevelFilter, sectionInput, sections, gradeLevels])
+    }, [selectedGradeLevel, sectionInput, sections, gradeLevels])
 
-    // Auto-apply filters when they change
+    // Auto-apply filters when they change (only when a grade level is selected)
     useEffect(() => {
         if (isFirstRender.current) {
             isFirstRender.current = false
             return
         }
 
-        const params: any = {}
+        if (!selectedGradeLevel) return
 
-        if (gradeLevelFilter !== 'all') {
-            params.grade_level = gradeLevelFilter
+        const params: any = {
+            grade_level: selectedGradeLevel
         }
 
         if (selectedSectionId) {
@@ -142,7 +144,7 @@ export default function EnrollmentList({ auth, students, gradeLevels = [], secti
         }, 300) // Debounce for 300ms
 
         return () => clearTimeout(timeoutId)
-    }, [gradeLevelFilter, selectedSectionId, searchTerm, perPage])
+    }, [selectedGradeLevel, selectedSectionId, searchTerm, perPage])
 
     // Handle click outside to close suggestions
     useEffect(() => {
@@ -171,10 +173,36 @@ export default function EnrollmentList({ auth, students, gradeLevels = [], secti
     }
 
     const handleClearFilters = () => {
-        setGradeLevelFilter('all')
         setSectionInput('')
         setSelectedSectionId(null)
         setSearchTerm('')
+    }
+
+    const handleGradeCardClick = (gradeId: number) => {
+        setSelectedGradeLevel(gradeId)
+        setSectionInput('')
+        setSelectedSectionId(null)
+        setSearchTerm('')
+        
+        router.get('/admin/enrollment/enrollment-list', {
+            grade_level: gradeId,
+            per_page: perPage
+        }, {
+            preserveState: false,
+            preserveScroll: false,
+        })
+    }
+
+    const handleBackToGrades = () => {
+        setSelectedGradeLevel(null)
+        setSectionInput('')
+        setSelectedSectionId(null)
+        setSearchTerm('')
+        
+        router.get('/admin/enrollment/enrollment-list', {}, {
+            preserveState: false,
+            preserveScroll: false,
+        })
     }
 
     const handlePageChange = (url: string | null) => {
@@ -187,7 +215,7 @@ export default function EnrollmentList({ auth, students, gradeLevels = [], secti
         }
     }
 
-    const hasActiveFilters = gradeLevelFilter !== 'all' || selectedSectionId !== null || searchTerm.trim() !== ''
+    const hasActiveFilters = selectedSectionId !== null || searchTerm.trim() !== ''
 
     return (
         <AdminLayout user={auth?.user} admin={auth?.admin}>
@@ -197,7 +225,10 @@ export default function EnrollmentList({ auth, students, gradeLevels = [], secti
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Enrollment List</h1>
                     <p className="text-sm text-gray-500 mt-1">
-                        View enrolled students by section and adviser
+                        {selectedGradeLevel 
+                            ? 'View enrolled students by section and adviser'
+                            : 'Select a grade level to view enrolled students'
+                        }
                     </p>
                 </div>
 
@@ -207,147 +238,189 @@ export default function EnrollmentList({ auth, students, gradeLevels = [], secti
                     <p className="text-3xl font-bold text-blue-900 mt-2">{students.total}</p>
                 </div>
 
-                {/* Filters */}
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-sm font-semibold text-gray-900">Filters</h2>
-                        {hasActiveFilters && (
-                            <Button
-                                onClick={handleClearFilters}
-                                variant="outline"
-                                size="sm"
+                {!selectedGradeLevel ? (
+                    /* Grade Level Selection Cards */
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        {gradeLevels.map((grade) => (
+                            <button
+                                key={grade.id}
+                                onClick={() => handleGradeCardClick(grade.id)}
+                                className="group relative overflow-hidden rounded-xl bg-white p-5 text-left ring-1 ring-slate-200 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:ring-[#1E3A5F]/30"
                             >
-                                Clear All Filters
-                            </Button>
-                        )}
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Grade Level</label>
-                            <Select value={gradeLevelFilter} onValueChange={(value) => {
-                                setGradeLevelFilter(value)
-                                setSectionInput('')
-                                setSelectedSectionId(null)
-                            }}>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Grade Levels</SelectItem>
-                                    {gradeLevels.map((level) => (
-                                        <SelectItem key={level.id} value={level.id.toString()}>
-                                            {level.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div ref={sectionInputRef} className="relative">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Section</label>
-                            <Input
-                                type="text"
-                                placeholder="Type to search sections..."
-                                value={sectionInput}
-                                onChange={(e) => handleSectionInputChange(e.target.value)}
-                                onFocus={() => setShowSuggestions(true)}
-                            />
-                            {showSuggestions && filteredSections.length > 0 && (
-                                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                                    {filteredSections.map((section) => (
-                                        <button
-                                            key={section.id}
-                                            onClick={() => handleSectionSelect(section)}
-                                            className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center justify-between"
-                                        >
-                                            <span className="text-sm text-gray-900">{section.section_name}</span>
-                                            <span className="text-xs text-gray-500">{section.grade_level}</span>
-                                        </button>
-                                    ))}
+                                {/* Accent bar */}
+                                <div className="absolute inset-x-0 top-0 h-1 bg-green-700 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+
+                                <div className="flex items-start justify-between">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-slate-50 ring-1 ring-slate-200 transition-colors duration-200 group-hover:bg-green-700 ">
+                                        <span className="text-2xl font-semibold text-slate-900 transition-colors duration-200 group-hover:text-white">
+                                            {grade.name.replace('Grade ', '')}
+                                        </span>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-2xl font-semibold text-slate-900">
+                                            {grade.student_count || 0}
+                                        </p>
+                                        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                                            Students
+                                        </p>
+                                    </div>
                                 </div>
+
+                                <h3 className="mt-4 text-base font-semibold text-slate-900">
+                                    {grade.name}
+                                </h3>
+
+                                <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
+                                    <span className="inline-flex items-center gap-1.5 text-sm text-slate-500">
+                                        <Users className="h-3.5 w-3.5" />
+                                        Enrolled roster
+                                    </span>
+                                    <span className="inline-flex items-center gap-1 font-medium text-green-700 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                                        View
+                                        <ArrowRight className="h-3.5 w-3.5" />
+                                    </span>
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                ) : (
+                    /* Student Table View */
+                    <>
+                        {/* Back Button */}
+                        <div>
+                            <Button
+                                onClick={handleBackToGrades}
+                                variant="outline"
+                                className="flex items-center gap-2"
+                            >
+                                <span>←</span>
+                                Back to Grade Levels
+                            </Button>
+                        </div>
+
+                        {/* Filters */}
+                        <div className="bg-white rounded-lg border border-gray-200 p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-sm font-semibold text-gray-900">Filters</h2>
+                                {hasActiveFilters && (
+                                    <Button
+                                        onClick={handleClearFilters}
+                                        variant="outline"
+                                        size="sm"
+                                    >
+                                        Clear All Filters
+                                    </Button>
+                                )}
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div ref={sectionInputRef} className="relative">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Section</label>
+                                    <Input
+                                        type="text"
+                                        placeholder="Type to search sections..."
+                                        value={sectionInput}
+                                        onChange={(e) => handleSectionInputChange(e.target.value)}
+                                        onFocus={() => setShowSuggestions(true)}
+                                    />
+                                    {showSuggestions && filteredSections.length > 0 && (
+                                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                            {filteredSections.map((section) => (
+                                                <button
+                                                    key={section.id}
+                                                    onClick={() => handleSectionSelect(section)}
+                                                    className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center justify-between"
+                                                >
+                                                    <span className="text-sm text-gray-900">{section.section_name}</span>
+                                                    <span className="text-xs text-gray-500">{section.grade_level}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
+                                    <Input
+                                        type="text"
+                                        placeholder="Search by name, LRN, or teacher..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Table */}
+                        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                            {students.data.length === 0 ? (
+                                <div className="p-8 text-center">
+                                    <p className="text-lg font-medium text-gray-900 mb-2">No Enrolled Students</p>
+                                    <p className="text-sm text-gray-500">
+                                        {hasActiveFilters
+                                            ? 'No students match your filter criteria.'
+                                            : 'No students have been assigned to sections yet.'}
+                                    </p>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead className="bg-green-700">
+                                                <tr>
+                                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">LRN</th>
+                                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Student Name</th>
+                                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Grade Level</th>
+                                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Section</th>
+                                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Adviser</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-200">
+                                                {students.data.map((student) => (
+                                                    <tr 
+                                                        key={student.id} 
+                                                        onClick={() => router.visit(`/admin/enrollment/students/${student.id}`)}
+                                                        className="hover:bg-gray-50 cursor-pointer transition-colors"
+                                                    >
+                                                        <td className="px-6 py-4 text-sm text-gray-900">{student.lrn}</td>
+                                                        <td className="px-6 py-4 text-sm text-gray-900">{student.student_name}</td>
+                                                        <td className="px-6 py-4">
+                                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                                                {student.grade_level}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                                {student.section}
+                                                            </span>
+                                                        </td>
+
+                                                        <td className="px-6 py-4 text-sm text-gray-900">
+                                                            {student.adviser === 'Not Assigned' ? (
+                                                                <span className="text-gray-400 italic">{student.adviser}</span>
+                                                            ) : (
+                                                                student.adviser
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    {/* Pagination */}
+                                    <Pagination
+                                        currentPage={students.current_page}
+                                        lastPage={students.last_page}
+                                        perPage={students.per_page}
+                                        total={students.total}
+                                        links={students.links}
+                                        onPageChange={handlePageChange}
+                                        onPerPageChange={setPerPage}
+                                    />
+                                </>
                             )}
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Search</label>
-                            <Input
-                                type="text"
-                                placeholder="Search student name or adviser..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Table */}
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                    {students.data.length === 0 ? (
-                        <div className="p-8 text-center">
-                            <p className="text-lg font-medium text-gray-900 mb-2">No Enrolled Students</p>
-                            <p className="text-sm text-gray-500">
-                                {hasActiveFilters
-                                    ? 'No students match your filter criteria.'
-                                    : 'No students have been assigned to sections yet.'}
-                            </p>
-                        </div>
-                    ) : (
-                        <>
-                            <div className="overflow-x-auto">
-                                <table className="w-full">
-                                    <thead className="bg-green-700">
-                                        <tr>
-                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">LRN</th>
-                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Student Name</th>
-                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Grade Level</th>
-                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Section</th>
-                                            <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Adviser</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-200">
-                                        {students.data.map((student) => (
-                                            <tr 
-                                                key={student.id} 
-                                                onClick={() => router.visit(`/admin/enrollment/students/${student.id}`)}
-                                                className="hover:bg-gray-50 cursor-pointer transition-colors"
-                                            >
-                                                <td className="px-6 py-4 text-sm text-gray-900">{student.lrn}</td>
-                                                <td className="px-6 py-4 text-sm text-gray-900">{student.student_name}</td>
-                                                <td className="px-6 py-4">
-                                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                                        {student.grade_level}
-                                                    </span>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                        {student.section}
-                                                    </span>
-                                                </td>
-
-                                                <td className="px-6 py-4 text-sm text-gray-900">
-                                                    {student.adviser === 'Not Assigned' ? (
-                                                        <span className="text-gray-400 italic">{student.adviser}</span>
-                                                    ) : (
-                                                        student.adviser
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            {/* Pagination */}
-                            <Pagination
-                                currentPage={students.current_page}
-                                lastPage={students.last_page}
-                                perPage={students.per_page}
-                                total={students.total}
-                                links={students.links}
-                                onPageChange={handlePageChange}
-                                onPerPageChange={setPerPage}
-                            />
-                        </>
-                    )}
-                </div>
+                    </>
+                )}
             </div>
         </AdminLayout>
     )

@@ -3,8 +3,9 @@ import AdminLayout from '@/layouts/admin-layout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useState, useMemo, useEffect, useRef } from 'react'
-import { ArrowLeft, CheckCircle2, XCircle, Save, FileText } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, XCircle, Save, Edit, Eye } from 'lucide-react'
 
 type Student = {
     id: number
@@ -51,52 +52,19 @@ type Props = {
     sections: Section[]
 }
 
-// Document requirements are declared once so the checklist and the
-// completion seal always stay in sync.
-const DOCUMENT_FIELDS = (student: Student) => [
-    {
-        key: 'has_psa_birth_certificate',
-        label: 'PSA Birth Certificate',
-        description: 'Official birth certificate from the PSA',
-        submitted: student.has_psa_birth_certificate,
-    },
-    {
-        key: 'has_sf9',
-        label: 'Form 137 (SF10)',
-        description: 'Permanent record / transcript',
-        submitted: student.has_sf9,
-    },
-    {
-        key: 'has_report_card',
-        label: 'Form 138 (SF9)',
-        description: 'Report card / grades',
-        submitted: student.has_report_card,
-    },
-    {
-        key: 'has_good_moral',
-        label: 'Good Moral Certificate',
-        description: 'Certificate of good moral character',
-        submitted: student.has_good_moral,
-    },
-]
-
-function initials(name: string) {
-    return name
-        .split(' ')
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((part) => part[0]?.toUpperCase())
-        .join('')
-}
-
 export default function StudentDetail({ auth, student, gradeLevels = [], sections = [] }: Props) {
     const [sectionInput, setSectionInput] = useState(student.section)
     const [showSuggestions, setShowSuggestions] = useState(false)
+    const [isEditMode, setIsEditMode] = useState(false)
     const sectionInputRef = useRef<HTMLDivElement>(null)
 
-    const { data, setData, put, processing, errors, reset } = useForm({
+    const { data, setData, put, processing, errors } = useForm({
         grade_level_id: student.grade_level_id.toString(),
         section_id: student.section_id.toString(),
+        has_psa_birth_certificate: student.has_psa_birth_certificate,
+        has_sf9: student.has_sf9,
+        has_report_card: student.has_report_card,
+        has_good_moral: student.has_good_moral,
     })
 
     // Filter sections based on selected grade level and input
@@ -131,15 +99,31 @@ export default function StudentDetail({ auth, student, gradeLevels = [], section
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
-        put(`/admin/enrollment/students/${student.id}/assign-section`, {
+        put(`/admin/enrollment/students/${student.id}/update-enrollment`, {
             onSuccess: () => {
-                // Stay on the same page after successful update
+                setIsEditMode(false)
             }
         })
     }
 
+    const handleEditToggle = () => {
+        if (isEditMode) {
+            // Cancel editing - reset form to original values
+            setData({
+                grade_level_id: student.grade_level_id.toString(),
+                section_id: student.section_id.toString(),
+                has_psa_birth_certificate: student.has_psa_birth_certificate,
+                has_sf9: student.has_sf9,
+                has_report_card: student.has_report_card,
+                has_good_moral: student.has_good_moral,
+            })
+            setSectionInput(student.section)
+        }
+        setIsEditMode(!isEditMode)
+    }
+
     const handleBack = () => {
-        router.visit('/admin/enrollment/enrollment-list')
+        router.visit(`/admin/enrollment/enrollment-list?grade_level=${student.grade_level_id}`)
     }
 
     // Handle click outside to close suggestions
@@ -154,263 +138,304 @@ export default function StudentDetail({ auth, student, gradeLevels = [], section
         return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [])
 
-    const documents = DOCUMENT_FIELDS(student)
-    const submittedCount = documents.filter((d) => d.submitted).length
-    const isComplete = submittedCount === documents.length
-
-    // Radial "seal" progress geometry
-    const radius = 30
-    const circumference = 2 * Math.PI * radius
-    const progressOffset = circumference * (1 - submittedCount / documents.length)
-
     return (
         <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title={`Student Details - ${student.student_name}`} />
 
-            <div className="space-y-6 pb-12">
-                {/* Back navigation */}
-                <button
-                    onClick={handleBack}
-                    className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors"
-                >
-                    <ArrowLeft className="w-4 h-4" />
-                    Back to enrollment list
-                </button>
-
-                {/* Record header */}
-                <div className="relative overflow-hidden rounded-xl text-white shadow-sm">
-                    <div className="absolute inset-0 opacity-[0.06] bg-[radial-gradient(circle_at_top_right,white,transparent_55%)]" />
-                    <div className="relative flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:justify-between bg-white shadow-sm ring-1 ring-slate-200">
-                        <div className="flex items-center gap-4">
-                            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-green-700 ring-1 ring-white/25 text-lg font-semibold text-white">
-                                {initials(student.student_name)}
-                            </div>
-                            <div>
-                                <p className="text-xs font-medium uppercase tracking-widest text-slate-500">
-                                    Student Record
-                                </p>
-                                <h1 className=" text-2xl font-semibold text-slate-900">
-                                    {student.student_name}
-                                </h1>
-                                <p className="mt-1 text-sm text-slate-900">
-                                    {student.grade_level} &middot; {student.section}
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* LRN plate */}
-                        <div className="rounded-lg bg-white/10 px-4 py-3 ring-1 ring-white/20 sm:text-right">
-                            <p className="text-[11px] font-medium uppercase tracking-widest text-slate-500">
-                                Learner Reference No.
+            <div className="space-y-6">
+                {/* Header with Back Button and Edit Toggle */}
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <Button
+                            onClick={handleBack}
+                            variant="outline"
+                            className="flex items-center gap-2"
+                        >
+                            <ArrowLeft className="w-4 h-4" />
+                            Back to List
+                        </Button>
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-900">Student Details</h1>
+                            <p className="text-sm text-gray-500 mt-1">
+                                {isEditMode ? 'Edit student enrollment information' : 'View student enrollment information'}
                             </p>
-                            <p className="font-mono text-lg tracking-[0.2em] text-slate-900">
-                                {student.lrn}
+                        </div>
+                    </div>
+                    <Button
+                        onClick={handleEditToggle}
+                        variant={isEditMode ? "outline" : "default"}
+                        className={`flex items-center gap-2 ${!isEditMode ? 'bg-green-600 hover:bg-green-700' : ''}`}
+                    >
+                        {isEditMode ? (
+                            <>
+                                <Eye className="w-4 h-4" />
+                                Cancel Edit
+                            </>
+                        ) : (
+                            <>
+                                <Edit className="w-4 h-4" />
+                                Edit Mode
+                            </>
+                        )}
+                    </Button>
+                </div>
+
+                {/* Student Information Card */}
+                <div className="bg-white rounded-lg border border-gray-200 p-6">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Student Information</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-600 mb-1">Student Name</label>
+                            <p className="text-base text-gray-900 font-medium">{student.student_name}</p>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-600 mb-1">LRN</label>
+                            <p className="text-base text-gray-900 font-medium">{student.lrn}</p>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-600 mb-1">Gender</label>
+                            <p className="text-base text-gray-900">{student.gender}</p>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-600 mb-1">Current Adviser</label>
+                            <p className="text-base text-gray-900">
+                                {student.adviser === 'Not Assigned' ? (
+                                    <span className="text-gray-400 italic">{student.adviser}</span>
+                                ) : (
+                                    student.adviser
+                                )}
                             </p>
                         </div>
                     </div>
                 </div>
 
-                {/* Student Information Card */}
-                <section className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-                    <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-                        Student Information
-                    </h2>
-                    <dl className="mt-4 grid grid-cols-1 gap-x-8 gap-y-5 sm:grid-cols-2">
-                        <div>
-                            <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                                Student Name
-                            </dt>
-                            <dd className="mt-1 text-sm font-medium text-slate-900">{student.student_name}</dd>
-                        </div>
-                        <div>
-                            <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                                LRN
-                            </dt>
-                            <dd className="mt-1 font-mono text-sm text-slate-900">{student.lrn}</dd>
-                        </div>
-                        <div>
-                            <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                                Gender
-                            </dt>
-                            <dd className="mt-1 text-sm text-slate-900">{student.gender}</dd>
-                        </div>
-                        <div>
-                            <dt className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                                Current Adviser
-                            </dt>
-                            <dd className="mt-1 text-sm text-slate-900">
-                                {student.adviser === 'Not Assigned' ? (
-                                    <span className="italic text-slate-400">Not assigned</span>
-                                ) : (
-                                    student.adviser
-                                )}
-                            </dd>
-                        </div>
-                    </dl>
-                </section>
-
-                {/* Edit Enrollment Section */}
-                <section className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-                    <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-                        Edit Enrollment
-                    </h2>
-                    <form onSubmit={handleSubmit} className="mt-4 space-y-5">
-                        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                {/* Enrollment Information Section */}
+                <div className="bg-white rounded-lg border border-gray-200 p-6">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Enrollment Information</h2>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label className="mb-2 block text-sm font-medium text-slate-700">
-                                    Grade Level <span className="text-rose-600">*</span>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Grade Level <span className="text-red-500">*</span>
                                 </label>
-                                <Select
-                                    value={data.grade_level_id}
-                                    onValueChange={(value) => {
-                                        setData('grade_level_id', value)
-                                        setData('section_id', '')
-                                        setSectionInput('')
-                                    }}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select grade level" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {gradeLevels.map((level) => (
-                                            <SelectItem key={level.id} value={level.id.toString()}>
-                                                {level.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                {isEditMode ? (
+                                    <Select
+                                        value={data.grade_level_id}
+                                        onValueChange={(value) => {
+                                            setData('grade_level_id', value)
+                                            setData('section_id', '')
+                                            setSectionInput('')
+                                        }}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select grade level" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {gradeLevels.map((level) => (
+                                                <SelectItem key={level.id} value={level.id.toString()}>
+                                                    {level.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                ) : (
+                                    <p className="text-base text-gray-900 py-2">{student.grade_level}</p>
+                                )}
                                 {errors.grade_level_id && (
-                                    <p className="mt-1.5 text-xs text-rose-600">{errors.grade_level_id}</p>
+                                    <p className="text-xs text-red-500 mt-1">{errors.grade_level_id}</p>
                                 )}
                             </div>
 
                             <div ref={sectionInputRef} className="relative">
-                                <label className="mb-2 block text-sm font-medium text-slate-700">
-                                    Section <span className="text-rose-600">*</span>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Section <span className="text-red-500">*</span>
                                 </label>
-                                <Input
-                                    type="text"
-                                    placeholder={data.grade_level_id ? "Type to search sections..." : "Select grade level first"}
-                                    value={sectionInput}
-                                    onChange={(e) => handleSectionInputChange(e.target.value)}
-                                    onFocus={() => setShowSuggestions(true)}
-                                    disabled={!data.grade_level_id}
-                                />
-                                {showSuggestions && filteredSections.length > 0 && data.grade_level_id && (
-                                    <div className="absolute z-10 mt-1.5 w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
-                                        {filteredSections.map((section) => (
-                                            <button
-                                                key={section.id}
-                                                type="button"
-                                                onClick={() => handleSectionSelect(section)}
-                                                className="flex w-full items-center justify-between px-4 py-2.5 text-left transition-colors hover:bg-slate-50"
-                                            >
-                                                <span className="text-sm text-slate-900">{section.section_name}</span>
-                                                <span className="text-xs text-slate-400">{section.grade_level}</span>
-                                            </button>
-                                        ))}
-                                    </div>
+                                {isEditMode ? (
+                                    <>
+                                        <Input
+                                            type="text"
+                                            placeholder={data.grade_level_id ? "Type to search sections..." : "Select grade level first"}
+                                            value={sectionInput}
+                                            onChange={(e) => handleSectionInputChange(e.target.value)}
+                                            onFocus={() => setShowSuggestions(true)}
+                                            disabled={!data.grade_level_id}
+                                        />
+                                        {showSuggestions && filteredSections.length > 0 && data.grade_level_id && (
+                                            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                                {filteredSections.map((section) => (
+                                                    <button
+                                                        key={section.id}
+                                                        type="button"
+                                                        onClick={() => handleSectionSelect(section)}
+                                                        className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center justify-between"
+                                                    >
+                                                        <span className="text-sm text-gray-900">{section.section_name}</span>
+                                                        <span className="text-xs text-gray-500">{section.grade_level}</span>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <p className="text-base text-gray-900 py-2">{student.section}</p>
                                 )}
                                 {errors.section_id && (
-                                    <p className="mt-1.5 text-xs text-rose-600">{errors.section_id}</p>
+                                    <p className="text-xs text-red-500 mt-1">{errors.section_id}</p>
                                 )}
                             </div>
                         </div>
 
-                        <div className="flex justify-end border-t border-slate-100 pt-5">
-                            <Button
-                                type="submit"
-                                className="flex items-center gap-2 bg-green-700 text-white hover:bg-green-800"
-                                disabled={processing}
-                            >
-                                <Save className="w-4 h-4" />
-                                {processing ? 'Saving...' : 'Save Changes'}
-                            </Button>
-                        </div>
+                        {isEditMode && (
+                            <div className="flex justify-end pt-4 border-t">
+                                <Button
+                                    type="submit"
+                                    className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-2"
+                                    disabled={processing}
+                                >
+                                    <Save className="w-4 h-4" />
+                                    {processing ? 'Saving...' : 'Save Changes'}
+                                </Button>
+                            </div>
+                        )}
                     </form>
-                </section>
+                </div>
 
                 {/* Document Checklist Section */}
-                <section className="rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-                    <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                            <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-                                Document Checklist
-                            </h2>
-                            <p className="mt-1 text-sm text-slate-500">
-                                Submission status of required enrollment documents
-                            </p>
+                <div className="bg-white rounded-lg border border-gray-200 p-6">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Document Checklist</h2>
+                    <p className="text-sm text-gray-600 mb-6">
+                        Track the submission status of required documents
+                    </p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                            <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">PSA Birth Certificate</p>
+                                <p className="text-xs text-gray-500 mt-1">Official birth certificate from PSA</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                {data.has_psa_birth_certificate ? (
+                                    <div className="flex items-center gap-2 text-green-600">
+                                        <CheckCircle2 className="w-6 h-6" />
+                                        <span className="text-sm font-medium">Submitted</span>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 text-red-500">
+                                        <XCircle className="w-6 h-6" />
+                                        <span className="text-sm font-medium">Missing</span>
+                                    </div>
+                                )}
+                                {isEditMode && (
+                                    <Checkbox
+                                        checked={data.has_psa_birth_certificate}
+                                        onCheckedChange={(checked) => setData('has_psa_birth_certificate', checked === true)}
+                                    />
+                                )}
+                            </div>
                         </div>
 
-                        {/* Seal-style completion ring */}
-                        <div className="flex shrink-0 items-center gap-3 self-start">
-                            <div className="relative h-16 w-16">
-                                <svg viewBox="0 0 72 72" className="h-16 w-16 -rotate-90">
-                                    <circle cx="36" cy="36" r={radius} fill="none" stroke="#E2E8F0" strokeWidth="6" />
-                                    <circle
-                                        cx="36"
-                                        cy="36"
-                                        r={radius}
-                                        fill="none"
-                                        stroke={isComplete ? '#047857' : '#B45309'}
-                                        strokeWidth="6"
-                                        strokeLinecap="round"
-                                        strokeDasharray={circumference}
-                                        strokeDashoffset={progressOffset}
-                                    />
-                                </svg>
-                                <div className="absolute inset-0 flex items-center justify-center font-serif text-sm font-semibold text-slate-800">
-                                    {submittedCount}/{documents.length}
-                                </div>
+                        <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                            <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">Form 137 (SF10)</p>
+                                <p className="text-xs text-gray-500 mt-1">Permanent record/transcript</p>
                             </div>
-                            <span
-                                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ring-1 ${
-                                    isComplete
-                                        ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-                                        : 'bg-amber-50 text-amber-700 ring-amber-200'
-                                }`}
-                            >
-                                {isComplete ? 'Complete' : 'Incomplete'}
-                            </span>
+                            <div className="flex items-center gap-3">
+                                {data.has_sf9 ? (
+                                    <div className="flex items-center gap-2 text-green-600">
+                                        <CheckCircle2 className="w-6 h-6" />
+                                        <span className="text-sm font-medium">Submitted</span>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 text-red-500">
+                                        <XCircle className="w-6 h-6" />
+                                        <span className="text-sm font-medium">Missing</span>
+                                    </div>
+                                )}
+                                {isEditMode && (
+                                    <Checkbox
+                                        checked={data.has_sf9}
+                                        onCheckedChange={(checked) => setData('has_sf9', checked === true)}
+                                    />
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                            <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">Form 138 (SF9)</p>
+                                <p className="text-xs text-gray-500 mt-1">Report card/grades</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                {data.has_report_card ? (
+                                    <div className="flex items-center gap-2 text-green-600">
+                                        <CheckCircle2 className="w-6 h-6" />
+                                        <span className="text-sm font-medium">Submitted</span>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 text-red-500">
+                                        <XCircle className="w-6 h-6" />
+                                        <span className="text-sm font-medium">Missing</span>
+                                    </div>
+                                )}
+                                {isEditMode && (
+                                    <Checkbox
+                                        checked={data.has_report_card}
+                                        onCheckedChange={(checked) => setData('has_report_card', checked === true)}
+                                    />
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
+                            <div className="flex-1">
+                                <p className="text-sm font-medium text-gray-900">Good Moral Certificate</p>
+                                <p className="text-xs text-gray-500 mt-1">Certificate of good moral character</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                {data.has_good_moral ? (
+                                    <div className="flex items-center gap-2 text-green-600">
+                                        <CheckCircle2 className="w-6 h-6" />
+                                        <span className="text-sm font-medium">Submitted</span>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2 text-red-500">
+                                        <XCircle className="w-6 h-6" />
+                                        <span className="text-sm font-medium">Missing</span>
+                                    </div>
+                                )}
+                                {isEditMode && (
+                                    <Checkbox
+                                        checked={data.has_good_moral}
+                                        onCheckedChange={(checked) => setData('has_good_moral', checked === true)}
+                                    />
+                                )}
+                            </div>
                         </div>
                     </div>
 
-                    <div className="mt-6 divide-y divide-slate-100 border-t border-slate-100">
-                        {documents.map((doc) => (
-                            <div key={doc.key} className="flex items-center justify-between gap-4 py-4">
-                                <div className="flex items-center gap-3">
-                                    <div
-                                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ring-1 ${
-                                            doc.submitted
-                                                ? 'bg-emerald-50 ring-emerald-200'
-                                                : 'bg-slate-50 ring-slate-200'
-                                        }`}
-                                    >
-                                        <FileText
-                                            className={`h-4 w-4 ${doc.submitted ? 'text-emerald-600' : 'text-slate-400'}`}
-                                        />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-medium text-slate-900">{doc.label}</p>
-                                        <p className="text-xs text-slate-500">{doc.description}</p>
-                                    </div>
-                                </div>
-
-                                {doc.submitted ? (
-                                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">
-                                        <CheckCircle2 className="h-3.5 w-3.5" />
-                                        Submitted
+                    {/* Overall Status */}
+                    <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-gray-900">Overall Document Status</p>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    {[data.has_psa_birth_certificate, data.has_sf9, data.has_report_card, data.has_good_moral].filter(Boolean).length} of 4 documents submitted
+                                </p>
+                            </div>
+                            <div>
+                                {data.has_psa_birth_certificate && data.has_sf9 && data.has_report_card && data.has_good_moral ? (
+                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                                        Complete
                                     </span>
                                 ) : (
-                                    <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700 ring-1 ring-rose-200">
-                                        <XCircle className="h-3.5 w-3.5" />
-                                        Missing
+                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">
+                                        Incomplete
                                     </span>
                                 )}
                             </div>
-                        ))}
+                        </div>
                     </div>
-                </section>
+                </div>
             </div>
         </AdminLayout>
     )

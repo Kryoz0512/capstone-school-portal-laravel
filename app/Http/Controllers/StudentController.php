@@ -504,6 +504,35 @@ class StudentController extends Controller
         ]);
     }
 
+    public function updateEnrollment(Request $request, $id)
+    {
+        $student = Student::findOrFail($id);
+
+        $validated = $request->validate([
+            'grade_level_id' => 'required|exists:tbl_grade_levels,id',
+            'section_id' => 'required|exists:tbl_class_sections,id',
+            'has_psa_birth_certificate' => 'required|boolean',
+            'has_sf9' => 'required|boolean',
+            'has_report_card' => 'required|boolean',
+            'has_good_moral' => 'required|boolean',
+        ]);
+
+        try {
+            $student->update([
+                'current_grade_level_id' => $validated['grade_level_id'],
+                'current_section_id' => $validated['section_id'],
+                'has_psa_birth_certificate' => $validated['has_psa_birth_certificate'],
+                'has_sf9' => $validated['has_sf9'],
+                'has_report_card' => $validated['has_report_card'],
+                'has_good_moral' => $validated['has_good_moral'],
+            ]);
+
+            return redirect()->back()->with('success', 'Student information updated successfully');
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors(['error' => 'Failed to update student: ' . $e->getMessage()]);
+        }
+    }
+
     public function viewEdit(Request $request)
     {
         $gradeFilter = $request->input('grade', 'all');
@@ -1746,6 +1775,57 @@ class StudentController extends Controller
     {
         $perPage = (int) $request->input('per_page', 10);
 
+        // Get all grade levels with student counts
+        $gradeLevels = \App\Models\GradeLevel::orderByRaw("
+            CASE
+                WHEN name = 'Grade 7' THEN 1
+                WHEN name = 'Grade 8' THEN 2
+                WHEN name = 'Grade 9' THEN 3
+                WHEN name = 'Grade 10' THEN 4
+                ELSE 5
+            END
+        ")->get();
+
+        // Add student count for each grade level
+        $gradeLevels->each(function ($grade) {
+            $grade->student_count = Student::whereNotNull('current_section_id')
+                ->where('current_grade_level_id', $grade->id)
+                ->count();
+        });
+
+        // If no grade level is selected, return empty students list
+        if (!$request->filled('grade_level')) {
+            $students = new \Illuminate\Pagination\LengthAwarePaginator(
+                [],
+                Student::whereNotNull('current_section_id')->count(),
+                $perPage,
+                1
+            );
+
+            $sections = \App\Models\ClassSection::with('gradeLevel')
+                ->orderBy('section_name')
+                ->get()
+                ->map(function ($section) {
+                    return [
+                        'id' => $section->id,
+                        'section_name' => $section->section_name,
+                        'grade_level' => $section->gradeLevel->name ?? 'N/A',
+                    ];
+                });
+
+            return Inertia::render('admin/enrollment/enrollment-list/page', [
+                'students' => $students,
+                'gradeLevels' => $gradeLevels,
+                'sections' => $sections,
+                'filters' => [
+                    'grade_level' => null,
+                    'section' => null,
+                    'search' => null,
+                ],
+            ]);
+        }
+
+        // Build query for students
         $query = Student::with([
             'section.gradeLevel',
             'section.adviserSections.teacher',
@@ -1765,6 +1845,7 @@ class StudentController extends Controller
             $searchTerm = $request->search;
             $query->where(function ($q) use ($searchTerm) {
                 $q->where(DB::raw("CONCAT(first_name, ' ', COALESCE(middle_name, ''), ' ', last_name)"), 'like', '%' . $searchTerm . '%')
+                    ->orWhere('lrn', 'like', '%' . $searchTerm . '%')
                     ->orWhereHas('section.adviserSections.teacher', function ($q) use ($searchTerm) {
                         $q->where('name', 'like', '%' . $searchTerm . '%');
                     });
@@ -1791,16 +1872,6 @@ class StudentController extends Controller
                     'adviser' => $adviser,
                 ];
             });
-
-        $gradeLevels = \App\Models\GradeLevel::orderByRaw("
-        CASE
-            WHEN name = 'Grade 7' THEN 1
-            WHEN name = 'Grade 8' THEN 2
-            WHEN name = 'Grade 9' THEN 3
-            WHEN name = 'Grade 10' THEN 4
-            ELSE 5
-        END
-    ")->get();
 
         $sections = \App\Models\ClassSection::with('gradeLevel')
             ->orderBy('section_name')

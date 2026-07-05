@@ -19,16 +19,11 @@ class Subject extends Model
         'code',
         'description',
         'grade_level_id',
-        'archived_by',
-        'archive_reason',
-        'purged_at',
     ];
 
     protected function casts(): array
     {
-        return [
-            'purged_at' => 'datetime',
-        ];
+        return [];
     }
 
     public function gradeLevel()
@@ -56,16 +51,8 @@ class Subject extends Model
         return $this->hasMany(Grade::class, 'subject_id');
     }
 
-    public function archivedByUser()
+    public function teacherSubjectRecords()
     {
-        return $this->belongsTo(User::class, 'archived_by');
-    }
-
-    public function archiveWithMetadata(?string $reason = null): void
-    {
-        $this->archived_by = Auth::id();
-        $this->archive_reason = $reason;
-        $this->save();
-        $this->delete();
+        return $this->hasMany(TeacherSubject::class, 'subject_id');
     }
 }

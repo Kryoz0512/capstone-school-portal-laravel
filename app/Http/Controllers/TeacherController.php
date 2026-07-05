@@ -353,6 +353,68 @@ class TeacherController extends Controller
         return response()->json(['exists' => $exists]);
     }
 
+    public function checkDeletable(Teacher $teacher)
+    {
+        // Get all related data for the teacher
+        $scheduleCount = $teacher->schedules()->count();
+        $adviserSectionCount = $teacher->adviserSections()->count();
+        $classSectionCount = $teacher->classSections()->count();
+        $teacherSubjectCount = $teacher->teacherSubjectRecords()->count();
+
+        // Get details for display
+        $sections = $teacher->adviserSections()
+            ->with('classSection.gradeLevel')
+            ->get()
+            ->map(function ($adviserSection) {
+                return [
+                    'name' => $adviserSection->classSection->section_name ?? 'N/A',
+                    'grade_level' => $adviserSection->classSection->gradeLevel->name ?? 'N/A',
+                    'school_year' => $adviserSection->school_year,
+                ];
+            })
+            ->toArray();
+
+        $subjects = $teacher->subjects()
+            ->select('tbl_subjects.name')
+            ->distinct()
+            ->get()
+            ->pluck('name')
+            ->toArray();
+
+        $checks = [
+            'schedules' => [
+                'count' => $scheduleCount,
+                'label' => 'Schedule assignments',
+            ],
+            'adviser_sections' => [
+                'count' => $adviserSectionCount,
+                'label' => 'Advisory sections',
+            ],
+            'class_sections' => [
+                'count' => $classSectionCount,
+                'label' => 'Class sections as teacher',
+            ],
+            'teacher_subjects' => [
+                'count' => $teacherSubjectCount,
+                'label' => 'Subject assignments',
+            ],
+        ];
+
+        $canDelete = $scheduleCount === 0 
+            && $adviserSectionCount === 0 
+            && $classSectionCount === 0 
+            && $teacherSubjectCount === 0;
+
+        return response()->json([
+            'can_delete' => $canDelete,
+            'checks' => $checks,
+            'details' => [
+                'sections' => $sections,
+                'subjects' => $subjects,
+            ],
+        ]);
+    }
+
     public function classList(Request $request)
     {
         $user = Auth::user();

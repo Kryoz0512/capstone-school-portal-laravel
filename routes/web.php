@@ -184,6 +184,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('admin/enrollment/class-sections/{classSection}', [ClassSectionController::class, 'destroy'])->name('admin.enrollment.class-sections.destroy');
     Route::post('admin/enrollment/class-sections/check-section-name', [ClassSectionController::class, 'checkSectionName'])->name('admin.enrollment.class-sections.check-section-name');
     Route::post('admin/enrollment/class-sections/check-room', [ClassSectionController::class, 'checkRoom'])->name('admin.enrollment.class-sections.check-room');
+    Route::get('admin/enrollment/class-sections/{classSection}/check-deletable', [ClassSectionController::class, 'checkDeletable'])->name('admin.enrollment.class-sections.check-deletable');
 
     Route::get('admin/enrollment/faculty-subjects', [TeacherSubjectController::class, 'index'])->name('admin.enrollment.faculty-subjects');
     Route::get('admin/enrollment/teacher-subjects/{teacherId}', [TeacherSubjectController::class, 'getTeacherSubjects'])->name('admin.enrollment.teacher-subjects.get');
@@ -281,6 +282,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('admin/user-management/teachers', [TeacherController::class, 'store'])->name('admin.user-management.teachers.store');
     Route::put('admin/user-management/teachers/{teacher}', [TeacherController::class, 'update'])->name('admin.user-management.teachers.update');
     Route::delete('admin/user-management/teachers/{teacher}', [TeacherController::class, 'destroy'])->name('admin.user-management.teachers.destroy');
+    Route::get('admin/user-management/teachers/{teacher}/check-deletable', [TeacherController::class, 'checkDeletable'])->name('admin.user-management.teachers.check-deletable');
     Route::post('admin/user-management/teachers/check-employee-number', [TeacherController::class, 'checkEmployeeNumber'])->name('admin.user-management.teachers.check-employee-number');
 
     // Student Account Management routes

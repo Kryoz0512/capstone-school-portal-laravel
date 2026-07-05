@@ -22,8 +22,6 @@ class ArchiveController extends Controller
         'teacher' => Teacher::class,
         'admin' => Admin::class,
         'student' => Student::class,
-        'subject' => Subject::class,
-        'room' => Room::class,
     ];
 
     public function index(Request $request)
@@ -44,8 +42,6 @@ class ArchiveController extends Controller
             'teacher' => $allRecords->where('type', 'Teacher')->count(),
             'admin' => $allRecords->where('type', 'Admin')->count(),
             'student' => $allRecords->where('type', 'Student')->count(),
-            'subject' => $allRecords->where('type', 'Subject')->count(),
-            'room' => $allRecords->where('type', 'Room')->count(),
         ];
 
         $filtered = $tab === 'all'
@@ -96,8 +92,6 @@ class ArchiveController extends Controller
             'teachers' => $this->mapSoftDeletedTeachers(),
             'admins' => $this->mapSoftDeletedAdmins(),
             'students' => $this->mapSoftDeletedStudents(),
-            'subjects' => $this->mapSoftDeletedSubjects(),
-            'rooms' => $this->mapSoftDeletedRooms(),
         ];
     }
 
@@ -105,20 +99,45 @@ class ArchiveController extends Controller
     {
         return Teacher::onlyTrashed()
             ->whereNull('purged_at')
-            ->with(['user' => fn ($q) => $q->withTrashed(), 'archivedByUser'])
+            ->with([
+                'user' => fn ($q) => $q->withTrashed(),
+                'archivedByUser',
+                'adviserSections' => fn ($q) => $q->withTrashed()->with(['classSection' => fn ($cq) => $cq->withTrashed()->with('gradeLevel')]),
+                'subjects'
+            ])
             ->orderByDesc('deleted_at')
             ->get()
-            ->map(fn (Teacher $teacher) => [
-                'id' => $teacher->id,
-                'source' => 'soft',
-                'type' => 'Teacher',
-                'name' => $teacher->name,
-                'email' => $teacher->user?->email ?? 'N/A',
-                'archived_by' => $teacher->archivedByUser?->name ?? 'Unknown',
-                'archived_at' => $teacher->deleted_at?->timezone('Asia/Manila')->format('M d, Y h:i A'),
-                'reason' => $teacher->archive_reason,
-                'has_academic_records' => $teacher->hasAcademicRecords(),
-            ])
+            ->map(function (Teacher $teacher) {
+                // Get sections info
+                $sections = $teacher->adviserSections->map(function ($adviserSection) {
+                    return [
+                        'name' => $adviserSection->classSection->section_name ?? 'N/A',
+                        'grade_level' => $adviserSection->classSection->gradeLevel->name ?? 'N/A',
+                        'school_year' => $adviserSection->school_year,
+                    ];
+                })->toArray();
+
+                // Get subjects
+                $subjects = $teacher->subjects->pluck('name')->unique()->values()->toArray();
+
+                return [
+                    'id' => $teacher->id,
+                    'source' => 'soft',
+                    'type' => 'Teacher',
+                    'name' => $teacher->name,
+                    'email' => $teacher->user?->email ?? 'N/A',
+                    'archived_by' => $teacher->archivedByUser?->name ?? 'Unknown',
+                    'archived_at' => $teacher->deleted_at?->timezone('Asia/Manila')->format('M d, Y h:i A'),
+                    'reason' => $teacher->archive_reason,
+                    'has_academic_records' => $teacher->hasAcademicRecords(),
+                    // Additional teacher details
+                    'employee_no' => $teacher->employee_number,
+                    'position' => $teacher->position,
+                    'subject' => $teacher->subject,
+                    'sections' => $sections,
+                    'subjects' => $subjects,
+                ];
+            })
             ->all();
     }
 
@@ -164,49 +183,7 @@ class ArchiveController extends Controller
             ->all();
     }
 
-    private function mapSoftDeletedSubjects(): array
-    {
-        return Subject::onlyTrashed()
-            ->whereNull('purged_at')
-            ->with('archivedByUser')
-            ->orderByDesc('deleted_at')
-            ->get()
-            ->map(fn (Subject $subject) => [
-                'id' => $subject->id,
-                'source' => 'soft',
-                'type' => 'Subject',
-                'name' => $subject->code && $subject->name
-                    ? "{$subject->code} - {$subject->name}"
-                    : ($subject->name ?: $subject->code),
-                'email' => 'N/A',
-                'archived_by' => $subject->archivedByUser?->name ?? 'Unknown',
-                'archived_at' => $subject->deleted_at?->timezone('Asia/Manila')->format('M d, Y h:i A'),
-                'reason' => $subject->archive_reason,
-                'has_academic_records' => Grade::where('subject_id', $subject->id)->exists(),
-            ])
-            ->all();
-    }
 
-    private function mapSoftDeletedRooms(): array
-    {
-        return Room::onlyTrashed()
-            ->whereNull('purged_at')
-            ->with('archivedByUser')
-            ->orderByDesc('deleted_at')
-            ->get()
-            ->map(fn (Room $room) => [
-                'id' => $room->id,
-                'source' => 'soft',
-                'type' => 'Room',
-                'name' => "Room {$room->room_name} (Capacity: {$room->capacity})",
-                'email' => 'N/A',
-                'archived_by' => $room->archivedByUser?->name ?? 'Unknown',
-                'archived_at' => $room->deleted_at?->timezone('Asia/Manila')->format('M d, Y h:i A'),
-                'reason' => $room->archive_reason,
-                'has_academic_records' => false,
-            ])
-            ->all();
-    }
 
     private function collectLegacyArchives(): array
     {
@@ -292,17 +269,6 @@ class ArchiveController extends Controller
             Teacher::class => $this->restoreLegacyTeacher($data),
             Admin::class => $this->restoreLegacyAdmin($data),
             Student::class => $this->restoreLegacyStudent($data),
-            Subject::class => Subject::create([
-                'code' => $data['code'],
-                'name' => $data['name'],
-                'description' => $data['description'] ?? null,
-                'grade_level_id' => $data['grade_level_id'],
-            ]),
-            Room::class => Room::create([
-                'room_name' => $data['room_name'] ?? $data['room_number'] ?? '',
-                'capacity' => $data['capacity'],
-                'status' => $data['status'] ?? 'Active',
-            ]),
             default => abort(422, 'Unsupported legacy archive type.'),
         };
 

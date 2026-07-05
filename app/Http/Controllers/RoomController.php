@@ -295,8 +295,21 @@ class RoomController extends Controller
     public function destroy($id)
     {
         $room = Room::findOrFail($id);
-        $room->archiveWithMetadata('Room deleted');
+        
+        // Check if room is assigned to any sections
+        $sectionCount = $room->sections()->count();
+        if ($sectionCount > 0) {
+            return back()->withErrors(['error' => "Cannot delete this room. It is assigned to {$sectionCount} section(s). Please reassign sections first."]);
+        }
+        
+        // Check if room has any schedules
+        $scheduleCount = $room->schedules()->count();
+        if ($scheduleCount > 0) {
+            return back()->withErrors(['error' => "Cannot delete this room. It has {$scheduleCount} schedule(s). Please remove schedules first."]);
+        }
+        
+        $room->delete();
 
-        return redirect()->back()->with('success', 'Room archived successfully');
+        return redirect()->back()->with('success', 'Room deleted successfully');
     }
 }

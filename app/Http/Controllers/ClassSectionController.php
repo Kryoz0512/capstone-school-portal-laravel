@@ -212,8 +212,57 @@ class ClassSectionController extends Controller
 
     public function destroy(ClassSection $classSection)
     {
+        // Check if section has students
+        $studentCount = $classSection->students()->count();
+        if ($studentCount > 0) {
+            return back()->withErrors(['error' => "Cannot delete this section. It has {$studentCount} student(s) enrolled."]);
+        }
+
+        // Check if section has schedules
+        $scheduleCount = $classSection->schedules()->count();
+        if ($scheduleCount > 0) {
+            return back()->withErrors(['error' => "Cannot delete this section. It has {$scheduleCount} schedule(s). Please remove schedules first."]);
+        }
+
+        // Check if section has adviser assigned
+        if ($classSection->teacher_id) {
+            return back()->withErrors(['error' => "Cannot delete this section. It has an adviser assigned. Please remove the adviser first."]);
+        }
+
+        // Delete the section
         $classSection->delete();
 
         return redirect()->back()->with('success', 'Section deleted successfully');
+    }
+
+    public function checkDeletable(ClassSection $classSection)
+    {
+        $checks = [
+            'students' => [
+                'count' => $classSection->students()->count(),
+                'label' => 'Students enrolled',
+            ],
+            'schedules' => [
+                'count' => $classSection->schedules()->count(),
+                'label' => 'Schedules assigned',
+            ],
+            'adviser' => [
+                'count' => $classSection->teacher_id ? 1 : 0,
+                'label' => 'Adviser assigned',
+            ],
+        ];
+
+        $canDelete = true;
+        foreach ($checks as $check) {
+            if ($check['count'] > 0) {
+                $canDelete = false;
+                break;
+            }
+        }
+
+        return response()->json([
+            'can_delete' => $canDelete,
+            'checks' => $checks,
+        ]);
     }
 }

@@ -88,8 +88,26 @@ class SubjectController extends Controller
 
     public function destroy(Subject $subject)
     {
-        $subject->archiveWithMetadata('Subject deleted');
+        // Check if subject has any schedules
+        $scheduleCount = $subject->schedules()->count();
+        if ($scheduleCount > 0) {
+            return back()->withErrors(['error' => "Cannot delete this subject. It has {$scheduleCount} schedule(s). Please remove schedules first."]);
+        }
+        
+        // Check if subject has any teacher assignments
+        $teacherAssignmentCount = $subject->teacherSubjectRecords()->count();
+        if ($teacherAssignmentCount > 0) {
+            return back()->withErrors(['error' => "Cannot delete this subject. It has {$teacherAssignmentCount} teacher assignment(s). Please remove assignments first."]);
+        }
+        
+        // Check if subject has any grade records
+        $gradeCount = \App\Models\Grade::where('subject_id', $subject->id)->count();
+        if ($gradeCount > 0) {
+            return back()->withErrors(['error' => "Cannot delete this subject. It has {$gradeCount} grade record(s). Subjects with grades cannot be deleted."]);
+        }
+        
+        $subject->delete();
 
-        return redirect()->back()->with('success', 'Subject archived successfully');
+        return redirect()->back()->with('success', 'Subject deleted successfully');
     }
 }

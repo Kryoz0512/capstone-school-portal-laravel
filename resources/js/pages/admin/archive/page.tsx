@@ -2,11 +2,12 @@ import { Head, router, usePage } from '@inertiajs/react'
 import ArchiveController from '@/actions/App/Http/Controllers/ArchiveController'
 import AdminLayout from '@/layouts/admin-layout'
 import ConfirmDialog from '@/components/modals/confirm-dialog'
+import ViewArchivedTeacherModal from '@/components/modals/view-archived-teacher-modal'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { RotateCcw, Trash2, Archive as ArchiveIcon, ShieldAlert, ChevronLeft, ChevronRight } from 'lucide-react'
+import { RotateCcw, Trash2, Archive as ArchiveIcon, ShieldAlert, ChevronLeft, ChevronRight, Eye } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
 type ArchiveItem = {
@@ -19,6 +20,12 @@ type ArchiveItem = {
     archived_at: string
     reason: string | null
     has_academic_records?: boolean
+    // Teacher-specific fields
+    employee_no?: string
+    position?: string
+    subject?: string
+    sections?: Array<{ name: string; grade_level: string; school_year: string }>
+    subjects?: string[]
 }
 
 type Props = {
@@ -41,8 +48,6 @@ const TAB_OPTIONS = [
     { value: 'teacher', label: 'Teachers' },
     { value: 'admin', label: 'Admins' },
     // { value: 'student', label: 'Students' },
-    { value: 'subject', label: 'Subjects' },
-    { value: 'room', label: 'Rooms' },
 ]
 
 function ToastBanner({ message, variant }: { message: string; variant: 'success' | 'error' }) {
@@ -82,15 +87,13 @@ function getTypeBadgeClass(type: string) {
         case 'Teacher': return 'bg-blue-100 text-blue-800 hover:bg-blue-100'
         case 'Admin': return 'bg-purple-100 text-purple-800 hover:bg-purple-100'
         case 'Student': return 'bg-green-100 text-green-800 hover:bg-green-100'
-        case 'Subject': return 'bg-orange-100 text-orange-800 hover:bg-orange-100'
-        case 'Room': return 'bg-cyan-100 text-cyan-800 hover:bg-cyan-100'
         default: return 'bg-gray-100 text-gray-800 hover:bg-gray-100'
     }
 }
 
-/** Tabs whose records don't have a meaningful email (Subjects, Rooms). */
+/** Tabs whose records don't have a meaningful email. */
 function tabHasEmailColumn(tabValue: string): boolean {
-    return tabValue !== 'subject' && tabValue !== 'room'
+    return true
 }
 
 export default function ArchivePage({ auth, archives = [], counts = {}, currentTab = 'all' }: Props) {
@@ -104,6 +107,7 @@ export default function ArchivePage({ auth, archives = [], counts = {}, currentT
 
     const [restoreTarget, setRestoreTarget] = useState<ArchiveItem | null>(null)
     const [deleteTarget, setDeleteTarget] = useState<ArchiveItem | null>(null)
+    const [viewTeacherTarget, setViewTeacherTarget] = useState<ArchiveItem | null>(null)
 
     useEffect(() => {
         if (flash?.success) {
@@ -229,6 +233,7 @@ export default function ArchivePage({ auth, archives = [], counts = {}, currentT
                                 }}
                                 onRestore={setRestoreTarget}
                                 onForceDelete={setDeleteTarget}
+                                onViewTeacher={setViewTeacherTarget}
                                 showEmailColumn={tabHasEmailColumn(tab.value)}
                             />
                         </TabsContent>
@@ -258,6 +263,24 @@ export default function ArchivePage({ auth, archives = [], counts = {}, currentT
                 variant="destructive"
                 onConfirm={confirmForceDelete}
             />
+
+            <ViewArchivedTeacherModal
+                open={!!viewTeacherTarget}
+                onOpenChange={(open) => !open && setViewTeacherTarget(null)}
+                teacher={viewTeacherTarget ? {
+                    id: viewTeacherTarget.id,
+                    name: viewTeacherTarget.name,
+                    email: viewTeacherTarget.email,
+                    employee_no: viewTeacherTarget.employee_no || 'N/A',
+                    position: viewTeacherTarget.position || 'N/A',
+                    subject: viewTeacherTarget.subject || 'N/A',
+                    sections: viewTeacherTarget.sections || [],
+                    subjects: viewTeacherTarget.subjects || [],
+                    archived_by: viewTeacherTarget.archived_by,
+                    archived_at: viewTeacherTarget.archived_at,
+                    reason: viewTeacherTarget.reason,
+                } : null}
+            />
         </AdminLayout>
     )
 }
@@ -272,6 +295,7 @@ function ArchiveTable({
     onItemsPerPageChange,
     onRestore,
     onForceDelete,
+    onViewTeacher,
     showEmailColumn = true,
 }: {
     archives: ArchiveItem[]
@@ -283,6 +307,7 @@ function ArchiveTable({
     onItemsPerPageChange: (value: number) => void
     onRestore: (item: ArchiveItem) => void
     onForceDelete: (item: ArchiveItem) => void
+    onViewTeacher: (item: ArchiveItem) => void
     showEmailColumn?: boolean
 }) {
     return (
@@ -311,7 +336,19 @@ function ArchiveTable({
                                             <Badge variant="outline" className="ml-2 text-xs">Has Grades</Badge>
                                         )}
                                     </td>
-                                    <td className="px-6 py-4 text-sm text-gray-900">{archive.name}</td>
+                                    <td className="px-6 py-4">
+                                        {archive.type === 'Teacher' ? (
+                                            <button
+                                                onClick={() => onViewTeacher(archive)}
+                                                className="text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium flex items-center gap-1"
+                                            >
+                                                {archive.name}
+                                                <Eye className="w-3 h-3" />
+                                            </button>
+                                        ) : (
+                                            <span className="text-sm text-gray-900">{archive.name}</span>
+                                        )}
+                                    </td>
                                     {showEmailColumn && (
                                         <td className="px-6 py-4 text-sm text-gray-600">{archive.email}</td>
                                     )}

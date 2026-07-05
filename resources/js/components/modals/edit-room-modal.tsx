@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { SectionCombobox } from '@/components/ui/section-combobox'
 import { useForm } from '@inertiajs/react'
 import { useEffect, useState } from 'react'
 import axios from 'axios'
@@ -177,22 +178,13 @@ export default function EditRoomModal({ open, onOpenChange, room, classSections 
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             Assign to Section <span className="text-gray-400">(Optional)</span>
                         </label>
-                        <Select
-                            value={data.section_id || 'none'}
-                            onValueChange={(value) => setData('section_id', value === 'none' ? null : value)}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a section (optional)" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="none">None</SelectItem>
-                                {classSections.map((section) => (
-                                    <SelectItem key={section.id} value={section.id.toString()}>
-                                        {section.grade_level} - {section.section_name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <SectionCombobox
+                            sections={classSections}
+                            value={data.section_id}
+                            onValueChange={(value) => setData('section_id', value)}
+                            placeholder="Select a section (optional)"
+                            emptyMessage="No section found."
+                        />
                         {errors.section_id && (
                             <p className="text-xs text-red-500 mt-1">{errors.section_id}</p>
                         )}

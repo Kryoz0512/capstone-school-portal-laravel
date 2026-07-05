@@ -274,22 +274,61 @@ class RoomController extends Controller
             'section_id' => 'nullable|exists:tbl_class_sections,id',
         ]);
 
+        // Get the old section assigned to this room (if any)
+        $oldSection = ClassSection::where('room_id', $room->id)->first();
+
         $room->update([
             'room_name' => $validated['room_name'],
             'capacity' => $validated['capacity'],
             'status' => $validated['status'],
         ]);
 
-        // Handle section assignment
-        // First, unassign this room from any section that currently has it
-        \App\Models\ClassSection::where('room_id', $room->id)->update(['room_id' => null]);
-
-        // Then, if a section is provided, assign this room to that section
+        // Handle section assignment with room swapping logic
         if (!empty($validated['section_id'])) {
-            \App\Models\ClassSection::where('id', $validated['section_id'])->update(['room_id' => $room->id]);
+            $newSection = ClassSection::find($validated['section_id']);
+            
+            // Check if the new section is currently assigned to another room (room swap scenario)
+            if ($newSection && $newSection->room_id && $newSection->room_id != $room->id) {
+                $otherRoomId = $newSection->room_id;
+                
+                // SWAP ROOMS: Move schedules of new section from other room to this room
+                \App\Models\Schedule::where('room_id', $otherRoomId)
+                    ->where('class_section_id', $validated['section_id'])
+                    ->update(['room_id' => $room->id]);
+                
+                // If this room had an old section, move its schedules to the other room (complete the swap)
+                if ($oldSection) {
+                    \App\Models\Schedule::where('room_id', $room->id)
+                        ->where('class_section_id', $oldSection->id)
+                        ->update(['room_id' => $otherRoomId]);
+                    
+                    // Assign old section to the other room
+                    ClassSection::where('id', $oldSection->id)->update(['room_id' => $otherRoomId]);
+                }
+            } else {
+                // No swap needed - just reassigning section to new room
+                // If this room had an old section, unassign it (and keep its schedules in this room)
+                if ($oldSection && $oldSection->id != $validated['section_id']) {
+                    ClassSection::where('id', $oldSection->id)->update(['room_id' => null]);
+                    
+                    // Update old section's schedules to new section
+                    \App\Models\Schedule::where('room_id', $room->id)
+                        ->where('class_section_id', $oldSection->id)
+                        ->update(['class_section_id' => $validated['section_id']]);
+                }
+            }
+            
+            // Assign the new section to this room
+            ClassSection::where('id', $validated['section_id'])->update(['room_id' => $room->id]);
+            
+        } else {
+            // Removing section from room - unassign the old section
+            if ($oldSection) {
+                ClassSection::where('id', $oldSection->id)->update(['room_id' => null]);
+            }
         }
 
-        return redirect()->route('admin.enrollment.schedule-management')->with('success', 'Room updated successfully');
+        return redirect()->route('admin.enrollment.schedule-management')->with('success', 'Room updated successfully. Schedules have been migrated.');
     }
 
     public function destroy($id)

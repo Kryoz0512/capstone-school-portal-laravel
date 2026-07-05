@@ -96,7 +96,7 @@ export default function RoomSchedule({ auth, rooms, filters = {} }: Props) {
                         <table className="w-full">
                             <thead className="bg-green-700">
                                 <tr>
-                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Room Number</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Room Name</th>
                                     <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Capacity</th>
                                     <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Schedules</th>
                                     <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Action</th>

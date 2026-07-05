@@ -75,7 +75,8 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                     </Link>
                 ))}
             </nav>
-            {auth?.teacher?.is_adviser && (
+            {/* Adviser Portal - Commented Out */}
+            {/* {auth?.teacher?.is_adviser && (
                 <div className="p-3 border-t border-blue-700/50">
                     <Link
                         href="/adviser/dashboard"
@@ -88,7 +89,7 @@ export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                         <span className="font-medium text-sm">Adviser Portal</span>
                     </Link>
                 </div>
-            )}
+            )} */}
         </div>
     )
 }

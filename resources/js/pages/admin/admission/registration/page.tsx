@@ -14,6 +14,18 @@ type GradeLevel = {
     name: string
 }
 
+type Section = {
+    id: number
+    name: string
+    grade_level_id: number
+    grade_level_name: string
+    room_name: string
+    capacity: number
+    current_students: number
+    available_slots: number
+    is_full: boolean
+}
+
 type ImportedStudent = {
     name: string
     lrn: string
@@ -36,6 +48,7 @@ type Props = {
         }
     }
     gradeLevels: GradeLevel[]
+    sections: Section[]
 }
 
 // ─── DatePicker Component ────────────────────────────────────────────────────
@@ -276,10 +289,13 @@ function DatePicker({ value, onChange }: { value: string; onChange: (val: string
     )
 }
 // ─── Main Component ──────────────────────────────────────────────────────────
-export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
+export default function StudentRegistration({ auth, gradeLevels = [], sections = [] }: Props) {
     const [activeTab, setActiveTab] = useState('new')
     const [studentStatus, setStudentStatus] = useState('')
     const [gradeLevel, setGradeLevel] = useState('')
+    const [sectionSearch, setSectionSearch] = useState('')
+    const [showSectionDropdown, setShowSectionDropdown] = useState(false)
+    const sectionInputRef = useRef<HTMLInputElement>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [showImportedModal, setShowImportedModal] = useState(false)
     const [importedStudents, setImportedStudents] = useState<Array<{ lrn: string; name: string }>>([])
@@ -399,6 +415,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
         middle_name: '',
         suffix: '',
         grade_level_id: '',
+        section_id: '',
         has_psa_birth_certificate: false,
         has_sf9: false,
         has_report_card: false,
@@ -421,24 +438,94 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
 
     const showGradeLevelDropdown = activeTab === 'transferee' || activeTab === 'old'
 
+    // Filter sections based on grade level
+    const getAvailableSections = () => {
+        // For new students, filter Grade 7 sections
+        if (activeTab === 'new') {
+            const grade7 = gradeLevels.find(g => g.name === 'Grade 7')
+            return sections.filter(s => s.grade_level_id === grade7?.id && !s.is_full)
+        }
+        
+        // For old/transferee, filter by selected grade level
+        if (data.grade_level_id) {
+            return sections.filter(s => s.grade_level_id === parseInt(data.grade_level_id) && !s.is_full)
+        }
+        
+        return []
+    }
+
+    const availableSections = getAvailableSections()
+
+    // Filter sections based on search query
+    const filteredSections = availableSections.filter(section => {
+        const searchLower = sectionSearch.toLowerCase()
+        return (
+            section.name.toLowerCase().includes(searchLower) ||
+            section.grade_level_name.toLowerCase().includes(searchLower) ||
+            section.room_name.toLowerCase().includes(searchLower)
+        )
+    })
+
+    // Get selected section object
+    const selectedSection = availableSections.find(s => s.id.toString() === data.section_id)
+
+    // Handle section selection
+    const handleSectionSelect = (section: Section) => {
+        setData('section_id', section.id.toString())
+        setSectionSearch(`${section.grade_level_name} - ${section.name}`)
+        setShowSectionDropdown(false)
+    }
+
+    // Handle section input change
+    const handleSectionSearchChange = (value: string) => {
+        setSectionSearch(value)
+        setShowSectionDropdown(true)
+        // Clear selection if input is cleared
+        if (value === '') {
+            setData('section_id', '')
+        }
+    }
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (sectionInputRef.current && !sectionInputRef.current.contains(e.target as Node)) {
+                setShowSectionDropdown(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [])
+
+    // Update section search when section_id changes externally
+    useEffect(() => {
+        if (data.section_id && selectedSection) {
+            setSectionSearch(`${selectedSection.grade_level_name} - ${selectedSection.name}`)
+        } else if (!data.section_id) {
+            setSectionSearch('')
+        }
+    }, [data.section_id, selectedSection])
+
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
 
         // Convert MM/DD/YYYY → YYYY-MM-DD before sending to Laravel
-        let isoDate = data.birth_date
+        let submitData = { ...data }
         if (data.birth_date && data.birth_date.length === 10) {
             const [mm, dd, yyyy] = data.birth_date.split('/')
-            isoDate = `${yyyy}-${mm}-${dd}`
+            submitData.birth_date = `${yyyy}-${mm}-${dd}`
         }
 
-        post(store.url(), {
-            data: { ...data, birth_date: isoDate },
+        // Submit using router.post instead of form's post method
+        router.post(store.url(), submitData, {
+            preserveScroll: true,
             onSuccess: () => {
                 reset()
                 setStudentStatus('')
                 setGradeLevel('')
                 setStartYear('')
                 setEndYear('')
+                setSectionSearch('')
                 setActiveTab('new')
             },
         })
@@ -450,6 +537,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
         setGradeLevel('')
         setStartYear('')
         setEndYear('')
+        setSectionSearch('')
         setActiveTab('new')
     }
 
@@ -584,7 +672,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                 </div>
                             </TabsContent>
 
-                            {/* ── Old / Returning Student Banner + Search ── */}
+                            {/* ── Old / Returning Student Banner ── */}
                             <TabsContent value="old">
                                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 rounded-lg p-4 mb-6 shadow-sm">
                                     <div className="flex items-start gap-3">
@@ -596,17 +684,169 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                         <div className="flex-1">
                                             <p className="text-sm font-semibold text-blue-900 mb-1">Returning Student Registration</p>
                                             <p className="text-sm text-blue-800">
-                                                Old students are <strong>returning students</strong> who were previously enrolled in this school. Search for the student below to continue their enrollment.
+                                                Old students are <strong>returning students</strong> who were previously enrolled in this school. First select their next grade level and section, then search for the student.
                                             </p>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Search */}
-                                <div className="mb-6">
-                                    <label className="block text-sm font-semibold text-gray-900 mb-2">
-                                        Search Returning Student <span className="text-red-500">*</span>
-                                    </label>
+                                {/* Step 1: Grade Level Selection */}
+                                <div className="border-b border-gray-200 pb-6 mb-6">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-600 text-white text-xs font-bold">1</span>
+                                        <label className="block text-sm font-semibold text-gray-900">
+                                            Select Next Grade Level <span className="text-red-500">*</span>
+                                        </label>
+                                    </div>
+                                    <Select value={data.grade_level_id} onValueChange={(value) => {
+                                        setData('grade_level_id', value)
+                                        setData('section_id', '') // Reset section when grade level changes
+                                        setSectionSearch('') // Clear section search
+                                    }}>
+                                        <SelectTrigger className="h-11">
+                                            <SelectValue placeholder="Select grade level" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {gradeLevels.map((grade) => (
+                                                <SelectItem key={grade.id} value={grade.id.toString()}>
+                                                    {grade.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <p className="text-xs text-gray-600 mt-2">Select the grade level the student will be enrolled in</p>
+                                    {errors.grade_level_id && <p className="text-xs text-red-500 mt-2">{errors.grade_level_id}</p>}
+                                </div>
+
+                                {/* Step 2: Section Assignment */}
+                                {data.grade_level_id && (
+                                    <div className="border-b border-gray-200 pb-6 mb-6">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold">2</span>
+                                            <label className="block text-sm font-semibold text-gray-900">
+                                                Assign Section <span className="text-gray-500 text-xs">(Optional)</span>
+                                            </label>
+                                        </div>
+                                        <div className="relative" ref={sectionInputRef}>
+                                            <div className="relative">
+                                                <Input
+                                                    type="text"
+                                                    placeholder={availableSections.length === 0 ? 'No available sections' : 'Type to search sections...'}
+                                                    value={sectionSearch}
+                                                    onChange={(e) => handleSectionSearchChange(e.target.value)}
+                                                    onFocus={() => setShowSectionDropdown(true)}
+                                                    disabled={availableSections.length === 0}
+                                                    className="h-11 pr-10"
+                                                />
+                                                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                    </svg>
+                                                </div>
+                                            </div>
+
+                                            {/* Dropdown with recommendations */}
+                                            {showSectionDropdown && filteredSections.length > 0 && (
+                                                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                                                    <div className="p-2">
+                                                        <div className="text-xs font-medium text-gray-500 px-2 py-1 mb-1">
+                                                            {filteredSections.length} {filteredSections.length === 1 ? 'section' : 'sections'} available
+                                                        </div>
+                                                        {filteredSections.map((section) => (
+                                                            <button
+                                                                key={section.id}
+                                                                type="button"
+                                                                onClick={() => handleSectionSelect(section)}
+                                                                className={`w-full text-left px-3 py-2.5 rounded-md hover:bg-blue-50 transition-colors border-l-2 ${
+                                                                    data.section_id === section.id.toString() 
+                                                                        ? 'border-blue-500 bg-blue-50' 
+                                                                        : 'border-transparent'
+                                                                }`}
+                                                            >
+                                                                <div className="flex items-center justify-between gap-3">
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <p className="text-sm font-semibold text-gray-900 truncate">
+                                                                            {section.grade_level_name} - {section.name}
+                                                                        </p>
+                                                                        <p className="text-xs text-gray-600 mt-0.5">
+                                                                            {section.room_name}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="text-right flex-shrink-0">
+                                                                        <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                                                            section.available_slots <= 5 
+                                                                                ? 'bg-amber-100 text-amber-800' 
+                                                                                : 'bg-green-100 text-green-800'
+                                                                        }`}>
+                                                                            {section.available_slots} slots
+                                                                        </div>
+                                                                        <p className="text-xs text-gray-500 mt-0.5">
+                                                                            {section.current_students}/{section.capacity}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* No results message */}
+                                            {showSectionDropdown && sectionSearch && filteredSections.length === 0 && availableSections.length > 0 && (
+                                                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4">
+                                                    <p className="text-sm text-gray-500 text-center">No sections match "{sectionSearch}"</p>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Selected section display */}
+                                        {data.section_id && selectedSection && (
+                                            <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                                <div className="flex items-start gap-2">
+                                                    <svg className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                    <div className="flex-1">
+                                                        <p className="text-sm font-semibold text-green-900">
+                                                            Selected: {selectedSection.grade_level_name} - {selectedSection.name}
+                                                        </p>
+                                                        <p className="text-xs text-green-700 mt-0.5">
+                                                            {selectedSection.room_name} • {selectedSection.available_slots} slots available ({selectedSection.current_students}/{selectedSection.capacity})
+                                                        </p>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setData('section_id', '')
+                                                            setSectionSearch('')
+                                                        }}
+                                                        className="text-green-600 hover:text-green-800"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {availableSections.length === 0 && (
+                                            <p className="text-xs text-amber-600 mt-2">
+                                                No sections available for the selected grade level. The student will be registered without a section.
+                                            </p>
+                                        )}
+                                        {errors.section_id && <p className="text-xs text-red-500 mt-2">{errors.section_id}</p>}
+                                    </div>
+                                )}
+
+                                {/* Step 3: Search for Student */}
+                                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <span className="flex items-center justify-center w-6 h-6 rounded-full bg-purple-600 text-white text-xs font-bold">3</span>
+                                        <label className="block text-sm font-semibold text-gray-900">
+                                            Search Returning Student <span className="text-red-500">*</span>
+                                        </label>
+                                    </div>
                                     <div className="relative">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                             <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -622,7 +862,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                         />
                                         {isSearching && (
                                             <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                                                <svg className="animate-spin h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24">
+                                                <svg className="animate-spin h-5 w-5 text-purple-600" fill="none" viewBox="0 0 24 24">
                                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                                                 </svg>
@@ -640,7 +880,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                                         key={student.id}
                                                         type="button"
                                                         onClick={() => handleSelectStudent(student)}
-                                                        className="w-full text-left px-4 py-3 hover:bg-blue-50 border-b border-gray-100 last:border-b-0 transition-colors"
+                                                        className="w-full text-left px-4 py-3 hover:bg-purple-50 border-b border-gray-100 last:border-b-0 transition-colors"
                                                     >
                                                         <div className="flex items-center justify-between">
                                                             <div className="flex-1">
@@ -648,7 +888,7 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                                                 <p className="text-xs text-gray-600">LRN: {student.lrn}</p>
                                                             </div>
                                                             <div className="text-right">
-                                                                <p className="text-xs font-medium text-blue-600">
+                                                                <p className="text-xs font-medium text-purple-600">
                                                                     {student.current_grade_level} → {nextGrade}
                                                                 </p>
                                                                 <p className="text-xs text-gray-500">{student.school_year}</p>
@@ -667,15 +907,15 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                     )}
 
                                     {selectedStudent && (
-                                        <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                        <div className="mt-3 bg-purple-50 border border-purple-200 rounded-lg p-3">
                                             <div className="flex items-start gap-2">
-                                                <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <svg className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                 </svg>
                                                 <div className="flex-1">
-                                                    <p className="text-sm font-semibold text-blue-900">Selected: {selectedStudent.name}</p>
-                                                    <p className="text-xs text-blue-700">
-                                                        Graduated from {selectedStudent.current_grade_level}, will be enrolled in Grade {parseInt(selectedStudent.current_grade_level.replace('Grade ', '')) + 1}
+                                                    <p className="text-sm font-semibold text-purple-900">Selected: {selectedStudent.name}</p>
+                                                    <p className="text-xs text-purple-700">
+                                                        LRN: {selectedStudent.lrn} • Graduated from {selectedStudent.current_grade_level}
                                                     </p>
                                                 </div>
                                             </div>
@@ -705,28 +945,6 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
 
                             {/* ── Shared Form (all tabs) ── */}
                             <form onSubmit={handleSubmit} className="space-y-6">
-
-                                {/* Grade Level (only for old/transferee) */}
-                                {showGradeLevelDropdown && (
-                                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                                        <label className="block text-sm font-semibold text-gray-900 mb-3">
-                                            Grade Level <span className="text-red-500">*</span>
-                                        </label>
-                                        <Select value={data.grade_level_id} onValueChange={(value) => setData('grade_level_id', value)}>
-                                            <SelectTrigger className="h-11">
-                                                <SelectValue placeholder="Select grade level" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {gradeLevels.map((grade) => (
-                                                    <SelectItem key={grade.id} value={grade.id.toString()}>
-                                                        {grade.name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        {errors.grade_level_id && <p className="text-xs text-red-500 mt-2">{errors.grade_level_id}</p>}
-                                    </div>
-                                )}
 
                                 {/* LRN + School Year */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -777,6 +995,154 @@ export default function StudentRegistration({ auth, gradeLevels = [] }: Props) {
                                         <p className="text-xs text-gray-500 mt-1">Enter 4-digit start year (e.g., 2026 → auto-fills 2027)</p>
                                         {errors.school_year && <p className="text-xs text-red-500 mt-2">{errors.school_year}</p>}
                                     </div>
+                                </div>
+
+                                {/* Grade Level (only for transferee) */}
+                                {activeTab === 'transferee' && (
+                                    <div className="border-b border-gray-200 pb-6">
+                                        <label className="block text-sm font-semibold text-gray-900 mb-3">
+                                            Grade Level <span className="text-red-500">*</span>
+                                        </label>
+                                        <Select value={data.grade_level_id} onValueChange={(value) => {
+                                            setData('grade_level_id', value)
+                                            setData('section_id', '') // Reset section when grade level changes
+                                            setSectionSearch('') // Clear section search
+                                        }}>
+                                            <SelectTrigger className="h-11">
+                                                <SelectValue placeholder="Select grade level" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {gradeLevels.map((grade) => (
+                                                    <SelectItem key={grade.id} value={grade.id.toString()}>
+                                                        {grade.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <p className="text-xs text-gray-600 mt-2">Select the appropriate grade level based on previous school records</p>
+                                        {errors.grade_level_id && <p className="text-xs text-red-500 mt-2">{errors.grade_level_id}</p>}
+                                    </div>
+                                )}
+
+                                {/* Section Assignment with Search/Autocomplete (for all tabs) */}
+                                <div className="border-b border-gray-200 pb-6">
+                                    <label className="block text-sm font-semibold text-gray-900 mb-3">
+                                        Section Assignment <span className="text-gray-500 text-xs">(Optional)</span>
+                                    </label>
+                                    <div className="relative" ref={sectionInputRef}>
+                                        <div className="relative">
+                                            <Input
+                                                type="text"
+                                                placeholder={availableSections.length === 0 ? 'No available sections' : 'Type to search sections...'}
+                                                value={sectionSearch}
+                                                onChange={(e) => handleSectionSearchChange(e.target.value)}
+                                                onFocus={() => setShowSectionDropdown(true)}
+                                                disabled={availableSections.length === 0}
+                                                className="h-11 pr-10"
+                                            />
+                                            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                </svg>
+                                            </div>
+                                        </div>
+
+                                        {/* Dropdown with recommendations */}
+                                        {showSectionDropdown && filteredSections.length > 0 && (
+                                            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                                                <div className="p-2">
+                                                    <div className="text-xs font-medium text-gray-500 px-2 py-1 mb-1">
+                                                        {filteredSections.length} {filteredSections.length === 1 ? 'section' : 'sections'} available
+                                                    </div>
+                                                    {filteredSections.map((section) => (
+                                                        <button
+                                                            key={section.id}
+                                                            type="button"
+                                                            onClick={() => handleSectionSelect(section)}
+                                                            className={`w-full text-left px-3 py-2.5 rounded-md hover:bg-blue-50 transition-colors border-l-2 ${
+                                                                data.section_id === section.id.toString() 
+                                                                    ? 'border-blue-500 bg-blue-50' 
+                                                                    : 'border-transparent'
+                                                            }`}
+                                                        >
+                                                            <div className="flex items-center justify-between gap-3">
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className="text-sm font-semibold text-gray-900 truncate">
+                                                                        {section.grade_level_name} - {section.name}
+                                                                    </p>
+                                                                    <p className="text-xs text-gray-600 mt-0.5">
+                                                                        {section.room_name}
+                                                                    </p>
+                                                                </div>
+                                                                <div className="text-right flex-shrink-0">
+                                                                    <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                                                        section.available_slots <= 5 
+                                                                            ? 'bg-amber-100 text-amber-800' 
+                                                                            : 'bg-green-100 text-green-800'
+                                                                    }`}>
+                                                                        {section.available_slots} slots
+                                                                    </div>
+                                                                    <p className="text-xs text-gray-500 mt-0.5">
+                                                                        {section.current_students}/{section.capacity}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* No results message */}
+                                        {showSectionDropdown && sectionSearch && filteredSections.length === 0 && availableSections.length > 0 && (
+                                            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4">
+                                                <p className="text-sm text-gray-500 text-center">No sections match "{sectionSearch}"</p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Selected section display */}
+                                    {data.section_id && selectedSection && (
+                                        <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                            <div className="flex items-start gap-2">
+                                                <svg className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-semibold text-green-900">
+                                                        Selected: {selectedSection.grade_level_name} - {selectedSection.name}
+                                                    </p>
+                                                    <p className="text-xs text-green-700 mt-0.5">
+                                                        {selectedSection.room_name} • {selectedSection.available_slots} slots available ({selectedSection.current_students}/{selectedSection.capacity})
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setData('section_id', '')
+                                                        setSectionSearch('')
+                                                    }}
+                                                    className="text-green-600 hover:text-green-800"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Info messages */}
+                                    {availableSections.length === 0 && (
+                                        <p className="text-xs text-amber-600 mt-2">
+                                            {activeTab === 'new' 
+                                                ? 'No Grade 7 sections available with open slots. The student will be registered without a section.'
+                                                : data.grade_level_id 
+                                                    ? 'No sections available for the selected grade level. The student will be registered without a section.'
+                                                    : 'Please select a grade level first.'}
+                                        </p>
+                                    )}
+                                    {errors.section_id && <p className="text-xs text-red-500 mt-2">{errors.section_id}</p>}
                                 </div>
 
                                 {/* Personal Information */}

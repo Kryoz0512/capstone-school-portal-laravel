@@ -226,9 +226,31 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('admin/admission/registration', function () {
         $gradeLevels = \App\Models\GradeLevel::all();
         $admin = \App\Models\Admin::where('user_id', \Illuminate\Support\Facades\Auth::id())->first();
+        
+        $sections = \App\Models\ClassSection::with(['gradeLevel', 'room'])
+            ->withCount('students')
+            ->get()
+            ->map(function ($section) {
+                $capacity = $section->room->capacity ?? 0;
+                $currentStudents = $section->students_count;
+                $availableSlots = max(0, $capacity - $currentStudents);
+
+                return [
+                    'id' => $section->id,
+                    'name' => $section->section_name,
+                    'grade_level_id' => $section->grade_level_id,
+                    'grade_level_name' => $section->gradeLevel->name ?? 'N/A',
+                    'room_name' => $section->room->room_name ?? 'No Room',
+                    'capacity' => $capacity,
+                    'current_students' => $currentStudents,
+                    'available_slots' => $availableSlots,
+                    'is_full' => $availableSlots <= 0,
+                ];
+            });
 
         return \Inertia\Inertia::render('admin/admission/registration/page', [
             'gradeLevels' => $gradeLevels,
+            'sections' => $sections,
         ]);
     })->name('admin.admission.registration');
 

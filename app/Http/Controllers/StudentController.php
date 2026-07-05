@@ -789,6 +789,7 @@ class StudentController extends Controller
             'middle_name' => 'nullable|string|max:255',
             'suffix' => 'nullable|string|max:10',
             'grade_level_id' => 'nullable|exists:tbl_grade_levels,id',
+            'section_id' => 'nullable|exists:tbl_class_sections,id',
             'has_psa_birth_certificate' => 'nullable|boolean',
             'has_sf9' => 'nullable|boolean',
             'has_report_card' => 'required|accepted',
@@ -870,6 +871,7 @@ class StudentController extends Controller
                     $existingStudent->update([
                         'school_year' => $validated['school_year'],
                         'current_grade_level_id' => $validated['grade_level_id'],
+                        'current_section_id' => $validated['section_id'] ?? null,
                         'student_status' => 'returning',
                         'has_psa_birth_certificate' => $validated['has_psa_birth_certificate'] ?? $existingStudent->has_psa_birth_certificate,
                         'has_sf9' => $validated['has_sf9'] ?? $existingStudent->has_sf9,
@@ -921,6 +923,7 @@ class StudentController extends Controller
                 'gender' => $validated['gender'],
                 'birth_date' => $validated['birth_date'],
                 'current_grade_level_id' => $gradeLevelId,
+                'current_section_id' => $validated['section_id'] ?? null,
                 'has_psa_birth_certificate' => $validated['has_psa_birth_certificate'] ?? false,
                 'has_sf9' => $validated['has_sf9'] ?? false,
                 'has_report_card' => $validated['has_report_card'] ?? false,

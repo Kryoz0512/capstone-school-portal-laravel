@@ -467,9 +467,19 @@ class TeacherController extends Controller
         $pagination = null;
 
         if ($sectionId) {
-            $paginated = Student::where('current_section_id', $sectionId)
-                ->where('school_year', $schoolYear)
-                ->with(['gradeLevel', 'section'])
+            $query = Student::where('current_section_id', $sectionId)
+                ->where('school_year', $schoolYear);
+
+            // Add search filter for student name or LRN
+            if ($request->filled('search')) {
+                $search = $request->input('search');
+                $query->where(function ($q) use ($search) {
+                    $q->where(DB::raw("CONCAT(first_name, ' ', COALESCE(middle_name, ''), ' ', last_name)"), 'like', '%' . $search . '%')
+                        ->orWhere('lrn', 'like', '%' . $search . '%');
+                });
+            }
+
+            $paginated = $query->with(['gradeLevel', 'section'])
                 ->orderBy('last_name')
                 ->paginate($perPage);
 
@@ -502,6 +512,7 @@ class TeacherController extends Controller
                 'section_id' => $sectionId,
                 'school_year' => $schoolYear,
                 'per_page' => $perPage,
+                'search' => $request->input('search'),
             ],
         ]);
     }

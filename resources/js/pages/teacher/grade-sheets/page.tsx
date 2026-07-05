@@ -3,7 +3,7 @@ import TeacherLayout from '@/layouts/teacher-layout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Search, Printer, Check, X, Loader2, AlertCircle } from 'lucide-react'
+import { Search, Printer, Check, X, Loader2 } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { DataTablePagination, teacherTableHeaderCellClass, teacherTableHeaderCellCenterClass, teacherTableHeaderClass } from '@/components/data-table-pagination'
 import { toast } from 'sonner'
@@ -84,6 +84,7 @@ export default function GradeManagement({ gradeLevels, sections, subjects, stude
     useEffect(() => {
         if (isFirstRender.current) { isFirstRender.current = false; return }
         setLocalGrades({})
+        setSearchQuery('')
         navigate(1)
     }, [gradeLevel, section, subject, schoolYear])
 
@@ -280,7 +281,7 @@ export default function GradeManagement({ gradeLevels, sections, subjects, stude
             <button
                 onClick={() => handleCellClick(student, quarter)}
                 title="Click to edit grade"
-                className={`group inline-flex h-8 min-w-[3rem] items-center justify-center rounded-md border px-3 text-sm font-semibold tabular-nums transition-all cursor-pointer
+                className={`group inline-flex h-8 min-w-12 items-center justify-center rounded-md border px-3 text-sm font-semibold tabular-nums transition-all cursor-pointer
                     ${hasValue
                         ? isPassing
                             ? 'border-green-200 bg-green-50 text-green-700 hover:border-green-300 hover:bg-green-100'

@@ -1,8 +1,9 @@
 import { Head, router } from '@inertiajs/react'
 import TeacherLayout from '@/layouts/teacher-layout'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Printer } from 'lucide-react'
+import { Printer, Search } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 import { DataTablePagination, teacherTableHeaderCellClass, teacherTableHeaderClass } from '@/components/data-table-pagination'
 
@@ -14,7 +15,7 @@ type Pagination = { current_page: number; last_page: number; per_page: number; t
 type Props = {
     subjects: Subject[]; sections: Section[]; schoolYears: SchoolYear[]; students: Student[]
     pagination: Pagination
-    filters: { subject_id: number | null; section_id: number | null; school_year: string; per_page?: number }
+    filters: { subject_id: number | null; section_id: number | null; school_year: string; per_page?: number; search?: string }
     auth?: { user: { id: number; name: string; email: string; role: string } }
 }
 
@@ -22,18 +23,21 @@ export default function ClassList({ subjects, sections, schoolYears, students, p
     const [subject, setSubject] = useState(filters.subject_id?.toString() || '')
     const [section, setSection] = useState(filters.section_id?.toString() || '')
     const [schoolYear, setSchoolYear] = useState(filters.school_year || '')
+    const [searchQuery, setSearchQuery] = useState(filters.search || '')
     const [entriesPerPage, setEntriesPerPage] = useState(filters.per_page || 10)
     const isFirstRender = useRef(true)
+    const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     const selectedSection = sections.find(s => s.id.toString() === section)
     const selectedSubject = subjects.find(s => s.id.toString() === subject)
 
-    const navigate = (page: number) => {
+    const navigate = (page: number, perPage: number = entriesPerPage) => {
         const params = new URLSearchParams()
         if (subject) params.set('subject_id', subject)
         if (section) params.set('section_id', section)
         if (schoolYear) params.set('school_year', schoolYear)
-        params.set('per_page', String(entriesPerPage))
+        if (searchQuery) params.set('search', searchQuery)
+        params.set('per_page', String(perPage))
         params.set('page', String(page))
         router.get(`/teacher/class-list?${params.toString()}`, {}, { preserveState: true, preserveScroll: true })
     }
@@ -44,16 +48,21 @@ export default function ClassList({ subjects, sections, schoolYears, students, p
         navigate(1)
     }, [subject, section, schoolYear])
 
+    // Search with debounce
+    useEffect(() => {
+        if (searchDebounce.current) clearTimeout(searchDebounce.current)
+        searchDebounce.current = setTimeout(() => {
+            if (section) {
+                navigate(1)
+            }
+        }, 400)
+        return () => { if (searchDebounce.current) clearTimeout(searchDebounce.current) }
+    }, [searchQuery])
+
     const handlePageChange = (page: number) => navigate(page)
     const handleEntriesPerPageChange = (perPage: number) => {
         setEntriesPerPage(perPage)
-        const params = new URLSearchParams()
-        if (subject) params.set('subject_id', subject)
-        if (section) params.set('section_id', section)
-        if (schoolYear) params.set('school_year', schoolYear)
-        params.set('per_page', String(perPage))
-        params.set('page', '1')
-        router.get(`/teacher/class-list?${params.toString()}`, {}, { preserveState: true, preserveScroll: true })
+        navigate(1, perPage)
     }
 
     return (
@@ -130,7 +139,22 @@ export default function ClassList({ subjects, sections, schoolYears, students, p
                     </div>
 
                     {section ? (
-                        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+                        <>
+                            {/* Search Bar */}
+                            <div className="bg-white rounded-lg border border-gray-200 p-4 no-print">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                    <Input
+                                        type="text"
+                                        placeholder="Search by student name or LRN..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="pl-10 w-full"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
                             <div className="p-4 border-b border-gray-200 flex items-center justify-end no-print">
                                 <Button variant="outline" size="sm" onClick={() => window.print()}>
                                     <Printer className="w-4 h-4 mr-2" /> Print
@@ -185,7 +209,8 @@ export default function ClassList({ subjects, sections, schoolYears, students, p
                                     <div><p className="text-sm mb-8">Date: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p></div>
                                 </div>
                             </div>
-                        </div>
+                            </div>
+                        </>
                     ) : (
                         <div className="bg-white rounded-lg border border-gray-200 p-8 text-center no-print">
                             <p className="text-gray-500">Please select a section to view students</p>

@@ -289,13 +289,13 @@ export default function AddRoomScheduleModal({
                                 <Clock className="w-3.5 h-3.5" />
                                 Schedule Time
                             </h3>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
                                         Day <span className="text-red-500">*</span>
                                     </label>
                                     <Select value={day} onValueChange={setDay}>
-                                        <SelectTrigger className="h-10 bg-white"><SelectValue placeholder="Day" /></SelectTrigger>
+                                        <SelectTrigger className="h-10 w-full bg-white"><SelectValue placeholder="Day" /></SelectTrigger>
                                         <SelectContent>
                                             {days.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
                                         </SelectContent>

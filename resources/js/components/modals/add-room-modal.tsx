@@ -10,13 +10,20 @@ import axios from 'axios'
 type AddRoomModalProps = {
     open: boolean
     onOpenChange: (open: boolean) => void
+    classSections?: Array<{
+        id: number
+        section_name: string
+        grade_level: string
+        grade_level_id: number
+    }>
 }
 
-export default function AddRoomModal({ open, onOpenChange }: AddRoomModalProps) {
+export default function AddRoomModal({ open, onOpenChange, classSections = [] }: AddRoomModalProps) {
     const { data, setData, post, processing, errors, reset } = useForm({
         room_name: '',
         capacity: '',
-        status: 'Available' as 'Available' | 'Vacant' | 'Occupied'
+        status: 'Available' as 'Available' | 'Vacant' | 'Occupied',
+        section_id: null as string | null
     })
 
     const [roomNumberError, setRoomNumberError] = useState('')
@@ -141,6 +148,34 @@ export default function AddRoomModal({ open, onOpenChange }: AddRoomModalProps) 
                         )}
                         <p className="text-xs text-gray-500 mt-1">
                             Available: Available for use | Vacant: Vacant | Occupied: Occupied
+                        </p>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Assign to Section <span className="text-gray-400">(Optional)</span>
+                        </label>
+                        <Select
+                            value={data.section_id || 'none'}
+                            onValueChange={(value) => setData('section_id', value === 'none' ? null : value)}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a section (optional)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="none">None</SelectItem>
+                                {classSections.map((section) => (
+                                    <SelectItem key={section.id} value={section.id.toString()}>
+                                        {section.grade_level} - {section.section_name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {errors.section_id && (
+                            <p className="text-xs text-red-500 mt-1">{errors.section_id}</p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-1">
+                            Optionally assign this room to a class section
                         </p>
                     </div>
 

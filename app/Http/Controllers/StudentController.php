@@ -447,6 +447,63 @@ class StudentController extends Controller
         }
     }
 
+    public function showEnrolledStudent($id)
+    {
+        $student = Student::with([
+            'section.gradeLevel',
+            'section.adviserSections.teacher',
+            'gradeLevel'
+        ])->findOrFail($id);
+
+        $section = $student->section;
+        $adviser = $section && $section->adviserSections->isNotEmpty()
+            ? $section->adviserSections->first()->teacher->name
+            : 'Not Assigned';
+
+        $studentData = [
+            'id' => $student->id,
+            'student_name' => trim($student->first_name . ' ' . ($student->middle_name ? $student->middle_name . ' ' : '') . $student->last_name),
+            'lrn' => $student->lrn,
+            'gender' => ucfirst($student->gender),
+            'section' => $section ? $section->section_name : 'N/A',
+            'section_id' => $student->current_section_id,
+            'grade_level' => $student->gradeLevel ? $student->gradeLevel->name : 'N/A',
+            'grade_level_id' => $student->current_grade_level_id,
+            'adviser' => $adviser,
+            'has_psa_birth_certificate' => $student->has_psa_birth_certificate,
+            'has_sf9' => $student->has_sf9,
+            'has_report_card' => $student->has_report_card,
+            'has_good_moral' => $student->has_good_moral,
+        ];
+
+        $gradeLevels = \App\Models\GradeLevel::orderByRaw("
+            CASE
+                WHEN name = 'Grade 7' THEN 1
+                WHEN name = 'Grade 8' THEN 2
+                WHEN name = 'Grade 9' THEN 3
+                WHEN name = 'Grade 10' THEN 4
+                ELSE 5
+            END
+        ")->get();
+
+        $sections = \App\Models\ClassSection::with('gradeLevel')
+            ->orderBy('section_name')
+            ->get()
+            ->map(function ($section) {
+                return [
+                    'id' => $section->id,
+                    'section_name' => $section->section_name,
+                    'grade_level' => $section->gradeLevel->name ?? 'N/A',
+                ];
+            });
+
+        return Inertia::render('admin/enrollment/enrollment-list/student-detail', [
+            'student' => $studentData,
+            'gradeLevels' => $gradeLevels,
+            'sections' => $sections,
+        ]);
+    }
+
     public function viewEdit(Request $request)
     {
         $gradeFilter = $request->input('grade', 'all');

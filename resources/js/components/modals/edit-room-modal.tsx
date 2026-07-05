@@ -8,82 +8,91 @@ import axios from 'axios'
 
 type Room = {
     id: number
-    room_number: string
+    room_name: string
     capacity: number
     status: 'Available' | 'Vacant' | 'Occupied'
+    section_id?: number | null
 }
 
 type EditRoomModalProps = {
     open: boolean
     onOpenChange: (open: boolean) => void
     room: Room | null
+    classSections?: Array<{
+        id: number
+        section_name: string
+        grade_level: string
+        grade_level_id: number
+    }>
 }
 
-export default function EditRoomModal({ open, onOpenChange, room }: EditRoomModalProps) {
+export default function EditRoomModal({ open, onOpenChange, room, classSections = [] }: EditRoomModalProps) {
     const { data, setData, put, processing, errors, reset } = useForm({
-        room_number: '',
+        room_name: '',
         capacity: '',
-        status: 'Available' as 'Available' | 'Vacant' | 'Occupied'
+        status: 'Available' as 'Available' | 'Vacant' | 'Occupied',
+        section_id: null as string | null
     })
 
-    const [roomNumberError, setRoomNumberError] = useState('')
-    const [isCheckingRoomNumber, setIsCheckingRoomNumber] = useState(false)
-    const [initialRoomNumber, setInitialRoomNumber] = useState('')
+    const [roomNameError, setRoomNameError] = useState('')
+    const [isCheckingRoomName, setIsCheckingRoomName] = useState(false)
+    const [initialRoomName, setInitialRoomName] = useState('')
 
     useEffect(() => {
         if (room) {
             setData({
-                room_number: room.room_number,
+                room_name: room.room_name,
                 capacity: room.capacity.toString(),
-                status: room.status
+                status: room.status,
+                section_id: room.section_id ? room.section_id.toString() : null
             })
-            setInitialRoomNumber(room.room_number)
-            setRoomNumberError('')
+            setInitialRoomName(room.room_name)
+            setRoomNameError('')
         }
     }, [room])
 
     // Check room name availability (only if changed from initial)
     useEffect(() => {
-        if (!data.room_number || data.room_number === initialRoomNumber) {
-            setRoomNumberError('')
+        if (!data.room_name || data.room_name === initialRoomName) {
+            setRoomNameError('')
             return
         }
 
         const timeoutId = setTimeout(async () => {
-            setIsCheckingRoomNumber(true)
+            setIsCheckingRoomName(true)
             try {
                 const response = await axios.post('/admin/enrollment/rooms/check-room-number', {
-                    room_number: data.room_number,
+                    room_name: data.room_name,
                     room_id: room?.id
                 })
 
                 if (!response.data.available) {
-                    setRoomNumberError(response.data.message)
+                    setRoomNameError(response.data.message)
                 } else {
-                    setRoomNumberError('')
+                    setRoomNameError('')
                 }
             } catch (error) {
                 console.error('Error checking room name:', error)
             } finally {
-                setIsCheckingRoomNumber(false)
+                setIsCheckingRoomName(false)
             }
         }, 500)
 
         return () => clearTimeout(timeoutId)
-    }, [data.room_number, initialRoomNumber, room?.id])
+    }, [data.room_name, initialRoomName, room?.id])
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
         if (!room) return
 
-        if (roomNumberError || isCheckingRoomNumber) {
+        if (roomNameError || isCheckingRoomName) {
             return
         }
 
         put(`/admin/enrollment/rooms/${room.id}`, {
             onSuccess: () => {
                 reset()
-                setRoomNumberError('')
+                setRoomNameError('')
                 onOpenChange(false)
             }
         })
@@ -105,18 +114,18 @@ export default function EditRoomModal({ open, onOpenChange, room }: EditRoomModa
                         </label>
                         <Input
                             required
-                            value={data.room_number}
-                            onChange={(e) => setData('room_number', e.target.value)}
+                            value={data.room_name}
+                            onChange={(e) => setData('room_name', e.target.value)}
                             placeholder="e.g., 101, 102, Lab-1"
                         />
-                        {isCheckingRoomNumber && (
+                        {isCheckingRoomName && (
                             <p className="text-xs text-blue-500 mt-1">Checking availability...</p>
                         )}
-                        {roomNumberError && (
-                            <p className="text-xs text-red-500 mt-1">{roomNumberError}</p>
+                        {roomNameError && (
+                            <p className="text-xs text-red-500 mt-1">{roomNameError}</p>
                         )}
-                        {errors.room_number && (
-                            <p className="text-xs text-red-500 mt-1">{errors.room_number}</p>
+                        {errors.room_name && (
+                            <p className="text-xs text-red-500 mt-1">{errors.room_name}</p>
                         )}
                         <p className="text-xs text-gray-500 mt-1">Enter the room name or identifier</p>
                     </div>
@@ -164,6 +173,34 @@ export default function EditRoomModal({ open, onOpenChange, room }: EditRoomModa
                         </p>
                     </div>
 
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Assign to Section <span className="text-gray-400">(Optional)</span>
+                        </label>
+                        <Select
+                            value={data.section_id || 'none'}
+                            onValueChange={(value) => setData('section_id', value === 'none' ? null : value)}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a section (optional)" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="none">None</SelectItem>
+                                {classSections.map((section) => (
+                                    <SelectItem key={section.id} value={section.id.toString()}>
+                                        {section.grade_level} - {section.section_name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {errors.section_id && (
+                            <p className="text-xs text-red-500 mt-1">{errors.section_id}</p>
+                        )}
+                        <p className="text-xs text-gray-500 mt-1">
+                            Optionally assign this room to a class section
+                        </p>
+                    </div>
+
                     <div className="flex items-center justify-end gap-3 pt-4 border-t">
                         <Button
                             type="button"
@@ -176,7 +213,7 @@ export default function EditRoomModal({ open, onOpenChange, room }: EditRoomModa
                         <Button
                             type="submit"
                             className="bg-green-600 hover:bg-green-700"
-                            disabled={processing || isCheckingRoomNumber || !!roomNumberError}
+                            disabled={processing || isCheckingRoomName || !!roomNameError}
                         >
                             {processing ? 'Updating...' : 'Update Room'}
                         </Button>

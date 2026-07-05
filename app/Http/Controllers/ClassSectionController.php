@@ -92,7 +92,6 @@ class ClassSectionController extends Controller
         $request->validate([
             'section_name' => 'required|string|max:255',
             'grade_level_id' => 'required|exists:tbl_grade_levels,id',
-            'room_id' => 'required|exists:tbl_room,id',
         ]);
 
         // Check for case-insensitive duplicate across all grade levels
@@ -103,18 +102,9 @@ class ClassSectionController extends Controller
             return back()->withErrors(['section_name' => 'This section name already exists.']);
         }
 
-        // Check if room is already assigned to another section
-        if ($request->room_id) {
-            $roomTaken = ClassSection::where('room_id', $request->room_id)->exists();
-            if ($roomTaken) {
-                return back()->withErrors(['room_id' => 'This room is already assigned to another section.']);
-            }
-        }
-
         ClassSection::create([
             'section_name' => $request->section_name,
             'grade_level_id' => $request->grade_level_id,
-            'room_id' => $request->room_id,
         ]);
 
         return redirect()->back()->with('success', 'Section created successfully');
@@ -125,7 +115,6 @@ class ClassSectionController extends Controller
         $request->validate([
             'section_name' => 'required|string|max:255',
             'grade_level_id' => 'required|exists:tbl_grade_levels,id',
-            'room_id' => 'required|exists:tbl_room,id',
         ]);
 
         // Check for case-insensitive duplicate across all grade levels (excluding current section)
@@ -137,20 +126,9 @@ class ClassSectionController extends Controller
             return back()->withErrors(['section_name' => 'This section name already exists.']);
         }
 
-        // Check if room is already assigned to another section (excluding current section)
-        if ($request->room_id) {
-            $roomTaken = ClassSection::where('room_id', $request->room_id)
-                ->where('id', '!=', $classSection->id)
-                ->exists();
-            if ($roomTaken) {
-                return back()->withErrors(['room_id' => 'This room is already assigned to another section.']);
-            }
-        }
-
         $classSection->update([
             'section_name' => $request->section_name,
             'grade_level_id' => $request->grade_level_id,
-            'room_id' => $request->room_id,
         ]);
 
         return redirect()->back()->with('success', 'Section updated successfully');

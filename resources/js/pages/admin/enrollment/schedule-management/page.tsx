@@ -20,6 +20,9 @@ type Room = {
     status: 'Available' | 'Vacant' | 'Occupied'
     students_count: number
     schedules_count: number
+    section_id?: number | null
+    section_name?: string | null
+    grade_level?: string | null
 }
 
 type Schedule = {
@@ -69,6 +72,12 @@ type Props = {
         total: number
         links: PaginationLink[]
     }
+    classSections?: Array<{
+        id: number
+        section_name: string
+        grade_level: string
+        grade_level_id: number
+    }>
     filters?: { search?: string; capacity?: string; status?: string }
     activeRoom?: ActiveRoom | null
 }
@@ -88,7 +97,7 @@ const statusStyles: Record<Room['status'], { dot: string; text: string; bg: stri
     Occupied: { dot: 'bg-red-500', text: 'text-red-800', bg: 'bg-red-100', border: 'border-red-200' },
 }
 
-export default function RoomListings({ auth, rooms, filters = {}, activeRoom = null }: Props) {
+export default function RoomListings({ auth, rooms, classSections: availableSections = [], filters = {}, activeRoom = null }: Props) {
     // ----- room CRUD state -----
     const [isModalOpen, setIsModalOpen] = useState(false)
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
@@ -278,8 +287,7 @@ export default function RoomListings({ auth, rooms, filters = {}, activeRoom = n
                 <div className="space-y-6">
                     <div className="flex items-end justify-between border-b border-gray-200 pb-5">
                         <div>
-                            <p className="text-[11px] tracking-[0.2em] text-gray-500 uppercase mb-1">Enrollment · Facilities</p>
-                            <h1 className="text-[28px] leading-tight font-semibold text-gray-900">Room &amp; Schedule Ledger</h1>
+                            <h1 className="text-[28px] leading-tight font-semibold text-gray-900">Schedule Management</h1>
                             <p className="text-sm text-gray-500 mt-1">Track every room's capacity, occupancy, and weekly class assignments.</p>
                         </div>
                         <Button
@@ -291,8 +299,8 @@ export default function RoomListings({ auth, rooms, filters = {}, activeRoom = n
                         </Button>
                     </div>
 
-                    <AddRoomModal open={isModalOpen} onOpenChange={setIsModalOpen} />
-                    <EditRoomModal open={isEditModalOpen} onOpenChange={setIsEditModalOpen} room={selectedRoom} />
+                    <AddRoomModal open={isModalOpen} onOpenChange={setIsModalOpen} classSections={availableSections} />
+                    <EditRoomModal open={isEditModalOpen} onOpenChange={setIsEditModalOpen} room={selectedRoom} classSections={availableSections} />
                     <DeleteRoomModal
                         open={isDeleteModalOpen}
                         onOpenChange={setIsDeleteModalOpen}
@@ -352,6 +360,7 @@ export default function RoomListings({ auth, rooms, filters = {}, activeRoom = n
                                 <thead>
                                     <tr className="bg-green-700">
                                         <th className="px-6 py-3.5 text-left text-sm font-semibold text-green-100 uppercase tracking-wider">Room</th>
+                                        <th className="px-6 py-3.5 text-left text-sm font-semibold text-green-100 uppercase tracking-wider">Assigned Section</th>
                                         <th className="px-6 py-3.5 text-left text-sm font-semibold text-green-100 uppercase tracking-wider">Occupancy</th>
                                         <th className="px-6 py-3.5 text-left text-sm font-semibold text-green-100 uppercase tracking-wider">Status</th>
                                         <th className="px-6 py-3.5 text-left text-sm font-semibold text-green-100 uppercase tracking-wider">Weekly Schedule</th>
@@ -372,6 +381,15 @@ export default function RoomListings({ auth, rooms, filters = {}, activeRoom = n
                                                             </div>
                                                             <span className="text-[15px] font-semibold text-gray-900">{room.room_name}</span>
                                                         </div>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        {room.section_name && room.grade_level ? (
+                                                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                                                                {room.grade_level} - {room.section_name}
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-gray-400 italic text-xs">Not assigned</span>
+                                                        )}
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <div className="flex items-center gap-2.5 min-w-[140px]">
@@ -427,7 +445,7 @@ export default function RoomListings({ auth, rooms, filters = {}, activeRoom = n
                                         })
                                     ) : (
                                         <tr>
-                                            <td colSpan={5} className="px-6 py-14 text-center">
+                                            <td colSpan={6} className="px-6 py-14 text-center">
                                                 <p className="text-base font-medium text-gray-900 mb-1">
                                                     {hasActiveFilters ? 'No rooms match your filters' : 'The ledger is empty'}
                                                 </p>

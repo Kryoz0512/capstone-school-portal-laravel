@@ -33,10 +33,38 @@ class RoomController extends Controller
             ->when($status && $status !== 'All', fn($q) => $q->where('status', $status))
             ->orderBy('room_name')
             ->paginate($perPage)
-            ->withQueryString();
+            ->withQueryString()
+            ->through(function ($room) {
+                // Get the section assigned to this room
+                $section = \App\Models\ClassSection::with('gradeLevel')->where('room_id', $room->id)->first();
+                
+                return [
+                    'id' => $room->id,
+                    'room_name' => $room->room_name,
+                    'capacity' => $room->capacity,
+                    'status' => $room->status,
+                    'students_count' => $room->students_count,
+                    'schedules_count' => $room->schedules_count,
+                    'section_id' => $section ? $section->id : null,
+                    'section_name' => $section ? $section->section_name : null,
+                    'grade_level' => $section && $section->gradeLevel ? $section->gradeLevel->name : null,
+                ];
+            });
+
+        // Get all sections with their grade levels for the Add Room modal
+        $classSections = \App\Models\ClassSection::with('gradeLevel')
+            ->orderBy('section_name')
+            ->get()
+            ->map(fn($s) => [
+                'id' => $s->id,
+                'section_name' => $s->section_name,
+                'grade_level' => $s->gradeLevel->name ?? 'N/A',
+                'grade_level_id' => $s->grade_level_id,
+            ]);
 
         return Inertia::render('admin/enrollment/schedule-management/page', [
             'rooms' => $rooms,
+            'classSections' => $classSections,
             'filters' => [
                 'search' => $search,
                 'capacity' => $capacity,
@@ -218,9 +246,19 @@ class RoomController extends Controller
             'room_name' => 'required|string|unique:tbl_room,room_name',
             'capacity' => 'required|integer|min:1',
             'status' => 'required|in:Available,Vacant,Occupied',
+            'section_id' => 'nullable|exists:tbl_class_sections,id',
         ]);
 
-        Room::create($validated);
+        $room = Room::create([
+            'room_name' => $validated['room_name'],
+            'capacity' => $validated['capacity'],
+            'status' => $validated['status'],
+        ]);
+
+        // If a section is provided, assign this room to the section
+        if (!empty($validated['section_id'])) {
+            \App\Models\ClassSection::where('id', $validated['section_id'])->update(['room_id' => $room->id]);
+        }
 
         return redirect()->route('admin.enrollment.schedule-management')->with('success', 'Room created successfully');
     }
@@ -233,9 +271,23 @@ class RoomController extends Controller
             'room_name' => 'required|string|unique:tbl_room,room_name,' . $id,
             'capacity' => 'required|integer|min:1',
             'status' => 'required|in:Available,Vacant,Occupied',
+            'section_id' => 'nullable|exists:tbl_class_sections,id',
         ]);
 
-        $room->update($validated);
+        $room->update([
+            'room_name' => $validated['room_name'],
+            'capacity' => $validated['capacity'],
+            'status' => $validated['status'],
+        ]);
+
+        // Handle section assignment
+        // First, unassign this room from any section that currently has it
+        \App\Models\ClassSection::where('room_id', $room->id)->update(['room_id' => null]);
+
+        // Then, if a section is provided, assign this room to that section
+        if (!empty($validated['section_id'])) {
+            \App\Models\ClassSection::where('id', $validated['section_id'])->update(['room_id' => $room->id]);
+        }
 
         return redirect()->route('admin.enrollment.schedule-management')->with('success', 'Room updated successfully');
     }

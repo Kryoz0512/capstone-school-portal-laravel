@@ -258,12 +258,12 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                     </button>
                     {expandedMenus.registrar && (
                         <div className="mt-1 ml-4 space-y-1 border-l-2 border-green-400/30 pl-2">
-                            <Link href="/admin/registrar/student-checklist" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
+                            {/* <Link href="/admin/registrar/student-checklist" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
                                 <span className="flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
                                     Student Checklist
                                 </span>
-                            </Link>
+                            </Link> */}
                             <Link href="/admin/registrar/subject-listings" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
                                 <span className="flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>

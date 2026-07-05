@@ -38,10 +38,11 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
     const getInitialExpandedState = () => {
         const path = getCurrentPath()
         return {
-            enrollment: path.includes('/admin/enrollment'),
             admission: path.includes('/admin/admission'),
-            registrar: path.includes('/admin/registrar'),
-            records: path.includes('/admin/records'),
+            academicSetup: path.includes('/admin/enrollment') || path.includes('/admin/registrar'),
+            enrollment: path.includes('/admin/enrollment'),
+            scheduling: path.includes('/admin/enrollment'),
+            academicRecords: path.includes('/admin/records'),
             usermanagement: path.includes('/admin/user-management'),
             maintenance: path.includes('/admin/maintenance'),
         }
@@ -53,10 +54,11 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
     useEffect(() => {
         const path = getCurrentPath()
         setExpandedMenus({
-            enrollment: path.includes('/admin/enrollment'),
             admission: path.includes('/admin/admission'),
-            registrar: path.includes('/admin/registrar'),
-            records: path.includes('/admin/records'),
+            academicSetup: path.includes('/admin/enrollment') || path.includes('/admin/registrar'),
+            enrollment: path.includes('/admin/enrollment'),
+            scheduling: path.includes('/admin/enrollment'),
+            academicRecords: path.includes('/admin/records'),
             usermanagement: path.includes('/admin/user-management'),
             maintenance: path.includes('/admin/maintenance'),
         })
@@ -142,22 +144,56 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                                     Registration
                                 </span>
                             </Link>
-                            {/* <Link href="/admin/admission/accreditation" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
-                                <span className="flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
-                                    Accreditation
-                                </span>
-                            </Link> */}
                             <Link href="/admin/admission/upload-delete-picture" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
                                 <span className="flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
-                                    Upload or Delete Picture
+                                    Profile Pictures
                                 </span>
                             </Link>
                             <Link href="/admin/admission/view-edit-student" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
                                 <span className="flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
-                                    View Edit Student Information
+                                    Manage Student Information
+                                </span>
+                            </Link>
+                        </div>
+                    )}
+                </div>
+
+                {/* Academic Setup */}
+                <div className="mb-1">
+                    <button
+                        onClick={() => toggleMenu('academicSetup')}
+                        className="w-full flex items-center justify-between px-4 py-3 text-green-50 hover:bg-green-500/50 rounded-xl transition-all duration-300 group hover:translate-x-1"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-green-500/30 group-hover:bg-green-400/40 transition-all duration-300">
+                                <BookOpen className="w-4 h-4" />
+                            </div>
+                            <span className="font-medium">Academic Setup</span>
+                        </div>
+                        <ChevronRight
+                            className={`w-4 h-4 transition-transform duration-300 ${expandedMenus.academicSetup ? 'rotate-90' : ''}`}
+                        />
+                    </button>
+                    {expandedMenus.academicSetup && (
+                        <div className="mt-1 ml-4 space-y-1 border-l-2 border-green-400/30 pl-2">
+                            <Link href="/admin/enrollment/class-sections" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
+                                <span className="flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
+                                    Manage Sections
+                                </span>
+                            </Link>
+                            <Link href="/admin/registrar/subject-listings" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
+                                <span className="flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
+                                    Manage Subjects
+                                </span>
+                            </Link>
+                            <Link href="/admin/enrollment/faculty-subjects" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
+                                <span className="flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
+                                    Faculty & Subjects
                                 </span>
                             </Link>
                         </div>
@@ -182,52 +218,44 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                     </button>
                     {expandedMenus.enrollment && (
                         <div className="mt-1 ml-4 space-y-1 border-l-2 border-green-400/30 pl-2">
-                            {/* <Link href="/admin/enrollment/room-schedule" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
-                                <span className="flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
-                                    Room Schedule
-                                </span>
-                            </Link> */}
-                            <Link href="/admin/enrollment/schedule-management" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
-                                <span className="flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
-                                    Schedule Management
-                                </span>
-                            </Link>
-                            <Link href="/admin/enrollment/class-sections" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
-                                <span className="flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
-                                    Class Sections
-                                </span>
-                            </Link>
-                            <Link href="/admin/enrollment/faculty-subjects" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
-                                <span className="flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
-                                    Faculty & Subjects
-                                </span>
-                            </Link>
-                            {/* <Link href="/admin/enrollment/load-scheduling" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
-                                <span className="flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
-                                    Load Scheduling
-                                </span>
-                            </Link> */}
-                            {/* <Link href="/admin/enrollment/adviser-management" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
-                                <span className="flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
-                                    Adviser Management
-                                </span>
-                            </Link> */}
                             <Link href="/admin/enrollment/student-not-enrolled" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
                                 <span className="flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
-                                    Students Not Enrolled
+                                    Unassigned Students
                                 </span>
                             </Link>
                             <Link href="/admin/enrollment/enrollment-list" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
                                 <span className="flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
                                     Enrollment List
+                                </span>
+                            </Link>
+                        </div>
+                    )}
+                </div>
+
+                {/* Scheduling */}
+                <div className="mb-1">
+                    <button
+                        onClick={() => toggleMenu('scheduling')}
+                        className="w-full flex items-center justify-between px-4 py-3 text-green-50 hover:bg-green-500/50 rounded-xl transition-all duration-300 group hover:translate-x-1"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-green-500/30 group-hover:bg-green-400/40 transition-all duration-300">
+                                <GraduationCap className="w-4 h-4" />
+                            </div>
+                            <span className="font-medium">Scheduling</span>
+                        </div>
+                        <ChevronRight
+                            className={`w-4 h-4 transition-transform duration-300 ${expandedMenus.scheduling ? 'rotate-90' : ''}`}
+                        />
+                    </button>
+                    {expandedMenus.scheduling && (
+                        <div className="mt-1 ml-4 space-y-1 border-l-2 border-green-400/30 pl-2">
+                            <Link href="/admin/enrollment/schedule-management" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
+                                <span className="flex items-center gap-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
+                                    Schedule Management
                                 </span>
                             </Link>
                             <Link href="/admin/enrollment/student-schedule" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
@@ -240,70 +268,30 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                     )}
                 </div>
 
-                {/* Registrar */}
+                {/* Academic Records */}
                 <div className="mb-1">
                     <button
-                        onClick={() => toggleMenu('registrar')}
-                        className="w-full flex items-center justify-between px-4 py-3 text-green-50 hover:bg-green-500/50 rounded-xl transition-all duration-300 group hover:translate-x-1"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-green-500/30 group-hover:bg-green-400/40 transition-all duration-300">
-                                <BookOpen className="w-4 h-4" />
-                            </div>
-                            <span className="font-medium">Registrar</span>
-                        </div>
-                        <ChevronRight
-                            className={`w-4 h-4 transition-transform duration-300 ${expandedMenus.registrar ? 'rotate-90' : ''}`}
-                        />
-                    </button>
-                    {expandedMenus.registrar && (
-                        <div className="mt-1 ml-4 space-y-1 border-l-2 border-green-400/30 pl-2">
-                            {/* <Link href="/admin/registrar/student-checklist" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
-                                <span className="flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
-                                    Student Checklist
-                                </span>
-                            </Link> */}
-                            <Link href="/admin/registrar/subject-listings" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
-                                <span className="flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
-                                    Subject Listings
-                                </span>
-                            </Link>
-                        </div>
-                    )}
-                </div>
-
-                {/* Records */}
-                <div className="mb-1">
-                    <button
-                        onClick={() => toggleMenu('records')}
+                        onClick={() => toggleMenu('academicRecords')}
                         className="w-full flex items-center justify-between px-4 py-3 text-green-50 hover:bg-green-500/50 rounded-xl transition-all duration-300 group hover:translate-x-1"
                     >
                         <div className="flex items-center gap-3">
                             <div className="p-2 rounded-lg bg-green-500/30 group-hover:bg-green-400/40 transition-all duration-300">
                                 <FileText className="w-4 h-4" />
                             </div>
-                            <span className="font-medium">Records</span>
+                            <span className="font-medium">Academic Records</span>
                         </div>
                         <ChevronRight
-                            className={`w-4 h-4 transition-transform duration-300 ${expandedMenus.records ? 'rotate-90' : ''}`}
+                            className={`w-4 h-4 transition-transform duration-300 ${expandedMenus.academicRecords ? 'rotate-90' : ''}`}
                         />
                     </button>
-                    {expandedMenus.records && (
+                    {expandedMenus.academicRecords && (
                         <div className="mt-1 ml-4 space-y-1 border-l-2 border-green-400/30 pl-2">
                             <Link href="/admin/records/final-reports" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
                                 <span className="flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
-                                    Final Reports
+                                    Final Report
                                 </span>
                             </Link>
-                            {/* <Link href="/admin/records/transcript-of-records" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
-                                <span className="flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
-                                    Transcript Of Records
-                                </span>
-                            </Link> */}
                         </div>
                     )}
                 </div>

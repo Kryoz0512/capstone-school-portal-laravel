@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { TeacherCombobox } from '@/components/ui/teacher-combobox'
 import { useForm, router } from '@inertiajs/react'
 import { store } from '@/routes/admin/enrollment/class-sections'
 import { useState, useEffect } from 'react'
@@ -157,22 +158,13 @@ export default function CreateSectionModal({ open, onOpenChange, gradeLevels, ro
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             Adviser (Optional)
                         </label>
-                        <Select
-                            value={data.teacher_id?.toString()}
-                            onValueChange={(value) => setData('teacher_id', value === 'none' ? undefined : value)}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select an adviser" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="none">No Adviser</SelectItem>
-                                {teachers.map((teacher) => (
-                                    <SelectItem key={teacher.id} value={teacher.id.toString()}>
-                                        {teacher.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <TeacherCombobox
+                            teachers={teachers}
+                            value={data.teacher_id?.toString() || null}
+                            onValueChange={(value) => setData('teacher_id', value || undefined)}
+                            placeholder="Type to search adviser..."
+                            emptyMessage="No teacher found."
+                        />
                         {errors.teacher_id && <p className="text-xs text-red-500 mt-1">{errors.teacher_id}</p>}
                     </div>
 

@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
+import { TeacherCombobox } from '@/components/ui/teacher-combobox'
 import { useForm } from '@inertiajs/react'
 import { store } from '@/routes/admin/enrollment/teacher-subjects'
 import { useState, useEffect } from 'react'
@@ -205,28 +206,14 @@ export default function AssignSubjectModal({
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                             Assign Teacher <span className="text-red-500">*</span>
                         </label>
-                        <Select
+                        <TeacherCombobox
+                            teachers={filteredTeachers}
                             value={data.teacher_id}
-                            onValueChange={(value) => setData('teacher_id', value)}
+                            onValueChange={(value) => setData('teacher_id', value || '')}
+                            placeholder={selectedSubject ? "Type to search teacher..." : "Select subject first"}
+                            emptyMessage="No matching teachers found."
                             disabled={!selectedSubject}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder={selectedSubject ? "Select a teacher" : "Select subject first"} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {filteredTeachers.length > 0 ? (
-                                    filteredTeachers.map((teacher) => (
-                                        <SelectItem key={teacher.id} value={teacher.id.toString()}>
-                                            {teacher.name} ({teacher.subject})
-                                        </SelectItem>
-                                    ))
-                                ) : (
-                                    <SelectItem value="no-teachers" disabled>
-                                        No matching teachers
-                                    </SelectItem>
-                                )}
-                            </SelectContent>
-                        </Select>
+                        />
                         {validationMessage && (
                             <p className="text-xs text-amber-600 mt-1">⚠️ {validationMessage}</p>
                         )}

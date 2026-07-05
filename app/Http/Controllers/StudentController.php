@@ -1413,10 +1413,11 @@ class StudentController extends Controller
                 // ── VALIDATION 1: LRN duplicate check ──────────────────────────
                 // Checked independently, first, so it always reports regardless of
                 // whether grade level / section further down are valid or not.
+                $duplicateLrn = false;
                 $existingStudentForCheck = $lrn ? Student::where('lrn', $lrn)->first() : null;
                 if ($existingStudentForCheck && $existingStudentForCheck->school_year === $schoolYear) {
-                    $rowErrors[] = "Row {$rowNum}: LRN '{$lrn}' already exists in the system for this school year.";
-                    $hasValidationErrors = true;
+                    $rowErrors[] = "Row {$rowNum}: LRN '{$lrn}' already exists in the system for this school year. Student will be marked as invalid.";
+                    $duplicateLrn = true;
                 }
 
                 // ── VALIDATION 2: Grade level exists on the system ─────────────
@@ -1444,38 +1445,40 @@ class StudentController extends Controller
                     $gradeLevel = \App\Models\GradeLevel::where('name', 'Grade 7')->first();
                 }
 
-                // ── VALIDATION 3: Section exists on the system ─────────────────
-                // Runs independently of whether the grade level resolved, so a bad
-                // section name is always reported even alongside a bad grade level name.
-                $sectionExistsAnywhere = false;
-                $invalidSection = false;
-                if (!empty($sectionName)) {
-                    $sectionExistsAnywhere = \App\Models\ClassSection::whereRaw('LOWER(section_name) = ?', [strtolower($sectionName)])->exists();
-
-                    if (!$sectionExistsAnywhere) {
-                        $rowErrors[] = "Row {$rowNum}: '{$sectionName}' is not on the system. Student will be imported without section assignment.";
-                        $invalidSection = true;
-                    }
-                }
-
-                // ── VALIDATION 4: Section belongs to the given grade level ─────
-                // Only meaningful once we know both the section and the grade level
-                // actually exist — otherwise validations 2/3 above already cover it.
+                // ── VALIDATION 3: Section validation ────────────────────────────
+                // Check if section exists and belongs to the correct grade level
                 $section = null;
-                if (!empty($sectionName) && $sectionExistsAnywhere && $gradeLevel) {
-                    $sectionInGradeLevel = \App\Models\ClassSection::whereRaw('LOWER(section_name) = ?', [strtolower($sectionName)])
-                        ->where('grade_level_id', $gradeLevel->id)
-                        ->exists();
-
-                    if (!$sectionInGradeLevel) {
-                        $gradeNumber = str_replace('Grade ', '', $gradeLevel->name);
-                        $rowErrors[] = "Row {$rowNum}: There is no section '{$sectionName}' assigned to grade level {$gradeNumber}. Student will be imported without section assignment.";
+                $invalidSection = false;
+                
+                if (!empty($sectionName)) {
+                    if (!$gradeLevel) {
+                        // If grade level is invalid, we can't validate section properly
+                        $rowErrors[] = "Row {$rowNum}: Cannot validate section '{$sectionName}' because grade level is invalid. Student will be marked as invalid.";
                         $invalidSection = true;
                     } else {
-                        $section = \App\Models\ClassSection::whereRaw('LOWER(section_name) = ?', [strtolower($sectionName)])
+                        // Check if section exists in the specified grade level
+                        $section = ClassSection::whereRaw('LOWER(section_name) = ?', [strtolower($sectionName)])
                             ->where('grade_level_id', $gradeLevel->id)
                             ->first();
+
+                        if (!$section) {
+                            // Check if section exists in ANY grade level
+                            $sectionExistsElsewhere = ClassSection::whereRaw('LOWER(section_name) = ?', [strtolower($sectionName)])->first();
+                            
+                            if ($sectionExistsElsewhere) {
+                                // Section exists but in different grade level
+                                $actualGradeName = $sectionExistsElsewhere->gradeLevel->name ?? 'Unknown';
+                                $rowErrors[] = "Row {$rowNum}: Section '{$sectionName}' exists in {$actualGradeName}, not in {$gradeLevel->name}. Student will be enrolled in {$gradeLevel->name} without section";
+                            } else {
+                                // Section doesn't exist at all
+                                $rowErrors[] = "Row {$rowNum}: Section '{$sectionName}' does not exist in the system. Student will be marked as invalid.";
+                            }
+                            $invalidSection = true;
+                        }
                     }
+                } else {
+                    // No section provided - this is allowed for unassigned students
+                    // Not an error, just leaves section as null
                 }
 
                 // If there are CRITICAL validation errors (not grade/section), skip this row
@@ -1487,13 +1490,35 @@ class StudentController extends Controller
                     continue; // Skip to next row
                 }
                 
+                // Check if student should be marked as invalid (duplicate LRN or invalid section)
+                $markAsInvalid = $duplicateLrn || $invalidSection;
+                
+                // Build detailed invalid reason
+                $invalidReasonText = null;
+                if ($markAsInvalid) {
+                    if ($duplicateLrn) {
+                        $invalidReasonText = "Duplicate LRN for school year {$schoolYear}";
+                    } else if ($invalidSection && !empty($sectionName)) {
+                        // Check if section exists elsewhere to provide detailed reason
+                        $sectionExistsElsewhere = \App\Models\ClassSection::whereRaw('LOWER(section_name) = ?', [strtolower($sectionName)])->first();
+                        if ($sectionExistsElsewhere) {
+                            $actualGradeName = $sectionExistsElsewhere->gradeLevel->name ?? 'Unknown';
+                            $invalidReasonText = "Section '{$sectionName}' exists in {$actualGradeName}, not in {$gradeLevel->name}";
+                        } else {
+                            $invalidReasonText = "Section '{$sectionName}' does not exist in the system";
+                        }
+                    } else if ($invalidSection) {
+                        $invalidReasonText = "Invalid section assignment";
+                    }
+                }
+                
                 // If only grade/section warnings, log them but continue with import
                 if ($invalidGradeLevel || $invalidSection) {
                     foreach ($rowErrors as $rowError) {
                         $errors[] = $rowError;
                         $errorCount++;
                     }
-                    // Nullify grade level/section to make student unassigned
+                    // Nullify grade level/section to make student unassigned/invalid
                     if ($invalidGradeLevel) {
                         $gradeLevel = null;
                     }
@@ -1527,6 +1552,8 @@ class StudentController extends Controller
                                 'has_sf9' => $hasSf9,
                                 'has_report_card' => $hasReportCard,
                                 'has_good_moral' => $hasGoodMoral,
+                                'is_valid' => !$markAsInvalid,
+                                'invalid_reason' => $invalidReasonText,
                             ]);
 
                             $importedStudents[] = ['name' => trim($firstName . ' ' . $lastName), 'lrn' => $lrn];
@@ -1569,6 +1596,8 @@ class StudentController extends Controller
                         'has_sf9' => $hasSf9,
                         'has_report_card' => $hasReportCard,
                         'has_good_moral' => $hasGoodMoral,
+                        'is_valid' => !$markAsInvalid,
+                        'invalid_reason' => $invalidReasonText,
                     ]);
 
                     // Create default profile

@@ -32,6 +32,8 @@ class Student extends Model
         'has_report_card',
         'has_good_moral',
         'ready_to_graduate',
+        'is_valid',
+        'invalid_reason',
         'archived_by',
         'archive_reason',
         'purged_at',
@@ -46,6 +48,7 @@ class Student extends Model
             'has_report_card' => 'boolean',
             'has_good_moral' => 'boolean',
             'ready_to_graduate' => 'boolean',
+            'is_valid' => 'boolean',
             'purged_at' => 'datetime',
         ];
     }

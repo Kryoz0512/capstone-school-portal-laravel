@@ -107,36 +107,84 @@ class ImportStudentsJob implements ShouldQueue
 
                     $email = 'SNHS-' . $row['LRN'];
                     $studentName = trim($row['First Name'] . ' ' . $row['Last Name']);
+                    $sectionName = $row['Section'] ?? null;
+                    $gradeLevelName = $row['Grade Level'] ?? null;
 
                     // Check duplicate LRN
+                    $duplicateLrn = false;
                     if (Student::where('lrn', $row['LRN'])->exists()) {
                         $duplicateStudents[] = [
                             'lrn' => $row['LRN'],
                             'name' => $studentName
                         ];
                         $errors[] = "Duplicate: LRN {$row['LRN']} ({$studentName}) is already registered";
-                        return;
+                        $duplicateLrn = true;
                     }
 
                     // Check duplicate Email
                     if (User::where('email', $email)->exists()) {
-                        $duplicateStudents[] = [
-                            'lrn' => $row['LRN'],
-                            'name' => $studentName
-                        ];
-                        $errors[] = "Duplicate: Email {$email} already exists";
+                        if (!$duplicateLrn) {
+                            $duplicateStudents[] = [
+                                'lrn' => $row['LRN'],
+                                'name' => $studentName
+                            ];
+                            $errors[] = "Duplicate: Email {$email} already exists";
+                        }
                         return;
                     }
 
                     // Find grade level
-                    $gradeLevel = GradeLevel::where('name', $row['Grade Level'])->first();
+                    $gradeLevel = GradeLevel::where('name', $gradeLevelName)->first();
                     if (!$gradeLevel) {
-                        $errors[] = "Row skipped: Grade level '{$row['Grade Level']}' not found (LRN: {$row['LRN']}, Name: {$studentName})";
+                        $errors[] = "Row skipped: Grade level '{$gradeLevelName}' not found (LRN: {$row['LRN']}, Name: {$studentName})";
                         return;
                     }
 
+                    // Validate section - check if it exists and belongs to the correct grade level
+                    $invalidSection = false;
+                    $section = null;
+                    if (!empty($sectionName)) {
+                        // Check if section exists in the specified grade level
+                        $section = \App\Models\ClassSection::whereRaw('LOWER(section_name) = ?', [strtolower($sectionName)])
+                            ->where('grade_level_id', $gradeLevel->id)
+                            ->first();
+                        
+                        if (!$section) {
+                            // Check if section exists in ANY other grade level
+                            $sectionExistsElsewhere = \App\Models\ClassSection::whereRaw('LOWER(section_name) = ?', [strtolower($sectionName)])->first();
+                            
+                            if ($sectionExistsElsewhere) {
+                                // Section exists but in wrong grade level
+                                $actualGradeName = $sectionExistsElsewhere->gradeLevel->name ?? 'Unknown';
+                                $errors[] = "Invalid section: Section '{$sectionName}' exists in {$actualGradeName}, not in {$gradeLevelName} (LRN: {$row['LRN']}, Name: {$studentName}). Student will be marked as invalid.";
+                            } else {
+                                // Section doesn't exist at all
+                                $errors[] = "Invalid section: Section '{$sectionName}' does not exist in the system (LRN: {$row['LRN']}, Name: {$studentName}). Student will be marked as invalid.";
+                            }
+                            $invalidSection = true;
+                        }
+                    }
+
+                    // Determine if student should be marked as invalid
+                    $markAsInvalid = $duplicateLrn || $invalidSection;
+                    $invalidReason = null;
+                    if ($markAsInvalid) {
+                        if ($duplicateLrn) {
+                            $invalidReason = "Duplicate LRN for school year " . ($row['School Year'] ?? 'Unknown');
+                        } else if ($invalidSection) {
+                            // Check if section exists elsewhere to provide detailed reason
+                            $sectionExistsElsewhere = !empty($sectionName) ? \App\Models\ClassSection::whereRaw('LOWER(section_name) = ?', [strtolower($sectionName)])->first() : null;
+                            if ($sectionExistsElsewhere) {
+                                $actualGradeName = $sectionExistsElsewhere->gradeLevel->name ?? 'Unknown';
+                                $invalidReason = "Section '{$sectionName}' exists in {$actualGradeName}, not in {$gradeLevelName}";
+                            } else {
+                                $invalidReason = "Section '{$sectionName}' does not exist in the system";
+                            }
+                        }
+                    }
+
                     // Use a database transaction to ensure atomicity
-                    DB::transaction(function () use ($row, $email, $gradeLevel) {
+                    DB::transaction(function () use ($row, $email, $gradeLevel, $section, $markAsInvalid, $invalidReason) {
                         $user = User::create([
                             'name' => $row['First Name'] . ' ' . $row['Last Name'],
                             'email' => $email,
@@ -156,11 +204,14 @@ class ImportStudentsJob implements ShouldQueue
                             'gender' => strtolower($row['Gender']),
                             'student_status' => strtolower($row['Student Status']),
                             'current_grade_level_id' => $gradeLevel->id,
+                            'current_section_id' => $section?->id,
                             'school_year' => $row['School Year'] ?? '',
                             'has_psa_birth_certificate' => isset($row['PSA Birth Certificate']) && strtolower($row['PSA Birth Certificate']) === 'yes',
                             'has_sf9' => $this->isSubmitted($row, ['Form 137 (SF10)', 'SF10', 'SF9']),
                             'has_report_card' => $this->isSubmitted($row, ['Form 138 (SF9)', 'Report Card']),
                             'has_good_moral' => isset($row['Good Moral']) && strtolower($row['Good Moral']) === 'yes',
+                            'is_valid' => !$markAsInvalid,
+                            'invalid_reason' => $invalidReason,
                         ]);
 
                         $student->profile()->create([

@@ -1380,43 +1380,63 @@ class StudentController extends Controller
                     }
                 }
 
+                // Collect all validation errors for this row
+                $rowErrors = [];
+                $hasValidationErrors = false;
+
                 // Basic validation
                 if (!$lrn || !$firstName || !$lastName) {
-                    $errors[] = "Row {$rowNum}: Missing required fields (LRN, First Name, or Last Name).";
-                    $errorCount++;
-                    continue;
+                    $rowErrors[] = "Row {$rowNum}: Missing required fields (LRN, First Name, or Last Name).";
+                    $hasValidationErrors = true;
                 }
 
                 if (!$hasReportCard) {
-                    $errors[] = "Row {$rowNum}: Form 138 (SF9) is required.";
-                    $errorCount++;
-                    continue;
+                    $rowErrors[] = "Row {$rowNum}: Form 138 (SF9) is required.";
+                    $hasValidationErrors = true;
                 }
 
-                if (strlen($lrn) !== 12 || !ctype_digit($lrn)) {
-                    $errors[] = "Row {$rowNum}: LRN '{$lrn}' must be exactly 12 digits.";
-                    $errorCount++;
-                    continue;
+                if ($lrn && (strlen($lrn) !== 12 || !ctype_digit($lrn))) {
+                    $rowErrors[] = "Row {$rowNum}: LRN '{$lrn}' must be exactly 12 digits.";
+                    $hasValidationErrors = true;
                 }
 
                 if (!in_array($gender, ['male', 'female'])) {
-                    $errors[] = "Row {$rowNum}: Invalid gender '{$gender}'. Must be male or female.";
-                    $errorCount++;
-                    continue;
+                    $rowErrors[] = "Row {$rowNum}: Invalid gender '{$gender}'. Must be male or female.";
+                    $hasValidationErrors = true;
                 }
 
                 if (!in_array($studentStatus, ['new', 'transferee', 'returning'])) {
-                    $errors[] = "Row {$rowNum}: Invalid student status '{$studentStatus}'.";
-                    $errorCount++;
-                    continue;
+                    $rowErrors[] = "Row {$rowNum}: Invalid student status '{$studentStatus}'.";
+                    $hasValidationErrors = true;
                 }
 
-                // Resolve grade level
+                // ── VALIDATION 1: LRN duplicate check ──────────────────────────
+                // Checked independently, first, so it always reports regardless of
+                // whether grade level / section further down are valid or not.
+                $existingStudentForCheck = $lrn ? Student::where('lrn', $lrn)->first() : null;
+                if ($existingStudentForCheck && $existingStudentForCheck->school_year === $schoolYear) {
+                    $rowErrors[] = "Row {$rowNum}: LRN '{$lrn}' already exists in the system for this school year.";
+                    $hasValidationErrors = true;
+                }
+
+                // ── VALIDATION 2: Grade level exists on the system ─────────────
+                // Resolve grade level (skip requirement for 'new' students, who are auto-assigned Grade 7 below)
                 $gradeLevel = \App\Models\GradeLevel::where('name', $gradeLevelName)->first();
+                $invalidGradeLevel = false;
+
                 if ($studentStatus !== 'new' && !$gradeLevel) {
-                    $errors[] = "Row {$rowNum}: Grade level '{$gradeLevelName}' not found.";
-                    $errorCount++;
-                    continue;
+                    $rowErrors[] = "Row {$rowNum}: There is no grade level like '{$gradeLevelName}' on the system. Student will be imported as unassigned.";
+                    $invalidGradeLevel = true;
+                }
+
+                // Validate only Grade 7-10 are accepted
+                if ($studentStatus !== 'new' && $gradeLevel) {
+                    $gradeNumber = (int) str_replace('Grade ', '', $gradeLevel->name);
+                    if ($gradeNumber < 7 || $gradeNumber > 10) {
+                        $rowErrors[] = "Row {$rowNum}: Invalid grade level '{$gradeLevelName}'. Only Grade 7-10 are accepted. Student will be imported as unassigned.";
+                        $invalidGradeLevel = true;
+                        $gradeLevel = null;
+                    }
                 }
 
                 // For new students, always auto-assign Grade 7
@@ -1424,19 +1444,63 @@ class StudentController extends Controller
                     $gradeLevel = \App\Models\GradeLevel::where('name', 'Grade 7')->first();
                 }
 
-                // Resolve section if provided
-                $section = null;
+                // ── VALIDATION 3: Section exists on the system ─────────────────
+                // Runs independently of whether the grade level resolved, so a bad
+                // section name is always reported even alongside a bad grade level name.
+                $sectionExistsAnywhere = false;
+                $invalidSection = false;
                 if (!empty($sectionName)) {
-                    // Find section by name and grade level
-                    $section = \App\Models\ClassSection::where('section_name', $sectionName)
-                        ->where('grade_level_id', $gradeLevel?->id)
-                        ->first();
-                    
-                    if (!$section) {
-                        $errors[] = "'{$sectionName}' is not on the system.";
-                        $errorCount++;
-                        continue;
+                    $sectionExistsAnywhere = \App\Models\ClassSection::whereRaw('LOWER(section_name) = ?', [strtolower($sectionName)])->exists();
+
+                    if (!$sectionExistsAnywhere) {
+                        $rowErrors[] = "Row {$rowNum}: '{$sectionName}' is not on the system. Student will be imported without section assignment.";
+                        $invalidSection = true;
                     }
+                }
+
+                // ── VALIDATION 4: Section belongs to the given grade level ─────
+                // Only meaningful once we know both the section and the grade level
+                // actually exist — otherwise validations 2/3 above already cover it.
+                $section = null;
+                if (!empty($sectionName) && $sectionExistsAnywhere && $gradeLevel) {
+                    $sectionInGradeLevel = \App\Models\ClassSection::whereRaw('LOWER(section_name) = ?', [strtolower($sectionName)])
+                        ->where('grade_level_id', $gradeLevel->id)
+                        ->exists();
+
+                    if (!$sectionInGradeLevel) {
+                        $gradeNumber = str_replace('Grade ', '', $gradeLevel->name);
+                        $rowErrors[] = "Row {$rowNum}: There is no section '{$sectionName}' assigned to grade level {$gradeNumber}. Student will be imported without section assignment.";
+                        $invalidSection = true;
+                    } else {
+                        $section = \App\Models\ClassSection::whereRaw('LOWER(section_name) = ?', [strtolower($sectionName)])
+                            ->where('grade_level_id', $gradeLevel->id)
+                            ->first();
+                    }
+                }
+
+                // If there are CRITICAL validation errors (not grade/section), skip this row
+                if ($hasValidationErrors) {
+                    foreach ($rowErrors as $rowError) {
+                        $errors[] = $rowError;
+                        $errorCount++;
+                    }
+                    continue; // Skip to next row
+                }
+                
+                // If only grade/section warnings, log them but continue with import
+                if ($invalidGradeLevel || $invalidSection) {
+                    foreach ($rowErrors as $rowError) {
+                        $errors[] = $rowError;
+                        $errorCount++;
+                    }
+                    // Nullify grade level/section to make student unassigned
+                    if ($invalidGradeLevel) {
+                        $gradeLevel = null;
+                    }
+                    if ($invalidSection) {
+                        $section = null;
+                    }
+                    // Continue with import process
                 }
 
                 DB::beginTransaction();

@@ -9,8 +9,9 @@ class ClearanceSeeder extends Seeder
 {
     /**
      * Seeds clearance records for all assigned students.
-     * Most subjects will be cleared, leaving 1–2 pending per student
-     * to simulate a realistic near-complete clearance state.
+     *
+     * Every subject for every student is seeded as 'pending' —
+     * no student starts out cleared for anything.
      */
     public function run(): void
     {
@@ -28,8 +29,8 @@ class ClearanceSeeder extends Seeder
 
         $this->command->info("Found {$students->count()} enrolled students.");
 
-        $created   = 0;
-        $skipped   = 0;
+        $created = 0;
+        $skipped = 0;
 
         foreach ($students as $student) {
             // Get all scheduled subjects for the student's section
@@ -43,20 +44,13 @@ class ClearanceSeeder extends Seeder
                 continue;
             }
 
-            $total        = $schedules->count();
-            // Leave 1 pending for small schedules, up to 2 for larger ones
-            $pendingCount = $total <= 3 ? 1 : rand(1, 2);
-
-            // Randomly pick which subjects stay pending
-            $pendingIndexes = (array) array_rand($schedules->toArray(), min($pendingCount, $total));
-
-            foreach ($schedules as $index => $schedule) {
+            foreach ($schedules as $schedule) {
                 // Skip if already exists
                 $exists = DB::table('tbl_clearances')
-                    ->where('student_id',       $student->id)
-                    ->where('subject_id',        $schedule->subject_id)
-                    ->where('class_section_id',  $student->current_section_id)
-                    ->where('school_year',        $student->school_year)
+                    ->where('student_id', $student->id)
+                    ->where('subject_id', $schedule->subject_id)
+                    ->where('class_section_id', $student->current_section_id)
+                    ->where('school_year', $student->school_year)
                     ->exists();
 
                 if ($exists) {
@@ -64,15 +58,13 @@ class ClearanceSeeder extends Seeder
                     continue;
                 }
 
-                $status = in_array($index, $pendingIndexes) ? 'pending' : 'cleared';
-
                 DB::table('tbl_clearances')->insert([
                     'student_id'       => $student->id,
                     'teacher_id'       => $schedule->teacher_id,
                     'subject_id'       => $schedule->subject_id,
                     'class_section_id' => $student->current_section_id,
                     'school_year'      => $student->school_year,
-                    'status'           => $status,
+                    'status'           => 'pending',
                     'created_at'       => now(),
                     'updated_at'       => now(),
                 ]);

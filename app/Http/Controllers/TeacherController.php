@@ -463,12 +463,13 @@ class TeacherController extends Controller
         $gradeLevelId = $request->input('grade_level_id');
         $sectionId = $request->input('section_id');
         $subjectId = $request->input('subject_id');
+        $search = $request->input('search');
         $schoolYear = $request->input('school_year')
             ?? Student::orderBy('school_year', 'desc')->value('school_year')
             ?? date('Y') . '-' . (date('Y') + 1);
         $perPage = (int) $request->input('per_page', 10);
 
-        $result = $this->getFinalReportStudents($sectionId, $subjectId, $schoolYear, $teacher, $perPage);
+        $result = $this->getFinalReportStudents($sectionId, $subjectId, $schoolYear, $teacher, $perPage, $search);
 
         return [
             'gradeLevels' => $this->getGradeLevels(),
@@ -477,7 +478,7 @@ class TeacherController extends Controller
             'schoolYears' => $this->getSchoolYears(),
             'students' => $result['students'],
             'pagination' => $result['pagination'],
-            'filters' => compact('gradeLevelId', 'sectionId', 'subjectId', 'schoolYear', 'perPage'),
+            'filters' => compact('gradeLevelId', 'sectionId', 'subjectId', 'schoolYear', 'perPage', 'search'),
         ];
     }
 
@@ -551,17 +552,25 @@ class TeacherController extends Controller
         });
     }
 
-    private function getFinalReportStudents($sectionId, $subjectId, $schoolYear, Teacher $teacher, int $perPage = 10): array
+    private function getFinalReportStudents($sectionId, $subjectId, $schoolYear, Teacher $teacher, int $perPage = 10, $search = null): array
     {
         if (!$sectionId || !$subjectId) {
             return ['students' => [], 'pagination' => null];
         }
 
-        $paginated = Student::where('current_section_id', $sectionId)
+        $query = Student::where('current_section_id', $sectionId)
             ->where('school_year', $schoolYear)
-            ->with(['gradeLevel', 'section'])
-            ->orderBy('last_name')
-            ->paginate($perPage);
+            ->with(['gradeLevel', 'section']);
+
+        // Add search filter for student name or LRN
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where(DB::raw("CONCAT(first_name, ' ', COALESCE(middle_name, ''), ' ', last_name)"), 'like', '%' . $search . '%')
+                  ->orWhere('lrn', 'like', '%' . $search . '%');
+            });
+        }
+
+        $paginated = $query->orderBy('last_name')->paginate($perPage);
 
         $studentRecords = collect($paginated->items());
         $studentIds = $studentRecords->pluck('id');
@@ -999,8 +1008,24 @@ class TeacherController extends Controller
 
                 $paginated = $query->orderBy('last_name')->paginate($perPage);
 
-                $students = collect($paginated->items())->map(function ($student) use ($clearances) {
+                $students = collect($paginated->items())->map(function ($student) use ($clearances, $subjectId, $sectionId, $schoolYear, $teacher) {
                     $clearance = $clearances->get($student->id);
+                    
+                    // Check if student has grades for all quarters
+                    $gradeRecord = DB::table('tbl_grades')
+                        ->where('student_id', $student->id)
+                        ->where('subject_id', $subjectId)
+                        ->where('class_section_id', $sectionId)
+                        ->where('school_year', $schoolYear)
+                        ->where('teacher_id', $teacher->id)
+                        ->first();
+
+                    $hasAllQuarters = $gradeRecord && 
+                        !is_null($gradeRecord->quarter_1) && 
+                        !is_null($gradeRecord->quarter_2) && 
+                        !is_null($gradeRecord->quarter_3) && 
+                        !is_null($gradeRecord->quarter_4);
+
                     return [
                         'id' => $student->id,
                         'student_id' => $student->lrn,
@@ -1010,6 +1035,7 @@ class TeacherController extends Controller
                         'grade_level' => $student->gradeLevel?->name ?? 'N/A',
                         'section' => $student->section?->section_name ?? 'N/A',
                         'clearance_status' => $clearance?->status ?? 'pending',
+                        'has_all_quarters' => $hasAllQuarters,
                         'profile_picture' => $student->profilePicture
                             ? asset('storage/' . $student->profilePicture->file_path)
                             : null,

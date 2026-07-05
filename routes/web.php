@@ -120,7 +120,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Teacher routes
     Route::get('teacher/dashboard', [TeacherController::class, 'dashboard'])->name('teacher.dashboard');
 
-    Route::get('teacher/grade-sheets', [App\Http\Controllers\GradeController::class, 'index'])->name('teacher.grade-sheets');
+    // Grade Management (unified grade sheets and final report)
+    Route::get('teacher/grade-sheets', [App\Http\Controllers\GradeController::class, 'unifiedIndex'])->name('teacher.grade-sheets');
     Route::post('teacher/grade-sheets', [App\Http\Controllers\GradeController::class, 'store'])->name('teacher.grade-sheets.store');
     Route::put('teacher/grade-sheets/{gradeSheet}', [App\Http\Controllers\GradeController::class, 'update'])->name('teacher.grade-sheets.update');
 

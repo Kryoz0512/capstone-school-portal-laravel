@@ -29,8 +29,7 @@ const navItems = [
     { href: '/teacher/dashboard',         label: 'Dashboard',         Icon: LayoutDashboard },
     { href: '/teacher/schedule',          label: 'Schedule',          Icon: Calendar },
     { href: '/teacher/class-list',        label: 'Class List',        Icon: Users },
-    { href: '/teacher/grade-sheets',      label: 'Grade Sheets',      Icon: FileSpreadsheet },
-    { href: '/teacher/final-report',      label: 'Final Report',      Icon: FileText },
+    { href: '/teacher/grade-sheets',      label: 'Grade Management',  Icon: FileSpreadsheet },
     { href: '/teacher/student-clearance', label: 'Student Clearance', Icon: GraduationCap },
     { href: '/teacher/documents',         label: 'Documents',         Icon: File },
 ]

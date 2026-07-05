@@ -53,6 +53,15 @@ class GradeController extends Controller
         });
     }
 
+    private function formatGradeValue($value)
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        return (int) round((float) $value, 0, PHP_ROUND_HALF_UP);
+    }
+
     public function index(Request $request)
     {
         $user = Auth::user();
@@ -113,10 +122,19 @@ class GradeController extends Controller
         if ($sectionId && $subjectId) {
             $quarterColumn = 'quarter_' . $quarter;
 
-            $paginated = Student::where('current_section_id', $sectionId)
-                ->where('school_year', $schoolYear)
-                ->orderBy('last_name')
-                ->paginate($perPage);
+            $query = Student::where('current_section_id', $sectionId)
+                ->where('school_year', $schoolYear);
+
+            // Add search filter for student name or LRN
+            if ($request->filled('search')) {
+                $search = $request->input('search');
+                $query->where(function ($q) use ($search) {
+                    $q->where(DB::raw("CONCAT(first_name, ' ', COALESCE(middle_name, ''), ' ', last_name)"), 'like', '%' . $search . '%')
+                        ->orWhere('lrn', 'like', '%' . $search . '%');
+                });
+            }
+
+            $paginated = $query->orderBy('last_name')->paginate($perPage);
 
             $studentRecords = collect($paginated->items());
             $studentIds = $studentRecords->pluck('id');
@@ -196,6 +214,145 @@ class GradeController extends Controller
                 'quarter' => $quarter,
                 'school_year' => $schoolYear,
                 'per_page' => $perPage,
+                'search' => $request->input('search'),
+            ],
+        ]);
+    }
+
+    /**
+     * Unified grade management page - combines grade sheets and final report
+     */
+    public function unifiedIndex(Request $request)
+    {
+        $user = Auth::user();
+        $teacher = Teacher::where('user_id', $user->id)->first();
+
+        if (!$teacher) {
+            return redirect()->route('login')->withErrors(['error' => 'Teacher profile not found.']);
+        }
+
+        $gradeLevelId = $request->input('grade_level_id');
+        $sectionId = $request->input('section_id');
+        $subjectId = $request->input('subject_id');
+        $schoolYear = $request->input('school_year');
+        $perPage = (int) $request->input('per_page', 10);
+
+        if (!$schoolYear) {
+            $schoolYear = Student::orderBy('school_year', 'desc')
+                ->value('school_year') ?? date('Y') . '-' . (date('Y') + 1);
+        }
+
+        $gradeLevels = GradeLevel::all()->map(function ($level) {
+            return ['id' => $level->id, 'name' => $level->name];
+        });
+
+        $sections = ClassSection::whereIn('id', function ($query) use ($teacher) {
+            $query->select('class_section_id')
+                ->from('tbl_schedules')
+                ->where('teacher_id', $teacher->id)
+                ->distinct();
+        })
+            ->when($gradeLevelId, function ($query) use ($gradeLevelId) {
+                $query->where('grade_level_id', $gradeLevelId);
+            })
+            ->with('gradeLevel')
+            ->get()
+            ->map(function ($section) {
+                return [
+                    'id' => $section->id,
+                    'name' => $section->section_name,
+                    'grade_level_id' => $section->grade_level_id,
+                ];
+            });
+
+        $subjects = DB::table('tbl_teacher_subjects')
+            ->join('tbl_subjects', 'tbl_teacher_subjects.subject_id', '=', 'tbl_subjects.id')
+            ->where('tbl_teacher_subjects.teacher_id', $teacher->id)
+            ->select('tbl_subjects.id', 'tbl_subjects.name')
+            ->distinct()
+            ->get()
+            ->unique('name')
+            ->values()
+            ->toArray();
+
+        $students = [];
+        $pagination = null;
+
+        if ($sectionId && $subjectId) {
+            $query = Student::where('current_section_id', $sectionId)
+                ->where('school_year', $schoolYear);
+
+            // Add search filter for student name or LRN
+            if ($request->filled('search')) {
+                $search = $request->input('search');
+                $query->where(function ($q) use ($search) {
+                    $q->where(DB::raw("CONCAT(first_name, ' ', COALESCE(middle_name, ''), ' ', last_name)"), 'like', '%' . $search . '%')
+                        ->orWhere('lrn', 'like', '%' . $search . '%');
+                });
+            }
+
+            $paginated = $query->orderBy('last_name')->paginate($perPage);
+
+            $studentRecords = collect($paginated->items());
+            $studentIds = $studentRecords->pluck('id');
+
+            $gradeRecords = Grade::where('class_section_id', $sectionId)
+                ->where('subject_id', $subjectId)
+                ->where('school_year', $schoolYear)
+                ->where('teacher_id', $teacher->id)
+                ->whereIn('student_id', $studentIds)
+                ->get()
+                ->keyBy('student_id');
+
+            $students = $studentRecords->map(function ($student) use ($gradeRecords) {
+                $gradeRecord = $gradeRecords->get($student->id);
+
+                $quarter1 = $gradeRecord ? (float) $gradeRecord->quarter_1 : null;
+                $quarter2 = $gradeRecord ? (float) $gradeRecord->quarter_2 : null;
+                $quarter3 = $gradeRecord ? (float) $gradeRecord->quarter_3 : null;
+                $quarter4 = $gradeRecord ? (float) $gradeRecord->quarter_4 : null;
+                $finalAverage = $gradeRecord ? (float) $gradeRecord->final_grade : null;
+
+                return [
+                    'id' => $student->id,
+                    'lrn' => $student->lrn,
+                    'studentName' => trim($student->first_name . ' ' . $student->last_name),
+                    'gradeLevel' => $student->gradeLevel->name ?? 'N/A',
+                    'section' => $student->section->section_name ?? 'N/A',
+                    'quarter1' => $quarter1,
+                    'quarter2' => $quarter2,
+                    'quarter3' => $quarter3,
+                    'quarter4' => $quarter4,
+                    'finalAverage' => $finalAverage,
+                    'remarks' => $gradeRecord ? $gradeRecord->remarks : null,
+                    'gradeId' => $gradeRecord ? $gradeRecord->id : null,
+                ];
+            })->values();
+
+            $pagination = [
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+            ];
+        }
+
+        $schoolYears = $this->getSchoolYears();
+
+        return Inertia::render('teacher/grade-sheets/page', [
+            'gradeLevels' => $gradeLevels,
+            'sections' => $sections,
+            'subjects' => $subjects,
+            'students' => $students,
+            'pagination' => $pagination,
+            'schoolYears' => $schoolYears,
+            'filters' => [
+                'grade_level_id' => $gradeLevelId,
+                'section_id' => $sectionId,
+                'subject_id' => $subjectId,
+                'school_year' => $schoolYear,
+                'per_page' => $perPage,
+                'search' => $request->input('search'),
             ],
         ]);
     }
@@ -249,8 +406,9 @@ class GradeController extends Controller
             $sum = array_sum($availableQuarters);
             $count = count($availableQuarters);
             $finalGradeValue = $sum / $count;
-            $grade->final_grade = (string) $finalGradeValue;
-            $grade->remarks = $finalGradeValue >= 75 ? 'Passed' : 'Failed';
+            $roundedFinalGrade = round($finalGradeValue); // Round the final grade
+            $grade->final_grade = (string) $roundedFinalGrade;
+            $grade->remarks = $roundedFinalGrade >= 75 ? 'Passed' : 'Failed';
         } else {
             $currentGrade = (float) $validated['grade'];
             $grade->remarks = $currentGrade >= 75 ? 'Passed' : 'Failed';
@@ -294,8 +452,9 @@ class GradeController extends Controller
             $sum = array_sum($availableQuarters);
             $count = count($availableQuarters);
             $finalGradeValue = $sum / $count;
-            $grade->final_grade = (string) $finalGradeValue;
-            $grade->remarks = $finalGradeValue >= 75 ? 'Passed' : 'Failed';
+            $roundedFinalGrade = round($finalGradeValue); // Round the final grade
+            $grade->final_grade = (string) $roundedFinalGrade;
+            $grade->remarks = $roundedFinalGrade >= 75 ? 'Passed' : 'Failed';
         } else {
             // Set remarks based on current quarter grade if no quarters available yet
             $currentGrade = (float) $validated['grade'];
@@ -552,11 +711,11 @@ class GradeController extends Controller
                     'subject_code' => $subject->code ?? null,
                     'subject_name' => $subject->name ?? 'N/A',
                     'teacher_name' => $grade?->teacher?->name ?? $schedule?->teacher?->name ?? '-',
-                    'quarter_1' => $grade?->quarter_1,
-                    'quarter_2' => $grade?->quarter_2,
-                    'quarter_3' => $grade?->quarter_3,
-                    'quarter_4' => $grade?->quarter_4,
-                    'final_grade' => $grade?->final_grade,
+                    'quarter_1' => $this->formatGradeValue($grade?->quarter_1),
+                    'quarter_2' => $this->formatGradeValue($grade?->quarter_2),
+                    'quarter_3' => $this->formatGradeValue($grade?->quarter_3),
+                    'quarter_4' => $this->formatGradeValue($grade?->quarter_4),
+                    'final_grade' => $this->formatGradeValue($grade?->final_grade),
                     'remarks' => $grade?->remarks,
                 ];
             })->values();

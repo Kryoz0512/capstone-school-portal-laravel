@@ -235,15 +235,21 @@ class DatabaseSeeder extends Seeder
             ];
 
             // Realistic employee numbers (not sequential)
+            // The 21st ('202855') is reserved for a dedicated backup/utility
+            // teacher used by ensureEverySubjectHasATeacher() to cover any
+            // subject that the random specialization-based assignment above
+            // leaves without a teacher.
             $employeeNumbers = [
                 '201815', '201823', '201956', '202012', '202045',
                 '202067', '202134', '202189', '202201', '202278',
                 '202315', '202389', '202401', '202456', '202512',
-                '202578', '202634', '202689', '202745', '202801'
+                '202578', '202634', '202689', '202745', '202801',
+                '202855',
             ];
 
-            // Create 20 teachers with random subject specializations
-            for ($i = 0; $i < 20; $i++) {
+            // Create 21 teachers with random subject specializations
+            // (the 21st is the dedicated backup/utility teacher, see above)
+            for ($i = 0; $i < 21; $i++) {
                 $firstName = $firstNames[$i % count($firstNames)];
                 $lastName = $lastNames[$i % count($lastNames)];
                 $position = $positions[array_rand($positions)];
@@ -389,6 +395,22 @@ class DatabaseSeeder extends Seeder
                     ]);
                 }
             }
+
+            // Guarantee Shyrielle Bautista teaches at least one subject in
+            // Grade 7 AND one subject in Grade 10. This must happen before
+            // seedSchedules() runs so the resulting schedules/grades/clearance
+            // for those grade levels are real and consistent with the special
+            // graduating (Grade 10) and promoting (Grade 7) student seeders,
+            // which both assume she has an actual subject at those levels.
+            $this->ensureBautistaTeachesGrades([7, 10]);
+
+            // Guarantee every subject (every grade level) has at least one
+            // teacher assigned. The random assignment above can leave a
+            // subject with zero teachers, which causes seedSchedules() to
+            // silently skip it for every section at that grade level -
+            // meaning students end up with fewer schedule/clearance rows
+            // than actual subjects (e.g. 7 subjects but only 6 schedules).
+            $this->ensureEverySubjectHasATeacher();
         }
 
         // Seed adviser assignments (one teacher per section)
@@ -421,6 +443,9 @@ class DatabaseSeeder extends Seeder
 
         // Seed special Grade 10 student with almost complete grades for testing graduation
         $this->seedGraduatingStudent();
+
+        // Seed special Grade 7 student with almost complete grades for testing promotion to Grade 8
+        $this->seedPromotingStudent();
     }
 
     /**
@@ -520,6 +545,139 @@ class DatabaseSeeder extends Seeder
                     $attempts++;
                 }
             }
+        }
+    }
+
+    /**
+     * Guarantee that teacher Shyrielle Bautista is assigned to teach at
+     * least one subject in each of the given grade levels (by numeric
+     * grade, e.g. 7 or 10).
+     *
+     * Must be called before seedSchedules() runs. Doing it here (instead
+     * of patching it in later inside the special graduating/promoting
+     * student seeders) ensures she is actually scheduled to teach that
+     * subject for real sections at that grade level, so the special
+     * students' "pending grade from Bautista" scenario matches what
+     * regular students in the same section/subject also see, rather
+     * than being a one-off record with no matching schedule.
+     *
+     * @param int[] $gradeNumbers e.g. [7, 10]
+     */
+    private function ensureBautistaTeachesGrades(array $gradeNumbers): void
+    {
+        $bautista = DB::table('tbl_teachers')
+            ->join('users', 'tbl_teachers.user_id', '=', 'users.id')
+            ->where('users.email', 'SNHS-BAUTISTA-SHYRIELLE')
+            ->select('tbl_teachers.*')
+            ->first();
+
+        if (!$bautista) {
+            // Fallback lookup in case the email format ever changes
+            $bautista = DB::table('tbl_teachers')
+                ->where('name', 'like', '%Shyrielle%')
+                ->first();
+        }
+
+        if (!$bautista) {
+            return;
+        }
+
+        foreach ($gradeNumbers as $gradeNumber) {
+            $gradeLevel = DB::table('tbl_grade_levels')
+                ->where('name', "Grade {$gradeNumber}")
+                ->first();
+
+            if (!$gradeLevel) {
+                continue;
+            }
+
+            // Already teaching something at this grade level? Nothing to do.
+            $alreadyAssigned = DB::table('tbl_teacher_subjects')
+                ->join('tbl_subjects', 'tbl_teacher_subjects.subject_id', '=', 'tbl_subjects.id')
+                ->where('tbl_teacher_subjects.teacher_id', $bautista->id)
+                ->where('tbl_subjects.grade_level_id', $gradeLevel->id)
+                ->exists();
+
+            if ($alreadyAssigned) {
+                continue;
+            }
+
+            // Prefer a subject matching her specialization at this grade
+            // level, falling back to any subject at this grade level.
+            $subject = DB::table('tbl_subjects')
+                ->where('grade_level_id', $gradeLevel->id)
+                ->where('name', $bautista->subject)
+                ->first();
+
+            if (!$subject) {
+                $subject = DB::table('tbl_subjects')
+                    ->where('grade_level_id', $gradeLevel->id)
+                    ->inRandomOrder()
+                    ->first();
+            }
+
+            if (!$subject) {
+                continue;
+            }
+
+            DB::table('tbl_teacher_subjects')->insert([
+                'teacher_id' => $bautista->id,
+                'subject_id' => $subject->id,
+            ]);
+        }
+    }
+
+    /**
+     * Guarantee every subject (across every grade level) has at least one
+     * teacher assigned in tbl_teacher_subjects.
+     *
+     * Must be called before seedSchedules() runs. Without this, a subject
+     * that ends up with zero teachers after the random per-teacher
+     * assignment gets silently skipped by seedSchedules() for every
+     * section at that grade level - so ALL students in that grade end up
+     * with fewer schedule rows (and, downstream, fewer clearance rows)
+     * than they have actual subjects. This keeps subject count, schedule
+     * count, and clearance count in sync for every student.
+     *
+     * Any subject left uncovered is handed to the dedicated backup/utility
+     * teacher (employee_number 202855, the 21st teacher created above)
+     * rather than a randomly chosen existing teacher, so coverage is
+     * deterministic and doesn't pile extra, unrelated subjects onto
+     * teachers who were already assigned by specialization.
+     */
+    private function ensureEverySubjectHasATeacher(): void
+    {
+        $subjectsWithoutTeacher = DB::table('tbl_subjects')
+            ->whereNotIn('id', function ($query) {
+                $query->select('subject_id')->from('tbl_teacher_subjects');
+            })
+            ->get();
+
+        if ($subjectsWithoutTeacher->isEmpty()) {
+            return;
+        }
+
+        // The dedicated backup/utility teacher created specifically to
+        // cover any subject the random assignment above missed.
+        $backupTeacher = DB::table('tbl_teachers')
+            ->where('employee_number', '202855')
+            ->first();
+
+        if (!$backupTeacher) {
+            // Shouldn't happen given the teacher seeding above, but fall
+            // back to any teacher rather than leaving the subject uncovered.
+            $backupTeacher = DB::table('tbl_teachers')->inRandomOrder()->first();
+        }
+
+        if (!$backupTeacher) {
+            return;
+        }
+
+        foreach ($subjectsWithoutTeacher as $subject) {
+            DB::table('tbl_teacher_subjects')->insert([
+                'teacher_id' => $backupTeacher->id,
+                'subject_id' => $subject->id,
+            ]);
         }
     }
 
@@ -777,13 +935,14 @@ class DatabaseSeeder extends Seeder
 
         // Seed student grades for Grade 7-10
         $this->call(StudentGradesSeeder::class);
-        // Seed clearance records (most cleared, 1-2 pending per student)
+        // Seed clearance records (pending clearance for every subject)
         $this->call(ClearanceSeeder::class);
     }
 
     /**
      * Seed a special Grade 10 student with almost complete grades
-     * Shyrielle Bautista will be the last teacher to grade this student
+     * Shyrielle Bautista will be the last teacher to grade this student.
+     * Used for testing the graduation / graduation-presentation flow.
      */
     private function seedGraduatingStudent(): void
     {
@@ -909,16 +1068,12 @@ class DatabaseSeeder extends Seeder
             'updated_at' => now(),
         ]);
 
-        // Create grades for all subjects EXCEPT Shyrielle Bautista's subject
+        // Create grades for all subjects EXCEPT Shyrielle Bautista's subject.
+        // Every subject must end up graded, EXCEPT the one Bautista teaches,
+        // which must always stay pending — regardless of whether some other
+        // teacher also happens to be assigned to it.
         foreach ($grade10Subjects as $subject) {
-            // Find a teacher for this subject
-            $teacher = DB::table('tbl_teacher_subjects')
-                ->where('subject_id', $subject->id)
-                ->where('teacher_id', '!=', $shyrielleBautista->id) // Not Shyrielle Bautista
-                ->first();
-
-            // If no other teacher, skip this subject (will be handled by Shyrielle Bautista check below)
-            if (!$teacher && $subject->id === $shyrielleBautistaSubject->id) {
+            if ($subject->id === $shyrielleBautistaSubject->id) {
                 // This is Shyrielle Bautista's subject - create grade record with NO grades yet
                 DB::table('tbl_grades')->insert([
                     'student_id' => $studentId,
@@ -938,14 +1093,40 @@ class DatabaseSeeder extends Seeder
                 continue;
             }
 
+            // Prefer a teacher who isn't Bautista, but fall back to any
+            // assigned teacher so this subject is never left ungraded.
+            $teacher = DB::table('tbl_teacher_subjects')
+                ->where('subject_id', $subject->id)
+                ->where('teacher_id', '!=', $shyrielleBautista->id)
+                ->first();
+
             if (!$teacher) {
-                // Find any teacher for this subject
                 $teacher = DB::table('tbl_teacher_subjects')
                     ->where('subject_id', $subject->id)
                     ->first();
             }
 
-            if (!$teacher) continue;
+            // No teacher is assigned to this subject at all yet - assign one
+            // now (any teacher other than Bautista) so the subject can still
+            // be graded rather than silently skipped.
+            if (!$teacher) {
+                $fallbackTeacher = DB::table('tbl_teachers')
+                    ->where('id', '!=', $shyrielleBautista->id)
+                    ->inRandomOrder()
+                    ->first();
+
+                if (!$fallbackTeacher) {
+                    // Only Bautista exists as a teacher - nothing else we can do
+                    continue;
+                }
+
+                DB::table('tbl_teacher_subjects')->insert([
+                    'teacher_id' => $fallbackTeacher->id,
+                    'subject_id' => $subject->id,
+                ]);
+
+                $teacher = (object) ['teacher_id' => $fallbackTeacher->id];
+            }
 
             // Create complete grades (passing grades: 85-95)
             $q1 = rand(85, 95);
@@ -971,9 +1152,309 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
+        // Backfill complete historical grades for Grade 7-9, same as any other Grade 10 student
+        [$historicalCreated, $historicalSkipped] = StudentGradesSeeder::seedHistoricalGradesForStudent((object) [
+            'id' => $studentId,
+            'current_grade_level_id' => $grade10->id,
+            'school_year' => $currentSchoolYear,
+        ]);
+
+        // Clear this student's clearance for every subject except Shyrielle Bautista's
+        [$clearanceCreated, $clearanceSkipped] = $this->seedSpecialStudentClearance(
+            $studentId,
+            $grade10Section->id,
+            $currentSchoolYear,
+            $shyrielleBautista->id
+        );
+
         echo "\n✓ Special graduating student created: Miguel Antonio Reyes (LRN: {$lrn})\n";
         echo "  - Grade 10, Section: {$grade10Section->section_name}\n";
         echo "  - Pending grade from: Shyrielle Bautista ({$shyrielleBautistaSubject->name})\n";
-        echo "  - All other subjects: Complete with passing grades\n\n";
+        echo "  - All other subjects: Complete with passing grades\n";
+        echo "  - Historical grades (Grade 7-9) created: {$historicalCreated} (skipped: {$historicalSkipped})\n";
+        echo "  - Clearance: all subjects cleared except Shyrielle Bautista's ({$clearanceCreated} created, {$clearanceSkipped} skipped)\n\n";
+    }
+
+    /**
+     * Seed a special Grade 7 student with almost complete grades.
+     * Shyrielle Bautista will be the last teacher to grade this student.
+     * Used for testing the promotion flow (Grade 7 -> Grade 8), as
+     * opposed to the Grade 10 student above which tests graduation.
+     */
+    private function seedPromotingStudent(): void
+    {
+        $currentSchoolYear = '2026-2027';
+
+        // Get Grade 7 and find first section
+        $grade7 = DB::table('tbl_grade_levels')->where('name', 'Grade 7')->first();
+        if (!$grade7) return;
+
+        $grade7Section = DB::table('tbl_class_sections')
+            ->where('grade_level_id', $grade7->id)
+            ->first();
+        if (!$grade7Section) return;
+
+        // Get all Grade 7 subjects
+        $grade7Subjects = DB::table('tbl_subjects')
+            ->where('grade_level_id', $grade7->id)
+            ->get();
+        if ($grade7Subjects->isEmpty()) return;
+
+        // Find Shyrielle Bautista teacher
+        $shyrielleBautista = DB::table('tbl_teachers')
+            ->join('users', 'tbl_teachers.user_id', '=', 'users.id')
+            ->where('users.email', 'SNHS-BAUTISTA-SHYRIELLE')
+            ->select('tbl_teachers.*')
+            ->first();
+
+        if (!$shyrielleBautista) {
+            // If Shyrielle Bautista doesn't exist yet, get the first teacher named Shyrielle
+            $shyrielleBautista = DB::table('tbl_teachers')
+                ->where('name', 'like', '%Shyrielle%')
+                ->first();
+        }
+
+        if (!$shyrielleBautista) return;
+
+        // Find which subject Shyrielle Bautista teaches in Grade 7
+        $shyrielleBautistaSubject = DB::table('tbl_teacher_subjects')
+            ->join('tbl_subjects', 'tbl_teacher_subjects.subject_id', '=', 'tbl_subjects.id')
+            ->where('tbl_teacher_subjects.teacher_id', $shyrielleBautista->id)
+            ->where('tbl_subjects.grade_level_id', $grade7->id)
+            ->select('tbl_subjects.*')
+            ->first();
+
+        if (!$shyrielleBautistaSubject) {
+            // If Shyrielle Bautista has no Grade 7 subject assigned, assign her to one
+            $randomGrade7Subject = $grade7Subjects->random();
+            DB::table('tbl_teacher_subjects')->insert([
+                'teacher_id' => $shyrielleBautista->id,
+                'subject_id' => $randomGrade7Subject->id,
+            ]);
+            $shyrielleBautistaSubject = $randomGrade7Subject;
+        }
+
+        // Create the special promoting student
+        $lrn = '105255669247'; // Realistic LRN for promoting student
+
+        // Create user account
+        $userId = DB::table('users')->insertGetId([
+            'name' => 'Andrea Nicole Santos',
+            'email' => 'SNHS-' . $lrn,
+            'password' => Hash::make($lrn),
+            'role' => 'student',
+            'password_changed' => false,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Create student record
+        $studentId = DB::table('tbl_students')->insertGetId([
+            'user_id' => $userId,
+            'student_status' => 'returning',
+            'lrn' => $lrn,
+            'school_year' => $currentSchoolYear,
+            'last_name' => 'Santos',
+            'first_name' => 'Andrea Nicole',
+            'middle_name' => 'Garcia',
+            'suffix' => null,
+            'gender' => 'female',
+            'birth_date' => date('Y-m-d', strtotime('-13 years')),
+            'current_grade_level_id' => $grade7->id,
+            'current_section_id' => $grade7Section->id,
+            'has_psa_birth_certificate' => true,
+            'has_sf9' => true,
+            'has_report_card' => true,
+            'has_good_moral' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Create student profile
+        DB::table('tbl_student_profiles')->insert([
+            'profileable_id' => $studentId,
+            'place_of_birth' => 'Bongabon, Nueva Ecija',
+            'city_municipality' => 'Bongabon',
+            'province_state' => 'Nueva Ecija',
+            'zip_code' => '3128',
+            'country' => 'Philippines',
+            'nationality' => 'Filipino',
+            'religion' => 'Roman Catholic',
+            'contact_number' => '09176543210',
+            'mobile_number' => '09176543210',
+            'guardian_name' => 'Fernando Santos',
+            'relation' => 'Father',
+            'house_no' => '12 Bonifacio Street, Barangay San Jose',
+            'height' => 155,
+            'weight' => 48,
+            'build' => 'Average',
+            'eye_color' => 'Brown',
+            'hair_color' => 'Black',
+            'father_first_name' => 'Fernando',
+            'father_last_name' => 'Santos',
+            'father_middle_name' => 'Torres',
+            'mother_first_name' => 'Gabriela',
+            'mother_last_name' => 'Garcia',
+            'mother_middle_name' => 'Reyes',
+            'guardian_first_name' => 'Fernando',
+            'guardian_last_name' => 'Santos',
+            'guardian_middle_name' => 'Torres',
+            'indigenous_people' => 'No',
+            'pwd' => 'No',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Create grades for all subjects EXCEPT Shyrielle Bautista's subject.
+        // Every subject must end up graded, EXCEPT the one Bautista teaches,
+        // which must always stay pending — regardless of whether some other
+        // teacher also happens to be assigned to it.
+        foreach ($grade7Subjects as $subject) {
+            if ($subject->id === $shyrielleBautistaSubject->id) {
+                // This is Shyrielle Bautista's subject - create grade record with NO grades yet
+                DB::table('tbl_grades')->insert([
+                    'student_id' => $studentId,
+                    'class_section_id' => $grade7Section->id,
+                    'school_year' => $currentSchoolYear,
+                    'subject_id' => $subject->id,
+                    'teacher_id' => $shyrielleBautista->id,
+                    'quarter_1' => null,
+                    'quarter_2' => null,
+                    'quarter_3' => null,
+                    'quarter_4' => null,
+                    'final_grade' => null,
+                    'remarks' => null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                continue;
+            }
+
+            // Prefer a teacher who isn't Bautista, but fall back to any
+            // assigned teacher so this subject is never left ungraded.
+            $teacher = DB::table('tbl_teacher_subjects')
+                ->where('subject_id', $subject->id)
+                ->where('teacher_id', '!=', $shyrielleBautista->id)
+                ->first();
+
+            if (!$teacher) {
+                $teacher = DB::table('tbl_teacher_subjects')
+                    ->where('subject_id', $subject->id)
+                    ->first();
+            }
+
+            // No teacher is assigned to this subject at all yet - assign one
+            // now (any teacher other than Bautista) so the subject can still
+            // be graded rather than silently skipped.
+            if (!$teacher) {
+                $fallbackTeacher = DB::table('tbl_teachers')
+                    ->where('id', '!=', $shyrielleBautista->id)
+                    ->inRandomOrder()
+                    ->first();
+
+                if (!$fallbackTeacher) {
+                    // Only Bautista exists as a teacher - nothing else we can do
+                    continue;
+                }
+
+                DB::table('tbl_teacher_subjects')->insert([
+                    'teacher_id' => $fallbackTeacher->id,
+                    'subject_id' => $subject->id,
+                ]);
+
+                $teacher = (object) ['teacher_id' => $fallbackTeacher->id];
+            }
+
+            // Create complete grades (passing grades: 85-95)
+            $q1 = rand(85, 95);
+            $q2 = rand(85, 95);
+            $q3 = rand(85, 95);
+            $q4 = rand(85, 95);
+            $finalGrade = round(($q1 + $q2 + $q3 + $q4) / 4, 2);
+
+            DB::table('tbl_grades')->insert([
+                'student_id' => $studentId,
+                'class_section_id' => $grade7Section->id,
+                'school_year' => $currentSchoolYear,
+                'subject_id' => $subject->id,
+                'teacher_id' => $teacher->teacher_id,
+                'quarter_1' => $q1,
+                'quarter_2' => $q2,
+                'quarter_3' => $q3,
+                'quarter_4' => $q4,
+                'final_grade' => $finalGrade,
+                'remarks' => 'Passed',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        // Clear this student's clearance for every subject except Shyrielle Bautista's
+        [$clearanceCreated, $clearanceSkipped] = $this->seedSpecialStudentClearance(
+            $studentId,
+            $grade7Section->id,
+            $currentSchoolYear,
+            $shyrielleBautista->id
+        );
+
+        echo "\n✓ Special promoting student created: Andrea Nicole Santos (LRN: {$lrn})\n";
+        echo "  - Grade 7, Section: {$grade7Section->section_name}\n";
+        echo "  - Pending grade from: Shyrielle Bautista ({$shyrielleBautistaSubject->name})\n";
+        echo "  - All other subjects: Complete with passing grades (promoting to Grade 8)\n";
+        echo "  - Clearance: all subjects cleared except Shyrielle Bautista's ({$clearanceCreated} created, {$clearanceSkipped} skipped)\n\n";
+    }
+
+    /**
+     * Seed clearance records for a special (individually created) student,
+     * marking every subject as 'cleared' except the one taught by the
+     * given teacher (e.g. Shyrielle Bautista), which stays 'pending'.
+     *
+     * These special students are created after ClearanceSeeder already
+     * ran as part of seedStudents(), so they need their own clearance
+     * records seeded here.
+     *
+     * @return array{0:int,1:int} [recordsCreated, recordsSkipped]
+     */
+    private function seedSpecialStudentClearance(int $studentId, int $sectionId, string $schoolYear, int $pendingTeacherId): array
+    {
+        $created = 0;
+        $skipped = 0;
+
+        $schedules = DB::table('tbl_schedules')
+            ->where('class_section_id', $sectionId)
+            ->select('subject_id', 'teacher_id')
+            ->distinct()
+            ->get();
+
+        foreach ($schedules as $schedule) {
+            $exists = DB::table('tbl_clearances')
+                ->where('student_id', $studentId)
+                ->where('subject_id', $schedule->subject_id)
+                ->where('class_section_id', $sectionId)
+                ->where('school_year', $schoolYear)
+                ->exists();
+
+            if ($exists) {
+                $skipped++;
+                continue;
+            }
+
+            $status = ((int) $schedule->teacher_id === $pendingTeacherId) ? 'pending' : 'cleared';
+
+            DB::table('tbl_clearances')->insert([
+                'student_id'       => $studentId,
+                'teacher_id'       => $schedule->teacher_id,
+                'subject_id'       => $schedule->subject_id,
+                'class_section_id' => $sectionId,
+                'school_year'      => $schoolYear,
+                'status'           => $status,
+                'created_at'       => now(),
+                'updated_at'       => now(),
+            ]);
+
+            $created++;
+        }
+
+        return [$created, $skipped];
     }
 }

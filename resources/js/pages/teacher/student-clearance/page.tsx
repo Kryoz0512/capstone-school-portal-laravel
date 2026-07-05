@@ -1,12 +1,11 @@
 import { Head, router } from '@inertiajs/react'
 import TeacherLayout from '@/layouts/teacher-layout'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Search, Filter, Download, CheckCircle2, XCircle, Clock, Users, BookOpen, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight } from 'lucide-react'
+import { Search, Filter, CheckCircle2, XCircle, Clock, Users, BookOpen, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight, Info } from 'lucide-react'
 import { useState, useEffect, useRef } from 'react'
 
-type Student = { id: number; student_id: string; firstName: string; lastName: string; middleName?: string; grade_level: string; section: string; clearance_status: 'cleared' | 'pending' | 'not_cleared'; profile_picture?: string | null }
+type Student = { id: number; student_id: string; firstName: string; lastName: string; middleName?: string; grade_level: string; section: string; clearance_status: 'cleared' | 'pending' | 'not_cleared'; has_all_quarters: boolean; profile_picture?: string | null }
 type Subject = { id: number; subject_name: string; subject_code: string; grade_level: string; section: string; section_id: number }
 type Stats = { total: number; cleared: number; pending: number; not_cleared: number }
 type Pagination = { current_page: number; last_page: number; per_page: number; total: number } | null
@@ -28,6 +27,8 @@ export default function StudentClearance({ subjects, students, stats, pagination
     const [filterStatus, setFilterStatus] = useState<'all' | 'cleared' | 'pending' | 'not_cleared'>((filters?.status as any) || 'all')
     const [entriesPerPage, setEntriesPerPage] = useState(filters?.per_page || 10)
     const [localStatuses, setLocalStatuses] = useState<Record<number, 'cleared' | 'pending' | 'not_cleared'>>({})
+    const [hoveredStudent, setHoveredStudent] = useState<number | null>(null)
+    const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number } | null>(null)
     const isFirstRender = useRef(true)
     const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -52,11 +53,30 @@ export default function StudentClearance({ subjects, students, stats, pagination
     }
 
     const handleClearanceToggle = (student: Student) => {
+        // Prevent toggle if student doesn't have all quarters
+        if (!student.has_all_quarters) {
+            return
+        }
+        
         const current = getStatus(student)
         const next = current === 'cleared' ? 'pending' : 'cleared'
         setLocalStatuses(prev => ({ ...prev, [student.id]: next }))
         const subjectData = subjects.find(s => s.id === selectedSubject)
         router.post('/teacher/student-clearance/toggle', { student_id: student.id, subject_id: selectedSubject, class_section_id: subjectData?.section_id, school_year: filters?.school_year, cleared: next === 'cleared' }, { preserveScroll: true, preserveState: true, onError: () => setLocalStatuses(prev => ({ ...prev, [student.id]: current })) })
+    }
+
+    const handleMouseEnter = (studentId: number, event: React.MouseEvent<HTMLDivElement>) => {
+        const rect = event.currentTarget.getBoundingClientRect()
+        setHoveredStudent(studentId)
+        setTooltipPosition({
+            top: rect.top - 10,
+            left: rect.left + rect.width / 2
+        })
+    }
+
+    const handleMouseLeave = () => {
+        setHoveredStudent(null)
+        setTooltipPosition(null)
     }
 
     // Debounced search
@@ -111,8 +131,7 @@ export default function StudentClearance({ subjects, students, stats, pagination
 
     const getStatusBadge = (status: string) => {
         if (status === 'cleared') return <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700"><CheckCircle2 className="w-3 h-3" /> Cleared</span>
-        if (status === 'pending') return <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700"><Clock className="w-3 h-3" /> Pending</span>
-        return <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700"><XCircle className="w-3 h-3" /> Not Cleared</span>
+        return <span className="inline-flex items-center gap-1 px-2 sm:px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700"><Clock className="w-3 h-3" /> Pending</span>
     }
 
     const selectedSubjectData = subjects.find(s => s.id === selectedSubject)
@@ -140,18 +159,17 @@ export default function StudentClearance({ subjects, students, stats, pagination
                             </div>
                         )}
                     </div>
-                    <Button className="bg-green-600 hover:bg-green-700 text-white self-start sm:shrink-0">
+                    {/* <Button className="bg-green-600 hover:bg-green-700 text-white self-start sm:shrink-0">
                         <Download className="w-4 h-4 mr-2" /> Export Report
-                    </Button>
+                    </Button> */}
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                     {[
                         { label: 'Total Students', value: stats.total, color: 'blue', Icon: Users },
                         { label: 'Cleared', value: stats.cleared, color: 'green', Icon: CheckCircle2 },
                         { label: 'Pending', value: stats.pending, color: 'yellow', Icon: Clock },
-                        { label: 'Not Cleared', value: stats.not_cleared, color: 'red', Icon: XCircle },
                     ].map(({ label, value, color, Icon }) => (
                         <div key={label} className={`bg-gradient-to-br from-${color}-50 to-${color}-100 rounded-lg border border-${color}-200 p-3 sm:p-4`}>
                             <div className="flex items-center justify-between">
@@ -223,7 +241,6 @@ export default function StudentClearance({ subjects, students, stats, pagination
                                         <option value="all">All Status</option>
                                         <option value="cleared">Cleared</option>
                                         <option value="pending">Pending</option>
-                                        <option value="not_cleared">Not Cleared</option>
                                     </select>
                                 </div>
                             </div>
@@ -277,9 +294,22 @@ export default function StudentClearance({ subjects, students, stats, pagination
                                                     </td>
                                                     <td className="px-3 sm:px-6 py-4 sm:py-5 text-center">{getStatusBadge(status)}</td>
                                                     <td className="px-3 sm:px-6 py-4 sm:py-5">
-                                                        <div className="flex items-center justify-center gap-2">
-                                                            <Checkbox id={`clearance-${student.id}`} checked={isCleared} onCheckedChange={() => handleClearanceToggle(student)} className="data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600" />
-                                                            <label htmlFor={`clearance-${student.id}`} className="text-sm font-medium text-gray-700 cursor-pointer hover:text-green-600 transition-colors hidden sm:inline">
+                                                        <div 
+                                                            className="flex items-center justify-center gap-2"
+                                                            onMouseEnter={(e) => !student.has_all_quarters && handleMouseEnter(student.id, e)}
+                                                            onMouseLeave={handleMouseLeave}
+                                                        >
+                                                            <Checkbox 
+                                                                id={`clearance-${student.id}`} 
+                                                                checked={isCleared} 
+                                                                onCheckedChange={() => handleClearanceToggle(student)} 
+                                                                disabled={!student.has_all_quarters}
+                                                                className={`data-[state=checked]:bg-green-600 data-[state=checked]:border-green-600 ${!student.has_all_quarters ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                            />
+                                                            <label 
+                                                                htmlFor={`clearance-${student.id}`} 
+                                                                className={`text-sm font-medium text-gray-700 cursor-pointer hover:text-green-600 transition-colors hidden sm:inline ${!student.has_all_quarters ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                            >
                                                                 {isCleared ? 'Cleared' : 'Clear'}
                                                             </label>
                                                         </div>
@@ -328,6 +358,29 @@ export default function StudentClearance({ subjects, students, stats, pagination
                     </div>
                 )}
             </div>
+
+            {/* Global Tooltip Portal */}
+            {hoveredStudent !== null && tooltipPosition && (
+                <div 
+                    className="fixed z-[9999] pointer-events-none"
+                    style={{
+                        top: `${tooltipPosition.top}px`,
+                        left: `${tooltipPosition.left}px`,
+                        transform: 'translate(-50%, -100%)'
+                    }}
+                >
+                    <div className="bg-gray-900 text-white text-xs rounded-lg py-2 px-3 whitespace-nowrap shadow-xl mb-2">
+                        <div className="flex items-center gap-2">
+                            <Info className="w-3.5 h-3.5 shrink-0" />
+                            <span>This student does not have grades for all quarters</span>
+                        </div>
+                        {/* Arrow */}
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
+                            <div className="border-4 border-transparent border-t-gray-900"></div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </TeacherLayout>
     )
 }

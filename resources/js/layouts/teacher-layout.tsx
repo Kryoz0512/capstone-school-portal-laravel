@@ -2,6 +2,7 @@ import { ReactNode } from 'react'
 import { usePage } from '@inertiajs/react'
 import TeacherSidebar from '@/components/teacher-sidebar'
 import TeacherHeader from '@/components/teacher-header'
+import { Toaster } from 'sonner'
 
 type TeacherLayoutProps = {
     children: ReactNode
@@ -20,6 +21,8 @@ export default function TeacherLayout({ children, user }: TeacherLayoutProps) {
 
     return (
         <div className="flex min-h-screen bg-white">
+            <Toaster position="top-right" richColors closeButton />
+            
             {/* Sidebar — desktop only (hidden on mobile) */}
             <TeacherSidebar />
 

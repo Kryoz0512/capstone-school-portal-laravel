@@ -1,7 +1,7 @@
 import { Head, router } from '@inertiajs/react'
 import AdminLayout from '@/layouts/admin-layout'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Users } from 'lucide-react'
 import { useMemo } from 'react'
 
 type Schedule = {
@@ -15,12 +15,12 @@ type Schedule = {
     room: string
 }
 
-type Student = {
+type Section = {
     id: number
-    studentName: string
-    lrn: string
+    section_name: string
     gradeLevel: string
-    section: string
+    adviser: string
+    student_count: number
 }
 
 type Props = {
@@ -36,11 +36,11 @@ type Props = {
             position: string
         }
     }
-    student: Student
+    section: Section
     schedules: Schedule[]
 }
 
-export default function StudentScheduleShow({ auth, student, schedules }: Props) {
+export default function StudentScheduleShow({ auth, section, schedules }: Props) {
     const handleBack = () => {
         router.visit('/admin/enrollment/student-schedule')
     }
@@ -68,7 +68,7 @@ export default function StudentScheduleShow({ auth, student, schedules }: Props)
 
     return (
         <AdminLayout user={auth?.user} admin={auth?.admin}>
-            <Head title={`Schedule - ${student.studentName}`} />
+            <Head title={`Schedule - ${section.section_name}`} />
 
             <div className="space-y-6">
                 {/* Header */}
@@ -80,34 +80,43 @@ export default function StudentScheduleShow({ auth, student, schedules }: Props)
                             className="mb-4"
                         >
                             <ArrowLeft className="w-4 h-4 mr-2" />
-                            Back to Students
+                            Back to Sections
                         </Button>
-                        <h1 className="text-2xl font-bold text-gray-900">Student Schedule</h1>
+                        <h1 className="text-2xl font-bold text-gray-900">Section Schedule</h1>
                         <p className="text-sm text-gray-500 mt-1">
-                            View schedule for {student.studentName}
+                            View schedule for {section.section_name}
                         </p>
                     </div>
                 </div>
 
-                {/* Student Info */}
+                {/* Section Info */}
                 <div className="bg-white rounded-lg border border-gray-200 p-6">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Student Information</h2>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Section Information</h2>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
-                            <p className="text-sm text-gray-500">Student Name</p>
-                            <p className="font-medium text-gray-900">{student.studentName}</p>
-                        </div>
-                        <div>
-                            <p className="text-sm text-gray-500">LRN</p>
-                            <p className="font-medium text-gray-900">{student.lrn}</p>
+                            <p className="text-sm text-gray-500">Section Name</p>
+                            <p className="font-medium text-gray-900">{section.section_name}</p>
                         </div>
                         <div>
                             <p className="text-sm text-gray-500">Grade Level</p>
-                            <p className="font-medium text-gray-900">{student.gradeLevel}</p>
+                            <p className="font-medium text-gray-900">{section.gradeLevel}</p>
                         </div>
                         <div>
-                            <p className="text-sm text-gray-500">Section</p>
-                            <p className="font-medium text-gray-900">{student.section}</p>
+                            <p className="text-sm text-gray-500">Adviser</p>
+                            <p className="font-medium text-gray-900">
+                                {section.adviser === 'Not Assigned' ? (
+                                    <span className="text-gray-400 italic">{section.adviser}</span>
+                                ) : (
+                                    section.adviser
+                                )}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-sm text-gray-500">Total Students</p>
+                            <div className="flex items-center gap-2">
+                                <Users className="w-4 h-4 text-gray-400" />
+                                <p className="font-medium text-gray-900">{section.student_count}</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -160,8 +169,8 @@ export default function StudentScheduleShow({ auth, student, schedules }: Props)
                     </div>
                 ) : (
                     <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-                        <p className="text-gray-500">No schedule found for this student's section.</p>
-                        <p className="text-sm text-gray-400 mt-2">Schedules need to be added in Load Scheduling for this section.</p>
+                        <p className="text-gray-500">No schedule found for this section.</p>
+                        <p className="text-sm text-gray-400 mt-2">Schedules need to be added in Schedule Management for this section.</p>
                     </div>
                 )}
             </div>

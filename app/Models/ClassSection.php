@@ -15,6 +15,7 @@ class ClassSection extends Model
         'grade_level_id',
         'section_name',
         'room_id',
+        'teacher_id',
     ];
 
     // Relationships
@@ -46,5 +47,10 @@ class ClassSection extends Model
     public function students()
     {
         return $this->hasMany(Student::class, 'current_section_id');
+    }
+
+    public function teacher()
+    {
+        return $this->belongsTo(Teacher::class, 'teacher_id');
     }
 }

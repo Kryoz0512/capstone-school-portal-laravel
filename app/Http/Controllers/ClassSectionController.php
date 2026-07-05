@@ -15,8 +15,9 @@ class ClassSectionController extends Controller
         $gradeLevelFilter = $request->input('grade_level', 'all');
         $perPage = (int) $request->input('per_page', 10);
 
-        $sections = ClassSection::with(['gradeLevel', 'room'])
-            ->when($search, fn($q) => $q->where('section_name', 'like', "%{$search}%"))
+        $sections = ClassSection::with(['gradeLevel', 'room', 'teacher'])
+            ->when($search, fn($q) => $q->where('section_name', 'like', "%{$search}%")
+                ->orWhereHas('teacher', fn($tq) => $tq->where('name', 'like', "%{$search}%")))
             ->when($gradeLevelFilter !== 'all', fn($q) => $q->where('grade_level_id', $gradeLevelFilter))
             ->orderBy('section_name')
             ->paginate($perPage)
@@ -29,6 +30,8 @@ class ClassSectionController extends Controller
                     'grade_level' => $section->gradeLevel ? $section->gradeLevel->name : null,
                     'room_id' => $section->room_id,
                     'room' => $section->room ? $section->room->room_name : null,
+                    'teacher_id' => $section->teacher_id,
+                    'teacher_name' => $section->teacher ? $section->teacher->name : 'Not Assigned',
                 ];
             });
 
@@ -40,10 +43,15 @@ class ClassSectionController extends Controller
             return ['id' => $room->id, 'room_name' => $room->room_name, 'capacity' => $room->capacity];
         });
 
+        $teachers = \App\Models\Teacher::all()->map(function ($teacher) {
+            return ['id' => $teacher->id, 'name' => $teacher->name];
+        });
+
         return Inertia::render('admin/enrollment/class-sections/page', [
             'sections' => $sections,
             'gradeLevels' => $gradeLevels,
             'rooms' => $rooms,
+            'teachers' => $teachers,
             'filters' => ['search' => $search, 'grade_level' => $gradeLevelFilter],
         ]);
     }
@@ -92,6 +100,7 @@ class ClassSectionController extends Controller
         $request->validate([
             'section_name' => 'required|string|max:255',
             'grade_level_id' => 'required|exists:tbl_grade_levels,id',
+            'teacher_id' => 'nullable|exists:tbl_teachers,id',
         ]);
 
         // Check for case-insensitive duplicate across all grade levels
@@ -102,10 +111,33 @@ class ClassSectionController extends Controller
             return back()->withErrors(['section_name' => 'This section name already exists.']);
         }
 
-        ClassSection::create([
+        // Check if teacher is already assigned to another section
+        if ($request->teacher_id) {
+            $teacherAssigned = ClassSection::where('teacher_id', $request->teacher_id)
+                ->exists();
+
+            if ($teacherAssigned) {
+                return back()->withErrors(['teacher_id' => 'This teacher is already assigned to another section.']);
+            }
+        }
+
+        $section = ClassSection::create([
             'section_name' => $request->section_name,
             'grade_level_id' => $request->grade_level_id,
+            'teacher_id' => $request->teacher_id,
         ]);
+
+        // Also create AdviserSection entry for current school year if teacher is assigned
+        if ($request->teacher_id) {
+            $currentYear = date('Y');
+            $schoolYear = $currentYear . '-' . ($currentYear + 1);
+
+            \App\Models\AdviserSection::create([
+                'teacher_id' => $request->teacher_id,
+                'class_section_id' => $section->id,
+                'school_year' => $schoolYear,
+            ]);
+        }
 
         return redirect()->back()->with('success', 'Section created successfully');
     }
@@ -115,6 +147,7 @@ class ClassSectionController extends Controller
         $request->validate([
             'section_name' => 'required|string|max:255',
             'grade_level_id' => 'required|exists:tbl_grade_levels,id',
+            'teacher_id' => 'nullable|exists:tbl_teachers,id',
         ]);
 
         // Check for case-insensitive duplicate across all grade levels (excluding current section)
@@ -126,10 +159,53 @@ class ClassSectionController extends Controller
             return back()->withErrors(['section_name' => 'This section name already exists.']);
         }
 
+        // Check if teacher is already assigned to another section
+        if ($request->teacher_id) {
+            $teacherAssigned = ClassSection::where('teacher_id', $request->teacher_id)
+                ->where('id', '!=', $classSection->id)
+                ->exists();
+
+            if ($teacherAssigned) {
+                return back()->withErrors(['teacher_id' => 'This teacher is already assigned to another section.']);
+            }
+        }
+
+        $oldTeacherId = $classSection->teacher_id;
+
         $classSection->update([
             'section_name' => $request->section_name,
             'grade_level_id' => $request->grade_level_id,
+            'teacher_id' => $request->teacher_id,
         ]);
+
+        // Sync AdviserSection for current school year
+        $currentYear = date('Y');
+        $schoolYear = $currentYear . '-' . ($currentYear + 1);
+
+        // Remove old adviser assignment if teacher changed
+        if ($oldTeacherId && $oldTeacherId !== $request->teacher_id) {
+            \App\Models\AdviserSection::where('class_section_id', $classSection->id)
+                ->where('school_year', $schoolYear)
+                ->delete();
+        }
+
+        // Create or update new adviser assignment
+        if ($request->teacher_id) {
+            \App\Models\AdviserSection::updateOrCreate(
+                [
+                    'class_section_id' => $classSection->id,
+                    'school_year' => $schoolYear,
+                ],
+                [
+                    'teacher_id' => $request->teacher_id,
+                ]
+            );
+        } else {
+            // Remove adviser assignment if no teacher selected
+            \App\Models\AdviserSection::where('class_section_id', $classSection->id)
+                ->where('school_year', $schoolYear)
+                ->delete();
+        }
 
         return redirect()->back()->with('success', 'Section updated successfully');
     }

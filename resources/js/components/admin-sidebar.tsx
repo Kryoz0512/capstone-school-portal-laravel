@@ -212,12 +212,12 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                                     Load Scheduling
                                 </span>
                             </Link> */}
-                            <Link href="/admin/enrollment/adviser-management" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
+                            {/* <Link href="/admin/enrollment/adviser-management" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
                                 <span className="flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
                                     Adviser Management
                                 </span>
-                            </Link>
+                            </Link> */}
                             <Link href="/admin/enrollment/student-not-enrolled" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
                                 <span className="flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
@@ -233,7 +233,7 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                             <Link href="/admin/enrollment/student-schedule" className="block px-4 py-2.5 text-sm text-green-100 hover:text-white hover:bg-green-500/40 rounded-lg transition-all duration-200 hover:translate-x-1">
                                 <span className="flex items-center gap-2">
                                     <span className="w-1.5 h-1.5 rounded-full bg-green-300"></span>
-                                    Student Schedule
+                                    Section Schedules
                                 </span>
                             </Link>
                         </div>

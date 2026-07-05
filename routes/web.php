@@ -212,7 +212,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('admin/enrollment/students/{id}/update-enrollment', [StudentController::class, 'updateEnrollment'])->name('admin.enrollment.students.update-enrollment');
 
     Route::get('admin/enrollment/student-schedule', [StudentController::class, 'scheduleIndex'])->name('admin.enrollment.student-schedule');
-    Route::get('admin/enrollment/student-schedule/{student}', [StudentController::class, 'scheduleShow'])->name('admin.enrollment.student-schedule.show');
+    Route::get('admin/enrollment/student-schedule/{section}', [StudentController::class, 'scheduleShow'])->name('admin.enrollment.student-schedule.show');
 
     // Admin Admission routes
     Route::get('admin/admission/registration', function () {

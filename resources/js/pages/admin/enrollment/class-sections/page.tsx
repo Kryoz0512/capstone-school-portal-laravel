@@ -17,10 +17,13 @@ type Section = {
     grade_level: string
     room_id: number | null
     room: string | null
+    teacher_id: number | null
+    teacher_name: string
 }
 
 type GradeLevel = { id: number; name: string }
 type Room = { id: number; room_name: string; capacity: number }
+type Teacher = { id: number; name: string }
 type PaginationLink = { url: string | null; label: string; active: boolean }
 
 type Props = {
@@ -38,10 +41,11 @@ type Props = {
     }
     gradeLevels: GradeLevel[]
     rooms: Room[]
+    teachers: Teacher[]
     filters?: { search?: string; grade_level?: string }
 }
 
-export default function ClassSections({ auth, sections, gradeLevels = [], rooms = [], filters = {} }: Props) {
+export default function ClassSections({ auth, sections, gradeLevels = [], rooms = [], teachers = [], filters = {} }: Props) {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
@@ -99,15 +103,15 @@ export default function ClassSections({ auth, sections, gradeLevels = [], rooms 
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">Class Sections</h1>
-                        <p className="text-sm text-gray-500 mt-1">Create and manage class sections</p>
+                        <p className="text-sm text-gray-500 mt-1">Create and manage class sections with adviser assignments</p>
                     </div>
                     <Button className="bg-green-600 hover:bg-green-700 text-white" onClick={() => setIsCreateModalOpen(true)}>
                         + Create Section
                     </Button>
                 </div>
 
-                <CreateSectionModal open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen} gradeLevels={gradeLevels} rooms={rooms} />
-                <EditSectionModal open={isEditModalOpen} onOpenChange={setIsEditModalOpen} section={selectedSection} gradeLevels={gradeLevels} rooms={rooms} />
+                <CreateSectionModal open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen} gradeLevels={gradeLevels} rooms={rooms} teachers={teachers} />
+                <EditSectionModal open={isEditModalOpen} onOpenChange={setIsEditModalOpen} section={selectedSection} gradeLevels={gradeLevels} rooms={rooms} teachers={teachers} />
                 <DeleteSectionModal open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen} section={selectedSection} />
 
                 <div className="bg-white rounded-lg border border-gray-200 p-4">
@@ -143,6 +147,7 @@ export default function ClassSections({ auth, sections, gradeLevels = [], rooms 
                                 <tr>
                                     <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Grade Level</th>
                                     <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Section Name</th>
+                                    <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Adviser</th>
                                     <th className="px-6 py-4 text-left text-sm font-semibold text-white uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
@@ -152,6 +157,13 @@ export default function ClassSections({ auth, sections, gradeLevels = [], rooms 
                                         <tr key={section.id} className="hover:bg-gray-50">
                                             <td className="px-6 py-4 text-sm text-gray-900">{section.grade_level}</td>
                                             <td className="px-6 py-4 text-sm text-gray-900">{section.section_name}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">
+                                                {section.teacher_name === 'Not Assigned' ? (
+                                                    <span className="text-gray-400 italic">{section.teacher_name}</span>
+                                                ) : (
+                                                    section.teacher_name
+                                                )}
+                                            </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-2">
                                                     <button className="text-gray-600 hover:text-green-600" onClick={() => handleEdit(section)}>
@@ -166,7 +178,7 @@ export default function ClassSections({ auth, sections, gradeLevels = [], rooms 
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={3} className="px-6 py-8 text-center text-sm text-gray-500">
+                                        <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500">
                                             {searchQuery || gradeLevelFilter !== 'all'
                                                 ? 'No sections found matching your filters.'
                                                 : 'No sections found. Click "+ Create Section" to add one.'}

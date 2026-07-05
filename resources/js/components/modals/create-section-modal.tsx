@@ -18,20 +18,28 @@ type Room = {
     capacity: number
 }
 
+type Teacher = {
+    id: number
+    name: string
+}
+
 type CreateSectionModalProps = {
     open: boolean
     onOpenChange: (open: boolean) => void
     gradeLevels: GradeLevel[]
     rooms: Room[]
+    teachers: Teacher[]
 }
 
-export default function CreateSectionModal({ open, onOpenChange, gradeLevels, rooms = [] }: CreateSectionModalProps) {
+export default function CreateSectionModal({ open, onOpenChange, gradeLevels, rooms = [], teachers = [] }: CreateSectionModalProps) {
     const { data, setData, post, processing, errors, reset } = useForm<{
         section_name: string
         grade_level_id: string | undefined
+        teacher_id: string | undefined
     }>({
         section_name: '',
         grade_level_id: undefined,
+        teacher_id: undefined,
     })
 
     const [sectionNameError, setSectionNameError] = useState('')
@@ -84,6 +92,7 @@ export default function CreateSectionModal({ open, onOpenChange, gradeLevels, ro
             data: {
                 section_name: data.section_name,
                 grade_level_id: data.grade_level_id,
+                teacher_id: data.teacher_id,
             },
             onSuccess: () => {
                 onOpenChange(false)
@@ -99,7 +108,7 @@ export default function CreateSectionModal({ open, onOpenChange, gradeLevels, ro
                 <DialogHeader>
                     <DialogTitle>Create Section</DialogTitle>
                     <DialogDescription>
-                        Create a new class section with grade level assignment
+                        Create a new class section with grade level and adviser assignment
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4 mt-4">
@@ -142,6 +151,29 @@ export default function CreateSectionModal({ open, onOpenChange, gradeLevels, ro
                             </SelectContent>
                         </Select>
                         {errors.grade_level_id && <p className="text-xs text-red-500 mt-1">{errors.grade_level_id}</p>}
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Adviser (Optional)
+                        </label>
+                        <Select
+                            value={data.teacher_id?.toString()}
+                            onValueChange={(value) => setData('teacher_id', value === 'none' ? undefined : value)}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select an adviser" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="none">No Adviser</SelectItem>
+                                {teachers.map((teacher) => (
+                                    <SelectItem key={teacher.id} value={teacher.id.toString()}>
+                                        {teacher.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {errors.teacher_id && <p className="text-xs text-red-500 mt-1">{errors.teacher_id}</p>}
                     </div>
 
                     <div className="flex items-center justify-end gap-3 pt-4 border-t">

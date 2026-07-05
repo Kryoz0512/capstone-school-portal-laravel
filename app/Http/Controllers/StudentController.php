@@ -691,27 +691,33 @@ class StudentController extends Controller
         $gradeLevelFilter = $request->input('grade_level');
         $perPage = $request->input('per_page', 10);
 
-        // Fetch students who have been assigned a section with pagination
-        $students = Student::with(['gradeLevel', 'section'])
-            ->whereNotNull('current_section_id')
+        // Fetch sections with their grade levels and student count
+        $sections = ClassSection::with(['gradeLevel', 'teacher'])
+            ->withCount('students')
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
-                    $q->where('first_name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%")
-                        ->orWhere('lrn', 'like', "%{$search}%");
+                    $q->where('section_name', 'like', "%{$search}%")
+                        ->orWhereHas('gradeLevel', function ($gl) use ($search) {
+                            $gl->where('name', 'like', "%{$search}%");
+                        })
+                        ->orWhereHas('teacher', function ($t) use ($search) {
+                            $t->where('name', 'like', "%{$search}%");
+                        });
                 });
             })
             ->when($gradeLevelFilter, function ($query, $gradeLevelFilter) {
-                $query->where('current_grade_level_id', $gradeLevelFilter);
+                $query->where('grade_level_id', $gradeLevelFilter);
             })
+            ->orderBy('section_name')
             ->paginate($perPage)
-            ->through(function ($student) {
+            ->through(function ($section) {
                 return [
-                    'id' => $student->id,
-                    'studentName' => trim($student->first_name . ' ' . $student->last_name),
-                    'lrn' => $student->lrn,
-                    'gradeLevel' => $student->gradeLevel ? $student->gradeLevel->name : '',
-                    'section' => $student->section ? $student->section->section_name : '',
+                    'id' => $section->id,
+                    'section_name' => $section->section_name,
+                    'gradeLevel' => $section->gradeLevel ? $section->gradeLevel->name : 'N/A',
+                    'grade_level_id' => $section->grade_level_id,
+                    'adviser' => $section->teacher ? $section->teacher->name : 'Not Assigned',
+                    'student_count' => $section->students_count,
                 ];
             });
 
@@ -719,7 +725,7 @@ class StudentController extends Controller
         $gradeLevels = GradeLevel::select('id', 'name')->get();
 
         return Inertia::render('admin/enrollment/student-schedule/page', [
-            'students' => $students,
+            'sections' => $sections,
             'gradeLevels' => $gradeLevels,
             'filters' => [
                 'search' => $search,
@@ -728,16 +734,15 @@ class StudentController extends Controller
         ]);
     }
 
-    public function scheduleShow(Student $student)
+    public function scheduleShow($sectionId)
     {
-        // Get the student's section
-        $section = $student->section;
+        // Get the section
+        $section = ClassSection::with(['gradeLevel', 'teacher'])->findOrFail($sectionId);
 
-        if (!$section) {
-            return redirect()->back()->withErrors(['error' => 'Student is not assigned to a section']);
-        }
+        // Get student count
+        $studentCount = Student::where('current_section_id', $section->id)->count();
 
-        // Fetch schedules for the student's section
+        // Fetch schedules for the section
         $schedules = Schedule::with(['subject', 'teacher', 'room'])
             ->where('class_section_id', $section->id)
             ->orderBy('day_of_week')
@@ -756,16 +761,16 @@ class StudentController extends Controller
                 ];
             });
 
-        $studentData = [
-            'id' => $student->id,
-            'studentName' => trim($student->first_name . ' ' . $student->last_name),
-            'lrn' => $student->lrn,
-            'gradeLevel' => $student->gradeLevel ? $student->gradeLevel->name : '',
-            'section' => $section->section_name,
+        $sectionData = [
+            'id' => $section->id,
+            'section_name' => $section->section_name,
+            'gradeLevel' => $section->gradeLevel ? $section->gradeLevel->name : 'N/A',
+            'adviser' => $section->teacher ? $section->teacher->name : 'Not Assigned',
+            'student_count' => $studentCount,
         ];
 
         return Inertia::render('admin/enrollment/student-schedule/show', [
-            'student' => $studentData,
+            'section' => $sectionData,
             'schedules' => $schedules,
         ]);
     }

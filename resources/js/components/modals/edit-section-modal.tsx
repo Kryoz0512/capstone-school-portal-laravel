@@ -18,12 +18,18 @@ type Room = {
     capacity: number
 }
 
+type Teacher = {
+    id: number
+    name: string
+}
+
 type Section = {
     id: number
     section_name: string
     grade_level_id: number
     grade_level: string
     room_id: number | null
+    teacher_id: number | null
 }
 
 type EditSectionModalProps = {
@@ -32,15 +38,18 @@ type EditSectionModalProps = {
     section: Section | null
     gradeLevels: GradeLevel[]
     rooms: Room[]
+    teachers: Teacher[]
 }
 
-export default function EditSectionModal({ open, onOpenChange, section, gradeLevels, rooms = [] }: EditSectionModalProps) {
+export default function EditSectionModal({ open, onOpenChange, section, gradeLevels, rooms = [], teachers = [] }: EditSectionModalProps) {
     const { data, setData, put, processing, errors, reset } = useForm<{
         section_name: string
         grade_level_id: string | undefined
+        teacher_id: string | undefined
     }>({
         section_name: '',
         grade_level_id: undefined,
+        teacher_id: undefined,
     })
 
     const [sectionNameError, setSectionNameError] = useState('')
@@ -60,6 +69,7 @@ export default function EditSectionModal({ open, onOpenChange, section, gradeLev
             setData({
                 section_name: section.section_name,
                 grade_level_id: section.grade_level_id.toString(),
+                teacher_id: section.teacher_id ? section.teacher_id.toString() : undefined,
             })
             setInitialSectionName(section.section_name)
             setInitialGradeLevelId(section.grade_level_id.toString())
@@ -115,6 +125,7 @@ export default function EditSectionModal({ open, onOpenChange, section, gradeLev
             data: {
                 section_name: data.section_name,
                 grade_level_id: data.grade_level_id,
+                teacher_id: data.teacher_id,
             },
             onSuccess: () => {
                 onOpenChange(false)
@@ -130,7 +141,7 @@ export default function EditSectionModal({ open, onOpenChange, section, gradeLev
                 <DialogHeader>
                     <DialogTitle>Edit Section</DialogTitle>
                     <DialogDescription>
-                        Update the section name and grade level
+                        Update the section name, grade level, and adviser assignment
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4 mt-4">
@@ -173,6 +184,29 @@ export default function EditSectionModal({ open, onOpenChange, section, gradeLev
                             </SelectContent>
                         </Select>
                         {errors.grade_level_id && <p className="text-xs text-red-500 mt-1">{errors.grade_level_id}</p>}
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Adviser (Optional)
+                        </label>
+                        <Select
+                            value={data.teacher_id?.toString() || 'none'}
+                            onValueChange={(value) => setData('teacher_id', value === 'none' ? undefined : value)}
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select an adviser" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="none">No Adviser</SelectItem>
+                                {teachers.map((teacher) => (
+                                    <SelectItem key={teacher.id} value={teacher.id.toString()}>
+                                        {teacher.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {errors.teacher_id && <p className="text-xs text-red-500 mt-1">{errors.teacher_id}</p>}
                     </div>
 
                     <div className="flex items-center justify-end gap-3 pt-4 border-t">

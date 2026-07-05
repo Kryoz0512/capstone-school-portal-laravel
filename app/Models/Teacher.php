@@ -91,6 +91,11 @@ class Teacher extends Model
         return $this->hasMany(AdviserSection::class, 'teacher_id');
     }
 
+    public function classSections()
+    {
+        return $this->hasMany(ClassSection::class, 'teacher_id');
+    }
+
     public function schedules()
     {
         return $this->hasMany(Schedule::class, 'teacher_id');

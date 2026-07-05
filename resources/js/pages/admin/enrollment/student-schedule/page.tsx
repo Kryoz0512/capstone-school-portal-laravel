@@ -3,13 +3,15 @@ import AdminLayout from '@/layouts/admin-layout'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/pagination'
 import { useState, useEffect, useRef } from 'react'
+import { Users } from 'lucide-react'
 
-type Student = {
+type Section = {
     id: number
-    studentName: string
-    lrn: string
+    section_name: string
     gradeLevel: string
-    section: string
+    grade_level_id: number
+    adviser: string
+    student_count: number
 }
 
 type GradeLevel = {
@@ -36,8 +38,8 @@ type Props = {
             position: string
         }
     }
-    students: {
-        data: Student[]
+    sections: {
+        data: Section[]
         current_page: number
         last_page: number
         per_page: number
@@ -51,15 +53,11 @@ type Props = {
     }
 }
 
-export default function StudentSchedule({ auth, students, gradeLevels, filters }: Props) {
+export default function StudentSchedule({ auth, sections, gradeLevels, filters }: Props) {
     const [searchTerm, setSearchTerm] = useState(filters?.search || '')
     const [gradeLevel, setGradeLevel] = useState(filters?.grade_level?.toString() || '')
-    const [perPage, setPerPage] = useState(students.per_page || 10)
+    const [perPage, setPerPage] = useState(sections.per_page || 10)
 
-    // Guards the filters effect below from firing on mount (including
-    // remounts triggered by pagination navigation). Without this, paginating
-    // to page 2+ would trigger a re-request with no `page` param, bouncing
-    // the user back to page 1.
     const isFirstRender = useRef(true)
 
     useEffect(() => {
@@ -82,17 +80,11 @@ export default function StudentSchedule({ auth, students, gradeLevels, filters }
         return () => clearTimeout(timer)
     }, [searchTerm, gradeLevel, perPage])
 
-    const handleStudentClick = (studentId: number) => {
-        router.visit(`/admin/enrollment/student-schedule/${studentId}`)
+    const handleSectionClick = (sectionId: number) => {
+        router.visit(`/admin/enrollment/student-schedule/${sectionId}`)
     }
 
     const handlePageChange = (url: string | null) => {
-        // preserveState is required here so the component instance (and its
-        // isFirstRender ref) survives the navigation instead of remounting,
-        // which previously caused the filters effect above to re-fire and
-        // silently strip the `page` param, sending the user back to page 1.
-        // preserveScroll is added too — the original call had neither, so
-        // paginating also used to jerk the page back to the top.
         if (url) {
             router.visit(url, { preserveScroll: true, preserveState: true })
         }
@@ -111,13 +103,13 @@ export default function StudentSchedule({ auth, students, gradeLevels, filters }
 
     return (
         <AdminLayout user={auth?.user} admin={auth?.admin}>
-            <Head title="Student Schedule" />
+            <Head title="Section Schedules" />
 
             <div className="space-y-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Student Schedule</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">Section Schedules</h1>
                     <p className="text-sm text-gray-500 mt-1">
-                        View student schedules
+                        View schedules by section
                     </p>
                 </div>
 
@@ -127,11 +119,11 @@ export default function StudentSchedule({ auth, students, gradeLevels, filters }
                     <div className="flex flex-col sm:flex-row gap-4 items-end">
                         <div className="flex-1">
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Student Name or LRN
+                                Section Name or Adviser
                             </label>
                             <Input
                                 type="text"
-                                placeholder="Search student..."
+                                placeholder="Search section or adviser..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -174,32 +166,43 @@ export default function StudentSchedule({ auth, students, gradeLevels, filters }
                         <table className="w-full">
                             <thead className="bg-green-700">
                                 <tr>
-                                    <th className="px-6 py-5 text-left text-base font-semibold text-white uppercase tracking-wider">LRN</th>
-                                    <th className="px-6 py-5 text-left text-base font-semibold text-white uppercase tracking-wider">Student Name</th>
                                     <th className="px-6 py-5 text-left text-base font-semibold text-white uppercase tracking-wider">Grade Level</th>
-                                    <th className="px-6 py-5 text-left text-base font-semibold text-white uppercase tracking-wider">Section</th>
+                                    <th className="px-6 py-5 text-left text-base font-semibold text-white uppercase tracking-wider">Section Name</th>
+                                    <th className="px-6 py-5 text-left text-base font-semibold text-white uppercase tracking-wider">Adviser</th>
+                                    <th className="px-6 py-5 text-left text-base font-semibold text-white uppercase tracking-wider">Students</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                {students.data.length > 0 ? (
-                                    students.data.map((student) => (
+                                {sections.data.length > 0 ? (
+                                    sections.data.map((section) => (
                                         <tr 
-                                            key={student.id} 
-                                            className="hover:bg-gray-50 cursor-pointer"
-                                            onClick={() => handleStudentClick(student.id)}
+                                            key={section.id} 
+                                            className="hover:bg-gray-50 cursor-pointer transition-colors"
+                                            onClick={() => handleSectionClick(section.id)}
                                         >
-                                            <td className="px-6 py-4 text-sm text-gray-900">{student.lrn}</td>
-                                            <td className="px-6 py-4 text-sm text-gray-900">{student.studentName}</td>
-                                            <td className="px-6 py-4 text-sm text-gray-900">{student.gradeLevel}</td>
-                                            <td className="px-6 py-4 text-sm text-gray-900">{student.section}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">{section.gradeLevel}</td>
+                                            <td className="px-6 py-4 text-sm font-medium text-gray-900">{section.section_name}</td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">
+                                                {section.adviser === 'Not Assigned' ? (
+                                                    <span className="text-gray-400 italic">{section.adviser}</span>
+                                                ) : (
+                                                    section.adviser
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-900">
+                                                <div className="flex items-center gap-2">
+                                                    <Users className="w-4 h-4 text-gray-400" />
+                                                    <span>{section.student_count}</span>
+                                                </div>
+                                            </td>
                                         </tr>
                                     ))
                                 ) : (
                                     <tr>
                                         <td colSpan={4} className="px-6 py-8 text-center text-sm text-gray-500">
                                             {searchTerm || gradeLevel
-                                                ? 'No students match your search.'
-                                                : 'No enrolled students found.'
+                                                ? 'No sections match your search.'
+                                                : 'No sections found.'
                                             }
                                         </td>
                                     </tr>
@@ -209,13 +212,13 @@ export default function StudentSchedule({ auth, students, gradeLevels, filters }
                     </div>
 
                     {/* Pagination */}
-                    {students.data.length > 0 && (
+                    {sections.data.length > 0 && (
                         <Pagination
-                            currentPage={students.current_page}
-                            lastPage={students.last_page}
-                            perPage={students.per_page}
-                            total={students.total}
-                            links={students.links}
+                            currentPage={sections.current_page}
+                            lastPage={sections.last_page}
+                            perPage={sections.per_page}
+                            total={sections.total}
+                            links={sections.links}
                             onPageChange={handlePageChange}
                             onPerPageChange={handlePerPageChange}
                         />

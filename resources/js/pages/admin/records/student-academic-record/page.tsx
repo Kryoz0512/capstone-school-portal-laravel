@@ -363,7 +363,7 @@ export default function StudentAcademicRecord({ student, academic_record, grade_
                                     id="ready-to-graduate"
                                     checked={readyToGraduate}
                                     onCheckedChange={(checked) => handleGraduationToggle(checked as boolean)}
-                                    disabled={!canMarkGraduate}
+                                    disabled={canMarkGraduate}
                                     className="h-5 w-5"
                                 />
                                 <Label

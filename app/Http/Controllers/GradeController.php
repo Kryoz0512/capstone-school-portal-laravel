@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Clearance;
 use App\Models\Teacher;
 use App\Models\Student;
 use App\Models\Grade;
@@ -62,6 +63,26 @@ class GradeController extends Controller
         return (int) round((float) $value, 0, PHP_ROUND_HALF_UP);
     }
 
+    /**
+     * Subjects assigned to a teacher for a specific section (from schedules).
+     */
+    private function getSubjectsForSection(Teacher $teacher, ?int $sectionId): array
+    {
+        if (!$sectionId) {
+            return [];
+        }
+
+        return DB::table('tbl_schedules')
+            ->join('tbl_subjects', 'tbl_schedules.subject_id', '=', 'tbl_subjects.id')
+            ->where('tbl_schedules.teacher_id', $teacher->id)
+            ->where('tbl_schedules.class_section_id', $sectionId)
+            ->select('tbl_subjects.id', 'tbl_subjects.name')
+            ->distinct()
+            ->orderBy('tbl_subjects.name')
+            ->get()
+            ->toArray();
+    }
+
     public function index(Request $request)
     {
         $user = Auth::user();
@@ -106,15 +127,7 @@ class GradeController extends Controller
                 ];
             });
 
-        $subjects = DB::table('tbl_teacher_subjects')
-            ->join('tbl_subjects', 'tbl_teacher_subjects.subject_id', '=', 'tbl_subjects.id')
-            ->where('tbl_teacher_subjects.teacher_id', $teacher->id)
-            ->select('tbl_subjects.id', 'tbl_subjects.name')
-            ->distinct()
-            ->get()
-            ->unique('name')
-            ->values()
-            ->toArray();
+        $subjects = $this->getSubjectsForSection($teacher, $sectionId ? (int) $sectionId : null);
 
         $students = [];
         $pagination = null;
@@ -265,15 +278,7 @@ class GradeController extends Controller
                 ];
             });
 
-        $subjects = DB::table('tbl_teacher_subjects')
-            ->join('tbl_subjects', 'tbl_teacher_subjects.subject_id', '=', 'tbl_subjects.id')
-            ->where('tbl_teacher_subjects.teacher_id', $teacher->id)
-            ->select('tbl_subjects.id', 'tbl_subjects.name')
-            ->distinct()
-            ->get()
-            ->unique('name')
-            ->values()
-            ->toArray();
+        $subjects = $this->getSubjectsForSection($teacher, $sectionId ? (int) $sectionId : null);
 
         $students = [];
         $pagination = null;
@@ -375,6 +380,17 @@ class GradeController extends Controller
             'school_year' => 'required|string',
             'grade' => 'required|numeric|min:75|max:100',
         ]);
+
+        $validSchedule = Schedule::where('teacher_id', $teacher->id)
+            ->where('class_section_id', $validated['class_section_id'])
+            ->where('subject_id', $validated['subject_id'])
+            ->exists();
+
+        if (!$validSchedule) {
+            return back()->withErrors([
+                'subject_id' => 'This subject is not assigned to the selected section.',
+            ]);
+        }
 
         $quarterColumn = 'quarter_' . $validated['quarter'];
 
@@ -613,6 +629,48 @@ class GradeController extends Controller
     }
 
     /**
+     * Build a clearance summary for a student in a specific section and school year.
+     */
+    private function buildClearanceSummary(Student $student, ?int $sectionId, $scheduledSubjects, $allClearances): array
+    {
+        $subjectClearances = collect();
+        $totalSubjects = 0;
+        $clearedCount = 0;
+        $allCleared = false;
+
+        if ($sectionId && $scheduledSubjects) {
+            $schoolYear = $student->school_year ?? null;
+            $clearancesForSectionYear = $allClearances->filter(function ($clearance) use ($sectionId, $schoolYear) {
+                return (int) $clearance->class_section_id === (int) $sectionId
+                    && $clearance->school_year === $schoolYear;
+            });
+
+            $subjectClearances = $scheduledSubjects->map(function ($schedule) use ($clearancesForSectionYear) {
+                $clearance = $clearancesForSectionYear->firstWhere('subject_id', $schedule->subject_id);
+
+                return [
+                    'subject_id' => $schedule->subject_id,
+                    'subject_code' => $schedule->subject->code ?? null,
+                    'subject_name' => $schedule->subject->name ?? 'N/A',
+                    'teacher_name' => $schedule->teacher->name ?? '-',
+                    'status' => $clearance?->status ?? 'pending',
+                ];
+            })->sortBy('subject_name')->values();
+
+            $totalSubjects = $subjectClearances->count();
+            $clearedCount = $subjectClearances->where('status', 'cleared')->count();
+            $allCleared = $totalSubjects > 0 && $clearedCount === $totalSubjects;
+        }
+
+        return [
+            'subject_clearances' => $subjectClearances,
+            'clearance_total' => $totalSubjects,
+            'clearance_cleared' => $clearedCount,
+            'all_cleared' => $allCleared,
+        ];
+    }
+
+    /**
      * Resolve the class section the student was in for a given grade level.
      */
     private function resolveSectionIdForGradeLevel(Student $student, int $gradeLevelId, $gradesForLevel): ?int
@@ -744,28 +802,17 @@ class GradeController extends Controller
             $subjectClearances = collect();
 
             if ($sectionId) {
-                $clearancesForSection = $allClearances->where('class_section_id', $sectionId);
-
                 $scheduledSubjects = Schedule::where('class_section_id', $sectionId)
                     ->with(['subject', 'teacher'])
                     ->get()
                     ->unique('subject_id');
 
-                $subjectClearances = $scheduledSubjects->map(function ($schedule) use ($clearancesForSection) {
-                    $clearance = $clearancesForSection->firstWhere('subject_id', $schedule->subject_id);
+                $clearanceSummary = $this->buildClearanceSummary($student, $sectionId, $scheduledSubjects, $allClearances);
 
-                    return [
-                        'subject_id' => $schedule->subject_id,
-                        'subject_code' => $schedule->subject->code ?? null,
-                        'subject_name' => $schedule->subject->name ?? 'N/A',
-                        'teacher_name' => $schedule->teacher->name ?? '-',
-                        'status' => $clearance?->status ?? 'pending',
-                    ];
-                })->sortBy('subject_name')->values();
-
-                $totalSubjects = $subjectClearances->count();
-                $clearedCount = $clearancesForSection->where('status', 'cleared')->count();
-                $allCleared = $totalSubjects > 0 && $clearedCount >= $totalSubjects;
+                $subjectClearances = $clearanceSummary['subject_clearances'];
+                $totalSubjects = $clearanceSummary['clearance_total'];
+                $clearedCount = $clearanceSummary['clearance_cleared'];
+                $allCleared = $clearanceSummary['all_cleared'];
             }
             // ----------------------
 
@@ -864,6 +911,24 @@ class GradeController extends Controller
         if ($finalAverage < 75) {
             return back()->withErrors([
                 'error' => 'Student must pass their current grade level (final average of 75 or higher) before promotion.',
+            ]);
+        }
+
+        $sectionId = $this->resolveSectionIdForGradeLevel($student, $student->current_grade_level_id, $gradesForLevel);
+        $scheduledSubjects = collect();
+
+        if ($sectionId) {
+            $scheduledSubjects = Schedule::where('class_section_id', $sectionId)
+                ->with(['subject', 'teacher'])
+                ->get()
+                ->unique('subject_id');
+        }
+
+        $clearanceSummary = $this->buildClearanceSummary($student, $sectionId, $scheduledSubjects, Clearance::where('student_id', $studentId)->get());
+
+        if (!$clearanceSummary['all_cleared']) {
+            return back()->withErrors([
+                'error' => 'Student clearance must be fully cleared before promotion.',
             ]);
         }
 

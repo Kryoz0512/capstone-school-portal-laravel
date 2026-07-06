@@ -17,7 +17,6 @@ class DatabaseSeeder extends Seeder
     {
         // Create Super Admin (Principal) account
         $email = 'SNHS-BAYUDANG-MICAH';
-
         if (!User::where('email', $email)->exists()) {
             // Create super admin user account
             $superAdminUser = User::create([
@@ -43,7 +42,6 @@ class DatabaseSeeder extends Seeder
 
         // Create Super Admin (Principal) account
         $email = 'SNHS-TEJANO-MICHAEL';
-
         if (!User::where('email', $email)->exists()) {
             // Create super admin user account
             $superAdminUser = User::create([
@@ -67,8 +65,6 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-
-
         if (!User::where('email', 'SNHS-BAYUDANG-MARK')->exists()) {
             $user = User::create([
                 'name' => 'Mark Robert Bayudang',
@@ -91,5 +87,19 @@ class DatabaseSeeder extends Seeder
                 'updated_at' => now(),
             ]);
         }
+
+        $this->call([
+            GradeLevelSeeder::class,
+            SubjectSeeder::class,
+            RoomSeeder::class,
+            TeacherSeeder::class,
+            SectionSeeder::class,
+            ScheduleSeeder::class,
+            StudentSeeder::class,
+            GradeSeeder::class,
+        ]);
+        $this->command?->info('Database seeding completed.');
+        $this->command?->info('Expected totals: 4 grade levels, 8 sections, 400 students, 15 teachers, 20 subjects, 8 rooms, 40 schedules, 40 grades (Ma\'am Shyrielle).');
+
     }
 }

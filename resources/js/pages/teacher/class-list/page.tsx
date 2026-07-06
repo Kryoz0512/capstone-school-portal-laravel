@@ -95,17 +95,17 @@ export default function ClassList({ subjects, sections, schoolYears, students, p
                     <div className="p-4 sm:p-6">
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div className="space-y-2">
-                                <label className="block text-sm font-medium text-gray-700">Subject</label>
-                                <Select value={subject} onValueChange={setSubject}>
-                                    <SelectTrigger className="w-full"><SelectValue placeholder="Select subject" /></SelectTrigger>
-                                    <SelectContent>{subjects.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}</SelectContent>
+                                <label className="block text-sm font-medium text-gray-700">Section <span className="text-red-500">*</span></label>
+                                <Select value={section} onValueChange={(value) => { setSection(value); setSubject('') }}>
+                                    <SelectTrigger className="w-full"><SelectValue placeholder="Select section" /></SelectTrigger>
+                                    <SelectContent>{sections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.grade_level_name} - {s.name}</SelectItem>)}</SelectContent>
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <label className="block text-sm font-medium text-gray-700">Section <span className="text-red-500">*</span></label>
-                                <Select value={section} onValueChange={setSection}>
-                                    <SelectTrigger className="w-full"><SelectValue placeholder="Select section" /></SelectTrigger>
-                                    <SelectContent>{sections.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.grade_level_name} - {s.name}</SelectItem>)}</SelectContent>
+                                <label className="block text-sm font-medium text-gray-700">Subject</label>
+                                <Select value={subject} onValueChange={setSubject} disabled={!section || subjects.length === 0}>
+                                    <SelectTrigger className="w-full"><SelectValue placeholder={section ? 'Select subject' : 'Select section first'} /></SelectTrigger>
+                                    <SelectContent>{subjects.map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}</SelectContent>
                                 </Select>
                             </div>
                             <div className="space-y-2">

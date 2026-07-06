@@ -434,15 +434,7 @@ class TeacherController extends Controller
                 ->value('school_year') ?? date('Y') . '-' . (date('Y') + 1);
         }
 
-        $subjects = DB::table('tbl_teacher_subjects')
-            ->join('tbl_subjects', 'tbl_teacher_subjects.subject_id', '=', 'tbl_subjects.id')
-            ->where('tbl_teacher_subjects.teacher_id', $teacher->id)
-            ->select('tbl_subjects.id', 'tbl_subjects.name')
-            ->distinct()
-            ->get()
-            ->unique('name')
-            ->values()
-            ->toArray();
+        $subjects = $this->getTeacherSubjects($teacher, $sectionId ? (int) $sectionId : null);
 
         $sections = DB::table('tbl_schedules')
             ->join('tbl_class_sections', 'tbl_schedules.class_section_id', '=', 'tbl_class_sections.id')
@@ -547,7 +539,7 @@ class TeacherController extends Controller
         return [
             'gradeLevels' => $this->getGradeLevels(),
             'sections' => $this->getTeacherSections($teacher, $gradeLevelId),
-            'subjects' => $this->getTeacherSubjects($teacher),
+            'subjects' => $this->getTeacherSubjects($teacher, $sectionId ? (int) $sectionId : null),
             'schoolYears' => $this->getSchoolYears(),
             'students' => $result['students'],
             'pagination' => $result['pagination'],
@@ -581,16 +573,20 @@ class TeacherController extends Controller
             ->toArray();
     }
 
-    private function getTeacherSubjects(Teacher $teacher): array
+    private function getTeacherSubjects(Teacher $teacher, ?int $sectionId = null): array
     {
-        return DB::table('tbl_teacher_subjects')
-            ->join('tbl_subjects', 'tbl_teacher_subjects.subject_id', '=', 'tbl_subjects.id')
-            ->where('tbl_teacher_subjects.teacher_id', $teacher->id)
+        if (!$sectionId) {
+            return [];
+        }
+
+        return DB::table('tbl_schedules')
+            ->join('tbl_subjects', 'tbl_schedules.subject_id', '=', 'tbl_subjects.id')
+            ->where('tbl_schedules.teacher_id', $teacher->id)
+            ->where('tbl_schedules.class_section_id', $sectionId)
             ->select('tbl_subjects.id', 'tbl_subjects.name')
             ->distinct()
+            ->orderBy('tbl_subjects.name')
             ->get()
-            ->unique('name')
-            ->values()
             ->toArray();
     }
 

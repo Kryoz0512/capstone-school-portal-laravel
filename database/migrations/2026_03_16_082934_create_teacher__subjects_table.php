@@ -13,6 +13,8 @@ return new class extends Migration
             $table->foreignId('teacher_id')->constrained('tbl_teachers')->cascadeOnDelete();
             $table->foreignId('subject_id')->constrained('tbl_subjects')->cascadeOnDelete();
             $table->unique(['teacher_id', 'subject_id']);
+
+            $table->timestamps();
         });
     }
 

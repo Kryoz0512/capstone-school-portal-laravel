@@ -120,7 +120,8 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                     <span className="font-medium">Dashboard</span>
                 </Link>
 
-                {/* Admission */}
+                {/* Admission - Hide for Super Admin */}
+                {admin?.role !== 'Super Admin' && (
                 <div className="mb-1">
                     <button
                         onClick={() => toggleMenu('admission')}
@@ -159,8 +160,10 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                         </div>
                     )}
                 </div>
+                )}
 
-                {/* Academic Setup */}
+                {/* Academic Setup - Hide for Super Admin */}
+                {admin?.role !== 'Super Admin' && (
                 <div className="mb-1">
                     <button
                         onClick={() => toggleMenu('academicSetup')}
@@ -199,8 +202,10 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                         </div>
                     )}
                 </div>
+                )}
 
-                {/* Enrollment */}
+                {/* Enrollment - Hide for Super Admin */}
+                {admin?.role !== 'Super Admin' && (
                 <div className="mb-1">
                     <button
                         onClick={() => toggleMenu('enrollment')}
@@ -233,8 +238,10 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                         </div>
                     )}
                 </div>
+                )}
 
-                {/* Scheduling */}
+                {/* Scheduling - Hide for Super Admin */}
+                {admin?.role !== 'Super Admin' && (
                 <div className="mb-1">
                     <button
                         onClick={() => toggleMenu('scheduling')}
@@ -267,8 +274,10 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                         </div>
                     )}
                 </div>
+                )}
 
-                {/* Academic Records */}
+                {/* Academic Records - Hide for Super Admin */}
+                {admin?.role !== 'Super Admin' && (
                 <div className="mb-1">
                     <button
                         onClick={() => toggleMenu('academicRecords')}
@@ -295,6 +304,7 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                         </div>
                     )}
                 </div>
+                )}
 
                 {/* User Management */}
                 <div className="mb-1">
@@ -339,7 +349,8 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                     )}
                 </div>
 
-                {/* Documents */}
+                {/* Documents - Hide for Super Admin */}
+                {admin?.role !== 'Super Admin' && (
                 <Link
                     href="/admin/documents"
                     className={`flex items-center gap-3 px-4 py-3 mb-1 rounded-xl transition-all duration-300 group ${
@@ -357,6 +368,7 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                     </div>
                     <span className="font-medium">Documents</span>
                 </Link>
+                )}
 
                 {/* Archive — Super Admin only */}
                 {admin?.role === 'Super Admin' && (
@@ -379,7 +391,8 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                 </Link>
                 )}
 
-                {/* Maintenance */}
+                {/* Maintenance - Hide for Super Admin */}
+                {admin?.role !== 'Super Admin' && (
                 <div className="mb-1">
                     <button
                         onClick={() => toggleMenu('maintenance')}
@@ -406,6 +419,7 @@ export default function AdminSidebar({ currentPath, user, admin }: SidebarProps)
                         </div>
                     )}
                 </div>
+                )}
             </nav>
         </div>
     )

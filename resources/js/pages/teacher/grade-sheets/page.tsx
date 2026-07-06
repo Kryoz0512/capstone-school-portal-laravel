@@ -184,10 +184,11 @@ export default function GradeManagement({ gradeLevels, sections, subjects, stude
             school_year: schoolYear,
             grade: roundedValue,
         }, {
-            preserveState: true,
+            preserveState: false,  // Changed to false to reload data from server
             preserveScroll: true,
             onSuccess: () => {
                 setSavingCell(null)
+                setLocalGrades({})  // Clear local grades cache to use server data
                 toast.success('Grade saved successfully', {
                     description: numericValue !== roundedValue 
                         ? `Grade rounded from ${numericValue} to ${roundedValue}`

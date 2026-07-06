@@ -84,14 +84,12 @@ type Props = {
 function RequirementCard({ met, label, detail }: { met: boolean; label: string; detail: string }) {
     return (
         <div
-            className={`flex items-start gap-3 rounded-xl border px-4 py-3.5 transition-colors ${
-                met ? 'border-green-200 bg-green-50/80' : 'border-gray-200 bg-white'
-            }`}
+            className={`flex items-start gap-3 rounded-xl border px-4 py-3.5 transition-colors ${met ? 'border-green-200 bg-green-50/80' : 'border-gray-200 bg-white'
+                }`}
         >
             <div
-                className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
-                    met ? 'bg-green-600 shadow-sm shadow-green-600/30' : 'bg-gray-200'
-                }`}
+                className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${met ? 'bg-green-600 shadow-sm shadow-green-600/30' : 'bg-gray-200'
+                    }`}
             >
                 {met ? <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} /> : <X className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
             </div>
@@ -257,14 +255,23 @@ export default function StudentAcademicRecord({ student, academic_record, grade_
                                         <User className="w-3 h-3" />
                                         LRN {student.lrn}
                                     </span>
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                                        <GraduationCap className="w-3 h-3" />
-                                        {student.current_grade_level}
-                                    </span>
-                                    {student.current_section && (
-                                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                                            {student.current_section}
+                                    {readyToGraduate ? (
+                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 ring-1 ring-green-200">
+                                            <GraduationCap className="w-3 h-3" />
+                                            Graduated
                                         </span>
+                                    ) : (
+                                        <>
+                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                                                <GraduationCap className="w-3 h-3" />
+                                                {student.current_grade_level}
+                                            </span>
+                                            {student.current_section && (
+                                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                                                    {student.current_section}
+                                                </span>
+                                            )}
+                                        </>
                                     )}
                                 </div>
                             </div>
@@ -277,11 +284,10 @@ export default function StudentAcademicRecord({ student, academic_record, grade_
                                 {currentRecord?.has_data && currentRecord.final_average != null ? (
                                     <div className="flex items-center gap-2 mt-1">
                                         <p className="text-2xl font-bold text-blue-900">{currentRecord.final_average}</p>
-                                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                                            currentRecord.remarks === 'Passed'
-                                                ? 'bg-green-100 text-green-700'
-                                                : 'bg-red-100 text-red-700'
-                                        }`}>
+                                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${currentRecord.remarks === 'Passed'
+                                            ? 'bg-green-100 text-green-700'
+                                            : 'bg-red-100 text-red-700'
+                                            }`}>
                                             {currentRecord.remarks}
                                         </span>
                                     </div>
@@ -506,11 +512,10 @@ export default function StudentAcademicRecord({ student, academic_record, grade_
                                                             <td className="px-5 py-3.5 text-sm text-center font-bold">{getGradeCell(subject.final_grade)}</td>
                                                             <td className="px-5 py-3.5 text-center">
                                                                 {subject.remarks ? (
-                                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
-                                                                        subject.remarks === 'Passed'
-                                                                            ? 'bg-green-100 text-green-700'
-                                                                            : 'bg-red-100 text-red-700'
-                                                                    }`}>
+                                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${subject.remarks === 'Passed'
+                                                                        ? 'bg-green-100 text-green-700'
+                                                                        : 'bg-red-100 text-red-700'
+                                                                        }`}>
                                                                         {subject.remarks}
                                                                     </span>
                                                                 ) : (

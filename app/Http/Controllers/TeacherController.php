@@ -1085,6 +1085,7 @@ class TeacherController extends Controller
                     $clearance = $clearances->get($student->id);
                     
                     // Check if student has grades for all quarters
+                    // First try to find grade record for this teacher
                     $gradeRecord = DB::table('tbl_grades')
                         ->where('student_id', $student->id)
                         ->where('subject_id', $subjectId)
@@ -1092,6 +1093,17 @@ class TeacherController extends Controller
                         ->where('school_year', $schoolYear)
                         ->where('teacher_id', $teacher->id)
                         ->first();
+                    
+                    // If not found with this teacher, check if ANY teacher has grades for this subject
+                    // (This handles cases where grades were created by a different teacher initially)
+                    if (!$gradeRecord) {
+                        $gradeRecord = DB::table('tbl_grades')
+                            ->where('student_id', $student->id)
+                            ->where('subject_id', $subjectId)
+                            ->where('class_section_id', $sectionId)
+                            ->where('school_year', $schoolYear)
+                            ->first();
+                    }
 
                     $hasAllQuarters = $gradeRecord && 
                         !is_null($gradeRecord->quarter_1) && 

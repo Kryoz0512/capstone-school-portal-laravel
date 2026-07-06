@@ -2084,4 +2084,31 @@ class StudentController extends Controller
 
         return back()->with('success', 'Profile picture deleted successfully.');
     }
+
+    /**
+     * Update student's graduation readiness status
+     */
+    public function updateGraduationReadiness(Request $request, Student $student)
+    {
+        $validated = $request->validate([
+            'ready_to_graduate' => 'required|boolean',
+        ]);
+
+        try {
+            $student->update([
+                'ready_to_graduate' => $validated['ready_to_graduate'],
+            ]);
+
+            // Log activity
+            ActivityLog::create([
+                'user_id' => Auth::id(),
+                'action' => 'updated',
+                'description' => 'Updated graduation readiness for student: ' . $student->first_name . ' ' . $student->last_name . ' to ' . ($validated['ready_to_graduate'] ? 'ready' : 'not ready'),
+            ]);
+
+            return back()->with('success', 'Graduation readiness updated successfully');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => 'Failed to update graduation readiness: ' . $e->getMessage()]);
+        }
+    }
 }

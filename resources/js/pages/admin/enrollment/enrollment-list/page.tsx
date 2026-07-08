@@ -251,9 +251,9 @@ export default function EnrollmentList({ auth, students, gradeLevels = [], secti
                                 <div className="absolute inset-x-0 top-0 h-1 bg-green-700 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
 
                                 <div className="flex items-start justify-between">
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-slate-50 ring-1 ring-slate-200 transition-colors duration-200 group-hover:bg-green-700 ">
+                                    <div className="flex p-2 items-center justify-center rounded-lg bg-slate-50 ring-1 ring-slate-200 transition-colors duration-200 group-hover:bg-green-700 ">
                                         <span className="text-2xl font-semibold text-slate-900 transition-colors duration-200 group-hover:text-white">
-                                            {grade.name.replace('Grade ', '')}
+                                            {grade.name}
                                         </span>
                                     </div>
                                     <div className="text-right">
@@ -267,7 +267,7 @@ export default function EnrollmentList({ auth, students, gradeLevels = [], secti
                                 </div>
 
                                 <h3 className="mt-4 text-base font-semibold text-slate-900">
-                                    {grade.name}
+                                    {/* {grade.name} */}
                                 </h3>
 
                                 <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">

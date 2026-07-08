@@ -116,7 +116,7 @@ export default function StudentNotEnrolled({ auth, students, gradeLevels = [], s
 
             <div className="space-y-6">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Students Not Enrolled</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">Unassigned Students</h1>
                     <p className="text-sm text-gray-500 mt-1">Manage and assign grade levels and sections to students</p>
                 </div>
 

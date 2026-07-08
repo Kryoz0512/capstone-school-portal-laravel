@@ -19,10 +19,23 @@ class CreateNewUser implements CreatesNewUsers
      */
     public function create(array $input): User
     {
-        Validator::make($input, [
+        $validator = Validator::make($input, [
             ...$this->profileRules(),
             'password' => $this->passwordRules(),
-        ])->validate();
+        ], [
+            'name.required' => 'Please enter your full name.',
+            'name.string' => 'Name must be a valid text.',
+            'name.max' => 'Name cannot exceed 255 characters.',
+            'email.required' => 'Please enter your email address.',
+            'email.email' => 'Please enter a valid email address.',
+            'email.unique' => 'This email address is already registered. Please use a different email or log in.',
+            'password.required' => 'Please create a password for your account.',
+            'password.confirmed' => 'Password confirmation does not match. Please ensure both passwords are identical.',
+        ]);
+
+        if ($validator->fails()) {
+            throw new \Illuminate\Validation\ValidationException($validator);
+        }
 
         return User::create([
             'name' => $input['name'],

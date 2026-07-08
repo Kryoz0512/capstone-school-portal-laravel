@@ -53,6 +53,17 @@ class FortifyServiceProvider extends ServiceProvider
                 }
             };
         });
+
+        // Register custom registration response
+        $this->app->singleton(\Laravel\Fortify\Contracts\RegisterResponse::class, function () {
+            return new class implements \Laravel\Fortify\Contracts\RegisterResponse {
+                public function toResponse($request)
+                {
+                    // Return success without redirect - let frontend handle the modal
+                    return back();
+                }
+            };
+        });
     }
 
     /**
@@ -186,6 +197,23 @@ class FortifyServiceProvider extends ServiceProvider
     private function configureViews(): void
     {
         Fortify::loginView(function (Request $request) {
+            // Check if user is already authenticated and redirect to dashboard
+            if (Auth::check()) {
+                $user = Auth::user();
+                
+                // Determine user role and redirect to appropriate dashboard
+                if ($user->role === 'student') {
+                    return redirect()->route('student.dashboard');
+                } elseif ($user->role === 'teacher') {
+                    return redirect()->route('teacher.dashboard');
+                } elseif ($user->role === 'admin') {
+                    return redirect()->route('admin.dashboard');
+                }
+                
+                // Fallback
+                return redirect()->route('dashboard');
+            }
+            
             // Redirect to portal if no role is specified
             return redirect()->route('home');
         });

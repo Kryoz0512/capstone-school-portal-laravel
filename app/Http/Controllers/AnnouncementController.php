@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\SendAnnouncementNotifications;
 use App\Models\Announcement;
 use App\Models\Teacher;
 use App\Models\ClassSection;
@@ -225,16 +226,16 @@ class AnnouncementController extends Controller
                         $query->where(function ($q) {
                             $q->whereNull('section_id')->whereNull('subject_id');
                         })
-                        // Or announcements for student's section (any subject)
-                        ->orWhere(function ($q) use ($student) {
+                            // Or announcements for student's section (any subject)
+                            ->orWhere(function ($q) use ($student) {
                             $q->where('section_id', $student->current_section_id)->whereNull('subject_id');
                         })
-                        // Or announcements for student's section and a specific subject
-                        ->orWhere(function ($q) use ($student) {
+                            // Or announcements for student's section and a specific subject
+                            ->orWhere(function ($q) use ($student) {
                             $q->where('section_id', $student->current_section_id)->whereNotNull('subject_id');
                         })
-                        // Or announcements for specific subject (any section)
-                        ->orWhere(function ($q) {
+                            // Or announcements for specific subject (any section)
+                            ->orWhere(function ($q) {
                             $q->whereNull('section_id')->whereNotNull('subject_id');
                         });
                     })
@@ -302,22 +303,12 @@ class AnnouncementController extends Controller
         }
 
         // If no section specified, notify all students
-        if (!$announcement->section_id && count($notifications) === 0) {
-            $allStudents = Student::all();
-            foreach ($allStudents as $student) {
-                if ($student->user_id) {
-                    $notifications[] = [
-                        'user_id' => $student->user_id,
-                        'type' => 'announcement',
-                        'title' => 'New Announcement',
-                        'message' => $announcement->title,
-                        'announcement_id' => $announcement->id,
-                        'is_read' => false,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ];
-                }
-            }
+        if (!$announcement->section_id) {
+            // Dispatch to background queue
+            dispatch(new SendAnnouncementNotifications($announcement->id, null));
+        } elseif ($announcement->section_id && count($notifications) === 0) {
+            // For section-specific announcements
+            dispatch(new SendAnnouncementNotifications($announcement->id, $announcement->section_id));
         }
 
         // Bulk insert for better performance

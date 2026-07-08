@@ -4,16 +4,26 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { update } from '@/routes/admin/admission/view-edit-student'
-import { ArrowLeft, MapPin, Ruler, User, Users } from 'lucide-react'
+import { ArrowLeft, MapPin, Ruler, User, Users, Upload, Trash2, Camera } from 'lucide-react'
 import {
     AlertDialog,
     AlertDialogContent,
     AlertDialogDescription,
     AlertDialogFooter,
     AlertDialogHeader,
+    AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog'
+import axios from 'axios'
 
 type Student = {
     id: number
@@ -28,6 +38,7 @@ type Student = {
     firstName: string
     middleName: string | null
     birthDate: string
+    profile_picture?: string | null
     profile?: {
         extensionName?: string
         religion?: string
@@ -159,6 +170,10 @@ const NAV_ITEMS = [
 export default function EditStudentGSPIS({ auth, student }: Props) {
     const [showErrorModal, setShowErrorModal] = useState(false)
     const [errorMessage, setErrorMessage] = useState('')
+    const [profilePicture, setProfilePicture] = useState<string | null>(student.profile_picture || null)
+    const [uploadingPicture, setUploadingPicture] = useState(false)
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement | null>(null)
 
     const { data, setData, put, processing, errors } = useForm({
         // Personal Information
@@ -291,6 +306,64 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
         .map((n) => n[0]?.toUpperCase())
         .join('')
 
+    const handleFileChange = async (file: File | undefined) => {
+        if (!file) return
+
+        if (!file.type.startsWith('image/')) {
+            setErrorMessage('Please select an image file')
+            setShowErrorModal(true)
+            return
+        }
+        if (file.size > 2 * 1024 * 1024) {
+            setErrorMessage('File size must be less than 2MB')
+            setShowErrorModal(true)
+            return
+        }
+
+        setUploadingPicture(true)
+
+        try {
+            const formData = new FormData()
+            formData.append('picture', file)
+            formData.append('user_id', student.id.toString())
+            formData.append('user_type', 'student')
+
+            const response = await axios.post('/admin/admission/profile-picture/upload', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            })
+
+            if (response.data.success) {
+                setProfilePicture(response.data.profile_picture)
+            }
+        } catch (error: any) {
+            setErrorMessage(error.response?.data?.message || 'Failed to upload profile picture')
+            setShowErrorModal(true)
+        } finally {
+            setUploadingPicture(false)
+            if (fileInputRef.current) fileInputRef.current.value = ''
+        }
+    }
+
+    const handleDeletePicture = async () => {
+        setUploadingPicture(true)
+
+        try {
+            const response = await axios.delete('/admin/admission/profile-picture/delete', {
+                data: { user_id: student.id, user_type: 'student' },
+            })
+
+            if (response.data.success) {
+                setProfilePicture(null)
+                setShowDeleteDialog(false)
+            }
+        } catch (error: any) {
+            setErrorMessage(error.response?.data?.message || 'Failed to delete profile picture')
+            setShowErrorModal(true)
+        } finally {
+            setUploadingPicture(false)
+        }
+    }
+
     return (
         <AdminLayout user={auth?.user} admin={auth?.admin}>
             <Head title="Edit General Student Personal Information Sheet (GSPIS)" />
@@ -307,12 +380,60 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
 
                 {/* Student summary header */}
                 <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-                    <div className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-green-700 text-lg font-semibold text-white">
-                                {initials || '?'}
+                    <div className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center">
+                        <div className="flex items-center gap-4 flex-1">
+                            <div className="relative group">
+                                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-green-700 text-xl font-semibold text-white overflow-hidden border-4 border-slate-100">
+                                    {profilePicture ? (
+                                        <img
+                                            src={profilePicture}
+                                            alt={student.studentName}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        initials || '?'
+                                    )}
+                                </div>
+                                {/* Hover overlay with buttons */}
+                                <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <div className="flex gap-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => fileInputRef.current?.click()}
+                                            disabled={uploadingPicture}
+                                            className="p-2 bg-green-600 hover:bg-green-700 rounded-full text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            title={profilePicture ? 'Replace picture' : 'Upload picture'}
+                                        >
+                                            <Upload className="w-4 h-4" />
+                                        </button>
+                                        {profilePicture && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowDeleteDialog(true)}
+                                                disabled={uploadingPicture}
+                                                className="p-2 bg-red-600 hover:bg-red-700 rounded-full text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                title="Delete picture"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                                {/* Loading indicator */}
+                                {uploadingPicture && (
+                                    <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/60">
+                                        <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    </div>
+                                )}
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/jpeg,image/jpg,image/png,image/gif"
+                                    className="hidden"
+                                    onChange={(e) => handleFileChange(e.target.files?.[0])}
+                                />
                             </div>
-                            <div>
+                            <div className="flex-1">
                                 <p className="text-xs font-semibold uppercase tracking-wide text-green-700">
                                     General Student Personal Information Sheet
                                 </p>
@@ -853,6 +974,7 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
             <AlertDialog open={showErrorModal} onOpenChange={setShowErrorModal}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
+                        <AlertDialogTitle>Error</AlertDialogTitle>
                         <AlertDialogDescription className="text-base text-gray-900">
                             {errorMessage}
                         </AlertDialogDescription>
@@ -862,6 +984,40 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <div className="flex items-center justify-center mb-2">
+                            <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center">
+                                <Trash2 className="w-6 h-6 text-red-600" />
+                            </div>
+                        </div>
+                        <DialogTitle className="text-center">Delete Profile Picture</DialogTitle>
+                        <DialogDescription className="text-center">
+                            Remove the profile picture for <strong>{student.studentName}</strong>? This action
+                            cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="sm:justify-center gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowDeleteDialog(false)}
+                            disabled={uploadingPicture}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            className="bg-red-600 hover:bg-red-700 text-white"
+                            onClick={handleDeletePicture}
+                            disabled={uploadingPicture}
+                        >
+                            {uploadingPicture ? 'Deleting...' : 'Delete Picture'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AdminLayout>
     )
 }

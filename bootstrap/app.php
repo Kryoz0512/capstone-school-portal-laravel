@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\CheckPasswordChanged;
 use App\Http\Middleware\EnsureSuperAdmin;
+use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -23,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'super-admin' => EnsureSuperAdmin::class,
+            'guest' => RedirectIfAuthenticated::class,
         ]);
 
         $middleware->web(append: [

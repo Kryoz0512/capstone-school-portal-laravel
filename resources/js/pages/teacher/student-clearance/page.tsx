@@ -14,11 +14,12 @@ type Props = {
     students: Student[]
     stats: Stats
     pagination: Pagination
+    schoolYears: { value: string; label: string }[]
     filters?: { subject_id?: number | null; section_id?: number | null; school_year?: string | null; search?: string; status?: string; per_page?: number }
     auth?: { user: { id: number; name: string; email: string; role: string } }
 }
 
-export default function StudentClearance({ subjects, students, stats, pagination, filters, auth }: Props) {
+export default function StudentClearance({ subjects, students, stats, pagination, schoolYears, filters, auth }: Props) {
     const [searchQuery, setSearchQuery] = useState(filters?.search || '')
     const [selectedSubject, setSelectedSubject] = useState<number | null>(filters?.subject_id ? Number(filters.subject_id) : null)
     const [selectedSectionId, setSelectedSectionId] = useState<number | null>(filters?.section_id ? Number(filters.section_id) : null)
@@ -124,6 +125,9 @@ export default function StudentClearance({ subjects, students, stats, pagination
         const params = new URLSearchParams()
         params.set('subject_id', String(subjectId))
         params.set('section_id', String(sectionId))
+        if (filters?.school_year) {
+            params.set('school_year', filters.school_year)
+        }
         params.set('per_page', String(entriesPerPage))
         params.set('page', '1')
         router.get(`/teacher/student-clearance?${params.toString()}`, {}, { preserveState: true, preserveScroll: true })
@@ -201,7 +205,7 @@ export default function StudentClearance({ subjects, students, stats, pagination
                         <div className="flex flex-col gap-3">
                             <div>
                                 <label className="block text-xs font-medium text-gray-500 mb-1">Grade Level</label>
-                                <select value={selectedGradeLevel ?? ''} onChange={e => { setSelectedGradeLevel(e.target.value || null); setSelectedSection(null); setSelectedSubject(null); setSelectedSectionId(null); router.get('/teacher/student-clearance', {}, { preserveState: true, preserveScroll: true }) }} className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 text-sm">
+                                <select value={selectedGradeLevel ?? ''} onChange={e => { setSelectedGradeLevel(e.target.value || null); setSelectedSection(null); setSelectedSubject(null); setSelectedSectionId(null); navigate({ page: 1 }) }} className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 text-sm">
                                     <option value="" disabled>Select grade level...</option>
                                     {uniqueGradeLevels.map(gl => <option key={gl} value={gl}>{gl}</option>)}
                                 </select>
@@ -209,7 +213,7 @@ export default function StudentClearance({ subjects, students, stats, pagination
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
                                     <label className="block text-xs font-medium text-gray-500 mb-1">Section</label>
-                                    <select value={selectedSection ?? ''} disabled={!selectedGradeLevel} onChange={e => { setSelectedSection(e.target.value || null); setSelectedSubject(null); setSelectedSectionId(null); router.get('/teacher/student-clearance', {}, { preserveState: true, preserveScroll: true }) }} className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 text-sm disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed">
+                                    <select value={selectedSection ?? ''} disabled={!selectedGradeLevel} onChange={e => { setSelectedSection(e.target.value || null); setSelectedSubject(null); setSelectedSectionId(null); navigate({ page: 1 }) }} className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 text-sm disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed">
                                         <option value="" disabled>Select section...</option>
                                         {filteredSections.map(sec => <option key={sec} value={sec}>{sec}</option>)}
                                     </select>
@@ -221,6 +225,17 @@ export default function StudentClearance({ subjects, students, stats, pagination
                                         {filteredSubjects.map(s => <option key={s.id} value={s.id}>{s.subject_name}{s.subject_code ? ` (${s.subject_code})` : ''}</option>)}
                                     </select>
                                 </div>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-gray-500 mb-1">School Year</label>
+                                <select 
+                                    value={filters?.school_year ?? ''} 
+                                    onChange={e => navigate({ school_year: e.target.value || null, page: 1 })} 
+                                    className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 text-sm"
+                                >
+                                    {schoolYears.map(sy => <option key={sy.value} value={sy.value}>{sy.label}</option>)}
+                                </select>
+                                <p className="text-xs text-gray-500 mt-1">Filter clearance by school year</p>
                             </div>
                         </div>
                     )}
@@ -372,7 +387,7 @@ export default function StudentClearance({ subjects, students, stats, pagination
                     <div className="bg-gray-900 text-white text-xs rounded-lg py-2 px-3 whitespace-nowrap shadow-xl mb-2">
                         <div className="flex items-center gap-2">
                             <Info className="w-3.5 h-3.5 shrink-0" />
-                            <span>This student does not have grades for all quarters</span>
+                            <span>This student does not have grades for all quarters (Q1-Q4)</span>
                         </div>
                         {/* Arrow */}
                         <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">

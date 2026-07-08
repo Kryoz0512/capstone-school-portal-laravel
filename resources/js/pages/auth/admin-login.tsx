@@ -17,6 +17,23 @@ export default function AdminLogin({ status, canResetPassword }: Props) {
         remember: false,
     })
 
+    // Prevent back button to this page after login
+    useEffect(() => {
+        // Replace current history entry to prevent back navigation
+        window.history.pushState(null, '', window.location.href)
+        
+        const handlePopState = () => {
+            // Push state again to keep user on current page
+            window.history.pushState(null, '', window.location.href)
+        }
+
+        window.addEventListener('popstate', handlePopState)
+
+        return () => {
+            window.removeEventListener('popstate', handlePopState)
+        }
+    }, [])
+
     useEffect(() => {
         return () => {
             reset('password')

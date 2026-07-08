@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Clearance;
+use App\Models\Enrollment;
 use App\Models\Teacher;
 use App\Models\Student;
 use App\Models\Grade;
@@ -743,6 +744,22 @@ class GradeController extends Controller
 
             $sectionId = $this->resolveSectionIdForGradeLevel($student, $gradeLevel->id, $gradesForLevel);
 
+            // Get section name and school year for this grade level
+            $sectionName = null;
+            $schoolYear = null;
+            if ($sectionId) {
+                $section = ClassSection::find($sectionId);
+                $sectionName = $section?->section_name;
+            }
+            
+            // Get school year from grades for this level, or use student's current school year if this is their current level
+            if ($gradesForLevel->isNotEmpty()) {
+                $schoolYear = $gradesForLevel->first()->school_year ?? null;
+            } elseif ($student->current_grade_level_id === $gradeLevel->id) {
+                // If this is the current grade level but no grades yet, use student's current school year
+                $schoolYear = $student->school_year;
+            }
+
             $schedulesBySubjectId = collect();
             if ($sectionId) {
                 $schedulesBySubjectId = Schedule::where('class_section_id', $sectionId)
@@ -826,6 +843,8 @@ class GradeController extends Controller
                 'grade_level' => $gradeLevelName,
                 'grade_level_id' => $gradeLevel->id,
                 'has_data' => true,
+                'section_name' => $sectionName,
+                'school_year' => $schoolYear,
                 'subjects' => $subjects,
                 'final_average' => $finalAverage,
                 'remarks' => $remarks,
@@ -851,6 +870,7 @@ class GradeController extends Controller
                 'current_grade_level' => $student->gradeLevel->name ?? 'N/A',
                 'current_grade_level_id' => $student->current_grade_level_id,
                 'current_section' => $student->section->section_name ?? 'N/A',
+                'school_year' => $student->school_year ?? 'N/A',
                 'ready_to_graduate' => $student->ready_to_graduate ?? false,
                 'is_grade_10' => $currentLevelName === 'Grade 10',
             ],
@@ -932,14 +952,41 @@ class GradeController extends Controller
             ]);
         }
 
+        // Calculate next school year
+        $currentSchoolYear = $student->school_year;
+        $nextSchoolYear = $currentSchoolYear;
+        
+        if ($currentSchoolYear && preg_match('/^(\d{4})-(\d{4})$/', $currentSchoolYear, $matches)) {
+            $startYear = (int)$matches[1];
+            $endYear = (int)$matches[2];
+            $nextSchoolYear = ($startYear + 1) . '-' . ($endYear + 1);
+        }
+
+        // Update the current enrollment record status to 'promoted'
+        Enrollment::where('student_id', $studentId)
+            ->where('school_year', $currentSchoolYear)
+            ->where('grade_level_id', $student->current_grade_level_id)
+            ->update(['status' => 'promoted']);
+
+        // Create new enrollment record for the next grade level
+        Enrollment::create([
+            'student_id' => $studentId,
+            'grade_level_id' => $nextGradeLevel->id,
+            'class_section_id' => null, // Section to be assigned later
+            'school_year' => $nextSchoolYear,
+            'status' => 'enrolled',
+        ]);
+
+        // Update student record
         $student->update([
             'current_grade_level_id' => $nextGradeLevel->id,
             'current_section_id' => null,
+            'school_year' => $nextSchoolYear,
         ]);
 
         return redirect()
             ->route('admin.records.student-academic-record', $studentId)
-            ->with('success', "Student promoted to {$nextLevelName}. Please assign a new section in Enrollment.");
+            ->with('success', "Student promoted to {$nextLevelName} for school year {$nextSchoolYear}. Please assign a new section in Enrollment.");
     }
 
     /**

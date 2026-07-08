@@ -16,6 +16,7 @@ use App\Http\Controllers\ProfilePictureController;
 use App\Http\Controllers\GradeController;
 use App\Http\Controllers\PasswordChangeController;
 use App\Http\Controllers\AnnouncementController;
+use App\Http\Controllers\SuperAdminRecoveryController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
@@ -35,7 +36,7 @@ Route::get('/', function () {
     return \Inertia\Inertia::render('portal', [
         'slides' => $slides
     ]);
-})->name('home');
+})->middleware('guest')->name('home');
 
 Route::get('/login/student', function () {
     $slides = \App\Models\LoginSlide::where('is_active', true)
@@ -50,7 +51,7 @@ Route::get('/login/student', function () {
         'slides' => $slides,
         'role' => 'student'
     ]);
-})->name('login.student');
+})->middleware('guest')->name('login.student');
 
 Route::get('/login/teacher', function () {
     $slides = \App\Models\LoginSlide::where('is_active', true)
@@ -65,7 +66,7 @@ Route::get('/login/teacher', function () {
         'slides' => $slides,
         'role' => 'teacher'
     ]);
-})->name('login.teacher');
+})->middleware('guest')->name('login.teacher');
 
 Route::get('/login/adviser', function () {
     $slides = \App\Models\LoginSlide::where('is_active', true)
@@ -82,12 +83,20 @@ Route::get('/login/adviser', function () {
         'redirectTo' => '/adviser/dashboard',
         'portalLabel' => 'Adviser Portal',
     ]);
-})->name('login.adviser');
+})->middleware('guest')->name('login.adviser');
 
 // Admin login with hashed URL for security
 Route::get('/admin-access-' . md5('snhs-admin-portal-2026'), function () {
     return \Inertia\Inertia::render('auth/admin-login');
-})->name('login.admin');
+})->middleware('guest')->name('login.admin');
+
+// Super Admin Recovery - Secret URL (only for emergency password reset)
+Route::prefix('emergency-super-admin-recovery-' . md5('snhs-recovery-2024'))->group(function () {
+    Route::get('/', [SuperAdminRecoveryController::class, 'showRecoveryForm'])->name('super-admin-recovery.verify');
+    Route::post('/verify', [SuperAdminRecoveryController::class, 'verifyRecoveryCode'])->name('super-admin-recovery.verify.submit');
+    Route::get('/reset-password', [SuperAdminRecoveryController::class, 'showResetForm'])->name('super-admin-recovery.reset-form');
+    Route::post('/reset-password', [SuperAdminRecoveryController::class, 'resetPassword'])->name('super-admin-recovery.reset');
+});
 
 // Password change route (must be before CheckPasswordChanged middleware)
 Route::middleware(['auth', 'verified'])->group(function () {

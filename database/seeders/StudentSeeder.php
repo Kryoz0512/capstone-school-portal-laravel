@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\ClassSection;
+use App\Models\Enrollment;
 use App\Models\Student;
 use Database\Seeders\Concerns\SeederHelpers;
 use Illuminate\Database\Seeder;
@@ -34,7 +35,7 @@ class StudentSeeder extends Seeder
 
                 $user = $this->createUser($fullName, "SNHS-{$lrn}", 'student', 'student123');
 
-                Student::updateOrCreate(
+                $student = Student::updateOrCreate(
                     ['lrn' => $lrn],
                     [
                         'user_id' => $user->id,
@@ -61,11 +62,25 @@ class StudentSeeder extends Seeder
                     ]
                 );
 
+                // Create enrollment record for this student
+                Enrollment::updateOrCreate(
+                    [
+                        'student_id' => $student->id,
+                        'school_year' => $schoolYear,
+                    ],
+                    [
+                        'grade_level_id' => $section->grade_level_id,
+                        'class_section_id' => $section->id,
+                        'status' => 'enrolled',
+                    ]
+                );
+
                 $totalStudents++;
             }
         }
 
         $this->command?->info("Students seeded: {$totalStudents}");
+        $this->command?->info("Enrollments created: {$totalStudents}");
     }
 
     /**

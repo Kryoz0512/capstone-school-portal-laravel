@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('student_id')->constrained('tbl_students');
             $table->foreignId('grade_level_id')->constrained('tbl_grade_levels');
-            $table->foreignId('class_section_id')->constrained('tbl_class_sections');
+            $table->foreignId('class_section_id')->nullable()->constrained('tbl_class_sections');
             $table->string('school_year');
             $table->enum('status', ['enrolled', 'promoted', 'dropped', 'graduated'])
                   ->default('enrolled');

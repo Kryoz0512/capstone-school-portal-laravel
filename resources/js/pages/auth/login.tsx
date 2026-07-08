@@ -1,9 +1,10 @@
-import { Head, useForm, Link } from '@inertiajs/react'
+import { Head, useForm, Link, usePage } from '@inertiajs/react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Alert } from '@/components/ui/alert'
 import { Eye, EyeOff, GraduationCap, Users, BookOpen, ArrowLeft } from 'lucide-react'
 import { type FormEvent, useState, useEffect } from 'react'
+import { toast } from 'sonner'
 
 type Props = {
     status?: string
@@ -11,11 +12,16 @@ type Props = {
     role?: 'student' | 'teacher' | 'staff'
     redirectTo?: string
     portalLabel?: string
+    flash?: {
+        success?: string
+        error?: string
+    }
 }
 
 type Role = 'student' | 'teacher' | 'staff'
 
 export default function Login({ status, slides = [], role = 'student', redirectTo, portalLabel }: Props) {
+    const { flash } = usePage<Props>().props
     const [showPassword, setShowPassword] = useState(false)
     const [currentSlide, setCurrentSlide] = useState(0)
     const [lockStatus, setLockStatus] = useState<{
@@ -34,6 +40,39 @@ export default function Login({ status, slides = [], role = 'student', redirectT
         remember: false,
         redirect_to: redirectTo ?? '',
     })
+
+    // Handle flash messages
+    useEffect(() => {
+        if (flash?.success) {
+            toast.success('Success!', {
+                description: flash.success,
+                duration: 5000,
+            })
+        }
+        if (flash?.error) {
+            toast.error('Error', {
+                description: flash.error,
+                duration: 5000,
+            })
+        }
+    }, [flash])
+
+    // Prevent back button to this page after login
+    useEffect(() => {
+        // Replace current history entry to prevent back navigation
+        window.history.pushState(null, '', window.location.href)
+        
+        const handlePopState = () => {
+            // Push state again to keep user on current page
+            window.history.pushState(null, '', window.location.href)
+        }
+
+        window.addEventListener('popstate', handlePopState)
+
+        return () => {
+            window.removeEventListener('popstate', handlePopState)
+        }
+    }, [])
 
     // Slideshow effect
     useEffect(() => {

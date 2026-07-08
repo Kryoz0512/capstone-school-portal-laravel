@@ -1005,9 +1005,30 @@ class TeacherController extends Controller
 
         $subjectId = $request->input('subject_id');
         $sectionId = $request->input('section_id');
-        $schoolYear = $request->input('school_year')
-            ?? Student::orderBy('school_year', 'desc')->value('school_year')
-            ?? date('Y') . '-' . (date('Y') + 1);
+        
+        // Get available school years
+        $schoolYears = Student::select('school_year')
+            ->distinct()
+            ->orderBy('school_year', 'desc')
+            ->pluck('school_year')
+            ->map(fn($year) => ['value' => $year, 'label' => $year]);
+        
+        // Determine school year - if section is selected, use the school year of students in that section
+        $schoolYear = $request->input('school_year');
+        if (!$schoolYear && $sectionId) {
+            // Get the most common school year for students in this section
+            $schoolYear = Student::where('current_section_id', $sectionId)
+                ->select('school_year')
+                ->groupBy('school_year')
+                ->orderByRaw('COUNT(*) DESC')
+                ->value('school_year');
+        }
+        if (!$schoolYear) {
+            // Fall back to most recent school year in the system
+            $schoolYear = Student::orderBy('school_year', 'desc')->value('school_year')
+                ?? date('Y') . '-' . (date('Y') + 1);
+        }
+        
         $search = trim((string) $request->input('search', ''));
         $status = $request->input('status', 'all');
         $perPage = (int) $request->input('per_page', 10);
@@ -1017,6 +1038,13 @@ class TeacherController extends Controller
             ->join('tbl_class_sections', 'tbl_schedules.class_section_id', '=', 'tbl_class_sections.id')
             ->join('tbl_grade_levels', 'tbl_class_sections.grade_level_id', '=', 'tbl_grade_levels.id')
             ->where('tbl_schedules.teacher_id', $teacher->id)
+            // Only include sections that have students in the selected school year
+            ->whereExists(function ($query) use ($schoolYear) {
+                $query->select(DB::raw(1))
+                    ->from('tbl_students')
+                    ->whereColumn('tbl_students.current_section_id', 'tbl_class_sections.id')
+                    ->where('tbl_students.school_year', $schoolYear);
+            })
             ->select(
                 'tbl_subjects.id',
                 'tbl_subjects.name as subject_name',
@@ -1046,8 +1074,10 @@ class TeacherController extends Controller
                     ->get()
                     ->keyBy('student_id');
 
-                // Stats reflect the WHOLE section, not just the current page
-                $allIds = Student::where('current_section_id', $sectionId)->pluck('id');
+                // Stats reflect the WHOLE section for the selected school year
+                $allIds = Student::where('current_section_id', $sectionId)
+                    ->where('school_year', $schoolYear)
+                    ->pluck('id');
                 foreach ($allIds as $id) {
                     $st = $clearances->get($id)?->status ?? 'pending';
                     $stats['total']++;
@@ -1055,6 +1085,7 @@ class TeacherController extends Controller
                 }
 
                 $query = Student::where('current_section_id', $sectionId)
+                    ->where('school_year', $schoolYear)
                     ->with(['gradeLevel', 'section', 'profilePicture']);
 
                 if ($search !== '') {
@@ -1080,7 +1111,7 @@ class TeacherController extends Controller
                 $students = collect($paginated->items())->map(function ($student) use ($clearances, $subjectId, $sectionId, $schoolYear, $teacher) {
                     $clearance = $clearances->get($student->id);
                     
-                    // Check if student has grades for all quarters
+                    // Check if student has grades for all quarters (Q1-Q4)
                     // First try to find grade record for this teacher
                     $gradeRecord = DB::table('tbl_grades')
                         ->where('student_id', $student->id)
@@ -1137,6 +1168,7 @@ class TeacherController extends Controller
             'students' => $students,
             'stats' => $stats,
             'pagination' => $pagination,
+            'schoolYears' => $schoolYears,
             'filters' => [
                 'subject_id' => $subjectId ? (int) $subjectId : null,
                 'section_id' => $sectionId ? (int) $sectionId : null,

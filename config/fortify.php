@@ -102,6 +102,19 @@ return [
     */
 
     'middleware' => ['web'],
+    
+    /*
+    |--------------------------------------------------------------------------
+    | Guest Middleware for Login Routes
+    |--------------------------------------------------------------------------
+    |
+    | This middleware will be applied to Fortify's login view routes to prevent
+    | authenticated users from accessing login pages. Authenticated users will
+    | be redirected to their dashboard.
+    |
+    */
+
+    'guest_middleware' => ['guest'],
 
     /*
     |--------------------------------------------------------------------------

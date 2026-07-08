@@ -18,6 +18,7 @@ use Inertia\Inertia;
 use Illuminate\Support\Carbon;
 use App\Models\ActivityLog;
 use App\Jobs\ImportStudentsJob;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 class StudentController extends Controller
@@ -52,11 +53,12 @@ class StudentController extends Controller
             return redirect()->route('login')->withErrors(['error' => 'Student profile not found.']);
         }
 
-        // Get school year filter
+        // Get school year filter (default to current school year)
         $schoolYear = $request->input('school_year', $student->school_year);
 
-        // Get available school years
-        $schoolYears = Student::select('school_year')
+        // Get available school years where this student has enrollment records
+        $schoolYears = DB::table('tbl_enrollments')
+            ->where('student_id', $student->id)
             ->distinct()
             ->orderBy('school_year', 'desc')
             ->pluck('school_year')
@@ -67,9 +69,50 @@ class StudentController extends Controller
                 ];
             });
 
-        // Get subjects for the student's section
+        // If no enrollments found, use current school year
+        if ($schoolYears->isEmpty()) {
+            $schoolYears = collect([
+                [
+                    'value' => $student->school_year,
+                    'label' => $student->school_year,
+                ]
+            ]);
+        }
+
+        // Get subjects for the selected school year
         $subjects = [];
-        if ($student->current_section_id) {
+
+        // Find enrollment record for the selected school year
+        $enrollment = DB::table('tbl_enrollments')
+            ->where('student_id', $student->id)
+            ->where('school_year', $schoolYear)
+            ->first();
+
+        if ($enrollment) {
+            // Use the section from the enrollment record
+            $subjects = DB::table('tbl_schedules')
+                ->join('tbl_subjects', 'tbl_schedules.subject_id', '=', 'tbl_subjects.id')
+                ->join('tbl_teachers', 'tbl_schedules.teacher_id', '=', 'tbl_teachers.id')
+                ->where('tbl_schedules.class_section_id', $enrollment->class_section_id)
+                ->select(
+                    'tbl_subjects.id',
+                    'tbl_subjects.code as subject_code',
+                    'tbl_subjects.name as subject_name',
+                    'tbl_teachers.name as instructor'
+                )
+                ->distinct()
+                ->get()
+                ->map(function ($subject) {
+                    return [
+                        'id' => $subject->id,
+                        'subjectCode' => $subject->subject_code ?? 'N/A',
+                        'subjectName' => $subject->subject_name,
+                        'instructor' => $subject->instructor,
+                        'status' => 'Enrolled',
+                    ];
+                });
+        } else if ($schoolYear === $student->school_year && $student->current_section_id) {
+            // Fallback: If no enrollment record but it's current year, use current section
             $subjects = DB::table('tbl_schedules')
                 ->join('tbl_subjects', 'tbl_schedules.subject_id', '=', 'tbl_subjects.id')
                 ->join('tbl_teachers', 'tbl_schedules.teacher_id', '=', 'tbl_teachers.id')
@@ -102,7 +145,7 @@ class StudentController extends Controller
         ]);
     }
 
-    public function clearance()
+    public function clearance(Request $request)
     {
         $user = Auth::user();
         $student = Student::where('user_id', $user->id)->with('profile')->first();
@@ -111,15 +154,39 @@ class StudentController extends Controller
             return redirect()->route('login')->withErrors(['error' => 'Student profile not found.']);
         }
 
-        $subjectClearances = [];
-        $schoolYear = $student->school_year;
+        // Get school year filter (default to current year)
+        $schoolYear = $request->input('school_year', $student->school_year);
 
-        if ($student->current_section_id) {
+        // Get available school years from student's enrollment history
+        $schoolYears = DB::table('tbl_enrollments')
+            ->where('student_id', $student->id)
+            ->distinct()
+            ->orderBy('school_year', 'desc')
+            ->pluck('school_year')
+            ->map(function ($year) {
+                return [
+                    'value' => $year,
+                    'label' => $year,
+                ];
+            });
+
+        // Find enrollment record for the selected school year
+        $enrollment = DB::table('tbl_enrollments')
+            ->where('student_id', $student->id)
+            ->where('school_year', $schoolYear)
+            ->first();
+
+        // Get section for the selected year
+        $sectionId = $enrollment ? $enrollment->class_section_id : $student->current_section_id;
+
+        $subjectClearances = [];
+
+        if ($sectionId) {
             // Get all scheduled subjects for the student's section with teacher info
             $scheduledSubjects = DB::table('tbl_schedules')
                 ->join('tbl_subjects', 'tbl_schedules.subject_id', '=', 'tbl_subjects.id')
                 ->join('tbl_teachers', 'tbl_schedules.teacher_id', '=', 'tbl_teachers.id')
-                ->where('tbl_schedules.class_section_id', $student->current_section_id)
+                ->where('tbl_schedules.class_section_id', $sectionId)
                 ->select(
                     'tbl_subjects.id as subject_id',
                     'tbl_subjects.name as subject_name',
@@ -130,9 +197,9 @@ class StudentController extends Controller
                 ->distinct()
                 ->get();
 
-            // Get all clearances for this student in the current section/year
+            // Get all clearances for this student in the selected section/year
             $clearances = \App\Models\Clearance::where('student_id', $student->id)
-                ->where('class_section_id', $student->current_section_id)
+                ->where('class_section_id', $sectionId)
                 ->where('school_year', $schoolYear)
                 ->get()
                 ->keyBy('subject_id');
@@ -163,6 +230,10 @@ class StudentController extends Controller
                 'totalSubjects' => $totalSubjects,
             ],
             'subjectClearances' => $subjectClearances,
+            'schoolYears' => $schoolYears,
+            'filters' => [
+                'school_year' => $schoolYear,
+            ],
         ]);
     }
     public function schedule(Request $request)
@@ -177,8 +248,9 @@ class StudentController extends Controller
         // Get school year filter
         $schoolYear = $request->input('school_year', $student->school_year);
 
-        // Get available school years
-        $schoolYears = Student::select('school_year')
+        // Get available school years from student's enrollment history
+        $schoolYears = DB::table('tbl_enrollments')
+            ->where('student_id', $student->id)
             ->distinct()
             ->orderBy('school_year', 'desc')
             ->pluck('school_year')
@@ -189,14 +261,37 @@ class StudentController extends Controller
                 ];
             });
 
-        // Get student's schedules
+        // Find enrollment record for the selected school year
+        $enrollment = DB::table('tbl_enrollments')
+            ->where('student_id', $student->id)
+            ->where('school_year', $schoolYear)
+            ->first();
+
+        // Get section info for the selected year
+        $sectionId = $enrollment ? $enrollment->class_section_id : $student->current_section_id;
+        $sectionInfo = null;
+        $gradeLevelInfo = null;
+
+        if ($sectionId) {
+            $sectionInfo = DB::table('tbl_class_sections')
+                ->where('id', $sectionId)
+                ->first();
+
+            if ($sectionInfo) {
+                $gradeLevelInfo = DB::table('tbl_grade_levels')
+                    ->where('id', $sectionInfo->grade_level_id)
+                    ->first();
+            }
+        }
+
+        // Get student's schedules for the selected year
         $schedules = [];
-        if ($student->current_section_id) {
+        if ($sectionId) {
             $rawSchedules = DB::table('tbl_schedules')
                 ->join('tbl_subjects', 'tbl_schedules.subject_id', '=', 'tbl_subjects.id')
                 ->join('tbl_teachers', 'tbl_schedules.teacher_id', '=', 'tbl_teachers.id')
                 ->leftJoin('tbl_room', 'tbl_schedules.room_id', '=', 'tbl_room.id')
-                ->where('tbl_schedules.class_section_id', $student->current_section_id)
+                ->where('tbl_schedules.class_section_id', $sectionId)
                 ->select(
                     'tbl_schedules.day_of_week',
                     'tbl_schedules.start_time',
@@ -240,8 +335,8 @@ class StudentController extends Controller
             'studentInfo' => [
                 'name' => trim($student->first_name . ' ' . $student->last_name),
                 'lrn' => $student->lrn,
-                'gradeLevel' => $student->gradeLevel ? $student->gradeLevel->name : 'N/A',
-                'section' => $student->section ? $student->section->section_name : 'N/A',
+                'gradeLevel' => $gradeLevelInfo ? $gradeLevelInfo->name : ($student->gradeLevel ? $student->gradeLevel->name : 'N/A'),
+                'section' => $sectionInfo ? $sectionInfo->section_name : ($student->section ? $student->section->section_name : 'N/A'),
             ],
             'filters' => [
                 'school_year' => $schoolYear,
@@ -261,8 +356,9 @@ class StudentController extends Controller
         // Get school year filter
         $schoolYear = $request->input('school_year', $student->school_year);
 
-        // Get available school years
-        $schoolYears = Student::select('school_year')
+        // Get available school years from student's enrollment history
+        $schoolYears = DB::table('tbl_enrollments')
+            ->where('student_id', $student->id)
             ->distinct()
             ->orderBy('school_year', 'desc')
             ->pluck('school_year')
@@ -273,12 +369,35 @@ class StudentController extends Controller
                 ];
             });
 
-        // Get adviser for the student's section
+        // Find enrollment record for the selected school year
+        $enrollment = DB::table('tbl_enrollments')
+            ->where('student_id', $student->id)
+            ->where('school_year', $schoolYear)
+            ->first();
+
+        // Get section info for the selected year
+        $sectionId = $enrollment ? $enrollment->class_section_id : $student->current_section_id;
+        $sectionInfo = null;
+        $gradeLevelInfo = null;
+
+        if ($sectionId) {
+            $sectionInfo = DB::table('tbl_class_sections')
+                ->where('id', $sectionId)
+                ->first();
+
+            if ($sectionInfo) {
+                $gradeLevelInfo = DB::table('tbl_grade_levels')
+                    ->where('id', $sectionInfo->grade_level_id)
+                    ->first();
+            }
+        }
+
+        // Get adviser for the section
         $adviser = 'N/A';
-        if ($student->current_section_id) {
+        if ($sectionId) {
             $adviserRecord = DB::table('tbl_adviser_section')
                 ->join('tbl_teachers', 'tbl_adviser_section.teacher_id', '=', 'tbl_teachers.id')
-                ->where('tbl_adviser_section.class_section_id', $student->current_section_id)
+                ->where('tbl_adviser_section.class_section_id', $sectionId)
                 ->select('tbl_teachers.name')
                 ->first();
 
@@ -287,14 +406,14 @@ class StudentController extends Controller
             }
         }
 
-        // Get grades for the student
+        // Get grades for the student using the correct section for the selected year
         $grades = [];
-        if ($student->current_section_id) {
+        if ($sectionId) {
             $grades = DB::table('tbl_grades')
                 ->join('tbl_subjects', 'tbl_grades.subject_id', '=', 'tbl_subjects.id')
                 ->join('tbl_teachers', 'tbl_grades.teacher_id', '=', 'tbl_teachers.id')
                 ->where('tbl_grades.student_id', $student->id)
-                ->where('tbl_grades.class_section_id', $student->current_section_id)
+                ->where('tbl_grades.class_section_id', $sectionId)
                 ->where('tbl_grades.school_year', $schoolYear)
                 ->select(
                     'tbl_grades.id',
@@ -334,8 +453,8 @@ class StudentController extends Controller
             'studentInfo' => [
                 'lrn' => $student->lrn,
                 'name' => trim($student->first_name . ' ' . $student->last_name),
-                'gradeLevel' => $student->gradeLevel ? $student->gradeLevel->name : 'N/A',
-                'section' => $student->section ? $student->section->section_name : 'N/A',
+                'gradeLevel' => $gradeLevelInfo ? $gradeLevelInfo->name : ($student->gradeLevel ? $student->gradeLevel->name : 'N/A'),
+                'section' => $sectionInfo ? $sectionInfo->section_name : ($student->section ? $student->section->section_name : 'N/A'),
                 'adviser' => $adviser,
             ],
             'filters' => [
@@ -352,14 +471,38 @@ class StudentController extends Controller
         $ageFilter = $request->input('age');
         $perPage = (int) $request->input('per_page', 10);
 
-        $query = Student::with(['gradeLevel'])
+        // Single optimized stats query
+        $statsQuery = Student::selectRaw('
+            COUNT(*) as total,
+            SUM(CASE WHEN current_grade_level_id IS NOT NULL THEN 1 ELSE 0 END) as with_grade_level
+        ')
+            ->whereNull('current_section_id')
+            ->first();
+
+        $stats = [
+            'total' => $statsQuery->total,
+            'assigned' => $statsQuery->with_grade_level,
+            'pendingAssignment' => $statsQuery->total - $statsQuery->with_grade_level,
+        ];
+
+        // Main query with select optimization
+        $query = Student::with('gradeLevel:id,name')
+            ->select(
+                'id',
+                'first_name',
+                'last_name',
+                'lrn',
+                'gender',
+                'birth_date',
+                'current_grade_level_id',
+                'student_status'
+            )
             ->whereNull('current_section_id');
 
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('lrn', 'like', "%{$search}%")
-                    ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"])
-                    ->orWhereRaw("CONCAT(last_name, ' ', first_name) LIKE ?", ["%{$search}%"]);
+                    ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"]);
             });
         }
 
@@ -374,9 +517,6 @@ class StudentController extends Controller
         if ($ageFilter && $ageFilter !== 'all') {
             $query->whereRaw("FLOOR(DATEDIFF(CURDATE(), birth_date) / 365.25) = ?", [$ageFilter]);
         }
-
-        $totalNotEnrolled = Student::whereNull('current_section_id')->count();
-        $withGradeLevel = Student::whereNull('current_section_id')->whereNotNull('current_grade_level_id')->count();
 
         $students = $query->orderBy('last_name')->orderBy('first_name')
             ->paginate($perPage)
@@ -393,37 +533,42 @@ class StudentController extends Controller
                 'studentStatus' => $student->student_status,
             ]);
 
-        $gradeLevels = GradeLevel::select('id', 'name')->get();
+        // Cache reference data
+        $gradeLevels = Cache::remember('grade_levels_list', 3600, function () {
+            return GradeLevel::select('id', 'name')->get();
+        });
 
-        $sections = ClassSection::with(['gradeLevel', 'room'])
-            ->withCount('students')
-            ->get()
-            ->map(function ($section) {
-                $capacity = $section->room->capacity ?? 0;
-                $currentStudents = $section->students_count;
-                $availableSlots = max(0, $capacity - $currentStudents);
+        $sections = Cache::remember('sections_with_capacity', 900, function () {
+            return ClassSection::with([
+                'gradeLevel:id,name',
+                'room:id,room_name,capacity'
+            ])
+                ->select('id', 'section_name', 'grade_level_id', 'room_id')
+                ->withCount('students')
+                ->get()
+                ->map(function ($section) {
+                    $capacity = $section->room->capacity ?? 0;
+                    $currentStudents = $section->students_count;
+                    $availableSlots = max(0, $capacity - $currentStudents);
 
-                return [
-                    'id' => $section->id,
-                    'name' => $section->section_name,
-                    'grade_level_id' => $section->grade_level_id,
-                    'room_name' => $section->room->room_name ?? 'No Room',
-                    'capacity' => $capacity,
-                    'current_students' => $currentStudents,
-                    'available_slots' => $availableSlots,
-                    'is_full' => $availableSlots <= 0,
-                ];
-            });
+                    return [
+                        'id' => $section->id,
+                        'name' => $section->section_name,
+                        'grade_level_id' => $section->grade_level_id,
+                        'room_name' => $section->room->room_name ?? 'No Room',
+                        'capacity' => $capacity,
+                        'current_students' => $currentStudents,
+                        'available_slots' => $availableSlots,
+                        'is_full' => $availableSlots <= 0,
+                    ];
+                });
+        });
 
         return Inertia::render('admin/enrollment/student-not-enrolled/page', [
             'students' => $students,
             'gradeLevels' => $gradeLevels,
             'sections' => $sections,
-            'stats' => [
-                'total' => $totalNotEnrolled,
-                'pendingAssignment' => $totalNotEnrolled - $withGradeLevel,
-                'assigned' => $withGradeLevel,
-            ],
+            'stats' => $stats,
             'filters' => $request->only(['search', 'grade_level', 'gender', 'age']),
         ]);
     }
@@ -435,14 +580,32 @@ class StudentController extends Controller
             'section_id' => 'required|exists:tbl_class_sections,id',
         ]);
 
+        DB::beginTransaction();
         try {
             $student->update([
                 'current_grade_level_id' => $validated['grade_level_id'],
                 'current_section_id' => $validated['section_id'],
             ]);
 
+            // Create or update enrollment record for current school year
+            DB::table('tbl_enrollments')->updateOrInsert(
+                [
+                    'student_id' => $student->id,
+                    'school_year' => $student->school_year,
+                ],
+                [
+                    'grade_level_id' => $validated['grade_level_id'],
+                    'class_section_id' => $validated['section_id'],
+                    'status' => 'enrolled',
+                    'updated_at' => now(),
+                    'created_at' => now(),
+                ]
+            );
+
+            DB::commit();
             return redirect()->back()->with('success', 'Student assigned successfully');
         } catch (\Exception $e) {
+            DB::rollBack();
             return redirect()->back()->withErrors(['error' => 'Failed to assign student: ' . $e->getMessage()]);
         }
     }
@@ -879,6 +1042,19 @@ class StudentController extends Controller
                         'has_good_moral' => $validated['has_good_moral'] ?? $existingStudent->has_good_moral,
                     ]);
 
+                    // Create enrollment record for the new school year
+                    if ($validated['grade_level_id']) {
+                        DB::table('tbl_enrollments')->insert([
+                            'student_id' => $existingStudent->id,
+                            'grade_level_id' => $validated['grade_level_id'],
+                            'class_section_id' => $validated['section_id'] ?? null,
+                            'school_year' => $validated['school_year'],
+                            'status' => 'enrolled',
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+
                     DB::commit();
                     return redirect()->back()->with('success', 'Returning student registered successfully for the new school year');
                 }
@@ -939,6 +1115,19 @@ class StudentController extends Controller
                 'nationality' => 'Filipino',
             ]);
 
+            // Create enrollment record in tbl_enrollments
+            if ($gradeLevelId) {
+                DB::table('tbl_enrollments')->insert([
+                    'student_id' => $student->id,
+                    'grade_level_id' => $gradeLevelId,
+                    'class_section_id' => $validated['section_id'] ?? null,
+                    'school_year' => $validated['school_year'],
+                    'status' => 'enrolled',
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
             DB::commit();
 
             return redirect()->back()->with('success', 'Student registered successfully');
@@ -950,7 +1139,7 @@ class StudentController extends Controller
 
     public function edit($id)
     {
-        $student = Student::with(['gradeLevel', 'section', 'profile'])->findOrFail($id);
+        $student = Student::with(['gradeLevel', 'section', 'profile', 'profilePicture'])->findOrFail($id);
 
         $age = null;
         if ($student->birth_date) {
@@ -970,6 +1159,9 @@ class StudentController extends Controller
             'firstName' => $student->first_name,
             'middleName' => $student->middle_name,
             'birthDate' => $student->birth_date ? Carbon::parse($student->birth_date)->format('Y-m-d') : '',
+            'profile_picture' => $student->profilePicture?->file_path
+                ? asset('storage/' . $student->profilePicture->file_path)
+                : null,
             // Profile data
             'profile' => $student->profile ? [
                 'extensionName' => $student->profile->extension_name,
@@ -1311,11 +1503,20 @@ class StudentController extends Controller
     public function import(Request $request)
     {
         $request->validate([
-            'file' => 'required|file|mimes:csv,xlsx,xls|max:2048',
+            'file' => 'required|file|mimes:xlsx,xls|max:2048',
+        ], [
+            'file.mimes' => 'Only Excel files are accepted. CSV files (.csv) are not supported.',
         ]);
 
         $file = $request->file('file');
         $extension = strtolower($file->getClientOriginalExtension());
+
+        // Double-check that it's an Excel file
+        if (!in_array($extension, ['xlsx', 'xls'])) {
+            return back()->withErrors([
+                'file' => 'Invalid file type. Only Excel files (.xlsx, .xls) are accepted. CSV files are not supported.'
+            ]);
+        }
 
         try {
             $rows = \Spatie\SimpleExcel\SimpleExcelReader::create($file->getRealPath(), $extension)
@@ -1422,34 +1623,47 @@ class StudentController extends Controller
 
                 // ── VALIDATION 2: Grade level exists on the system ─────────────
                 // Resolve grade level (skip requirement for 'new' students, who are auto-assigned Grade 7 below)
-                $gradeLevel = \App\Models\GradeLevel::where('name', $gradeLevelName)->first();
+                $gradeLevel = null;
                 $invalidGradeLevel = false;
-
-                if ($studentStatus !== 'new' && !$gradeLevel) {
-                    $rowErrors[] = "Row {$rowNum}: There is no grade level like '{$gradeLevelName}' on the system. Student will be imported as unassigned.";
-                    $invalidGradeLevel = true;
-                }
-
-                // Validate only Grade 7-10 are accepted
-                if ($studentStatus !== 'new' && $gradeLevel) {
-                    $gradeNumber = (int) str_replace('Grade ', '', $gradeLevel->name);
-                    if ($gradeNumber < 7 || $gradeNumber > 10) {
-                        $rowErrors[] = "Row {$rowNum}: Invalid grade level '{$gradeLevelName}'. Only Grade 7-10 are accepted. Student will be imported as unassigned.";
-                        $invalidGradeLevel = true;
-                        $gradeLevel = null;
-                    }
-                }
 
                 // For new students, always auto-assign Grade 7
                 if ($studentStatus === 'new') {
-                    $gradeLevel = \App\Models\GradeLevel::where('name', 'Grade 7')->first();
+                    // Add warning if grade level is blank for new students
+                    if (empty($gradeLevelName) || trim($gradeLevelName) === '') {
+                        $rowErrors[] = "Row {$rowNum}: Grade level is blank. This student will be automatically assigned to Grade 7 (default for new students).";
+                    }
+                    $gradeLevel = GradeLevel::where('name', 'Grade 7')->first();
+                } else {
+                    // Check if grade level is null or blank for non-new students
+                    if (empty($gradeLevelName) || trim($gradeLevelName) === '') {
+                        $rowErrors[] = "Row {$rowNum}: Grade level is required and cannot be blank. Student will be marked as invalid.";
+                        $invalidGradeLevel = true;
+                    } else {
+                        // Try to find the grade level in the system
+                        $gradeLevel = GradeLevel::where('name', $gradeLevelName)->first();
+
+                        if (!$gradeLevel) {
+                            $rowErrors[] = "Row {$rowNum}: There is no grade level like '{$gradeLevelName}' on the system. Student will be marked as invalid.";
+                            $invalidGradeLevel = true;
+                        }
+                    }
+
+                    // Validate only Grade 7-10 are accepted
+                    if ($gradeLevel) {
+                        $gradeNumber = (int) str_replace('Grade ', '', $gradeLevel->name);
+                        if ($gradeNumber < 7 || $gradeNumber > 10) {
+                            $rowErrors[] = "Row {$rowNum}: Invalid grade level '{$gradeLevelName}'. Only Grade 7-10 are accepted. Student will be imported as unassigned.";
+                            $invalidGradeLevel = true;
+                            $gradeLevel = null;
+                        }
+                    }
                 }
 
                 // ── VALIDATION 3: Section validation ────────────────────────────
                 // Check if section exists and belongs to the correct grade level
                 $section = null;
                 $invalidSection = false;
-                
+
                 if (!empty($sectionName)) {
                     if (!$gradeLevel) {
                         // If grade level is invalid, we can't validate section properly
@@ -1464,7 +1678,7 @@ class StudentController extends Controller
                         if (!$section) {
                             // Check if section exists in ANY grade level
                             $sectionExistsElsewhere = ClassSection::whereRaw('LOWER(section_name) = ?', [strtolower($sectionName)])->first();
-                            
+
                             if ($sectionExistsElsewhere) {
                                 // Section exists but in different grade level
                                 $actualGradeName = $sectionExistsElsewhere->gradeLevel->name ?? 'Unknown';
@@ -1489,18 +1703,22 @@ class StudentController extends Controller
                     }
                     continue; // Skip to next row
                 }
-                
-                // Check if student should be marked as invalid (duplicate LRN or invalid section)
-                $markAsInvalid = $duplicateLrn || $invalidSection;
-                
+
+                // Check if student should be marked as invalid (duplicate LRN, invalid grade level, or invalid section)
+                $markAsInvalid = $duplicateLrn || $invalidGradeLevel || $invalidSection;
+
                 // Build detailed invalid reason
                 $invalidReasonText = null;
                 if ($markAsInvalid) {
                     if ($duplicateLrn) {
                         $invalidReasonText = "Duplicate LRN for school year {$schoolYear}";
+                    } else if ($invalidGradeLevel && (empty($gradeLevelName) || trim($gradeLevelName) === '')) {
+                        $invalidReasonText = "Grade level is required and cannot be blank";
+                    } else if ($invalidGradeLevel) {
+                        $invalidReasonText = "Grade level '{$gradeLevelName}' does not exist in the system";
                     } else if ($invalidSection && !empty($sectionName)) {
                         // Check if section exists elsewhere to provide detailed reason
-                        $sectionExistsElsewhere = \App\Models\ClassSection::whereRaw('LOWER(section_name) = ?', [strtolower($sectionName)])->first();
+                        $sectionExistsElsewhere = ClassSection::whereRaw('LOWER(section_name) = ?', [strtolower($sectionName)])->first();
                         if ($sectionExistsElsewhere) {
                             $actualGradeName = $sectionExistsElsewhere->gradeLevel->name ?? 'Unknown';
                             $invalidReasonText = "Section '{$sectionName}' exists in {$actualGradeName}, not in {$gradeLevel->name}";
@@ -1511,7 +1729,7 @@ class StudentController extends Controller
                         $invalidReasonText = "Invalid section assignment";
                     }
                 }
-                
+
                 // If only grade/section warnings, log them but continue with import
                 if ($invalidGradeLevel || $invalidSection) {
                     foreach ($rowErrors as $rowError) {
@@ -1615,7 +1833,13 @@ class StudentController extends Controller
 
                 } catch (\Exception $e) {
                     DB::rollBack();
-                    $errors[] = "Row {$rowNum}: " . $e->getMessage();
+                    // Log the actual error for debugging but show a generic message to users
+                    \Log::error('Student import error', [
+                        'row' => $rowNum,
+                        'lrn' => $lrn,
+                        'error' => $e->getMessage()
+                    ]);
+                    $errors[] = "Row {$rowNum}: Failed to import student. Please check the data format and try again.";
                     $errorCount++;
                 }
             }
@@ -1633,8 +1857,11 @@ class StudentController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Import failed', ['message' => $e->getMessage()]);
-            return back()->withErrors(['import' => 'Import failed: ' . $e->getMessage()]);
+            \Log::error('Import failed', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return back()->withErrors(['import' => 'Import failed. Please check your file format and try again. If the problem persists, contact your system administrator.']);
         }
     }
 
@@ -2095,9 +2322,23 @@ class StudentController extends Controller
         ]);
 
         try {
-            $student->update([
+            $updateData = [
                 'ready_to_graduate' => $validated['ready_to_graduate'],
-            ]);
+            ];
+
+            // If marking as ready to graduate and student is in Grade 10, update school year
+            if ($validated['ready_to_graduate'] && $student->gradeLevel && $student->gradeLevel->name === 'Grade 10') {
+                $currentSchoolYear = $student->school_year;
+
+                if ($currentSchoolYear && preg_match('/^(\d{4})-(\d{4})$/', $currentSchoolYear, $matches)) {
+                    $startYear = (int) $matches[1];
+                    $endYear = (int) $matches[2];
+                    $nextSchoolYear = ($startYear + 1) . '-' . ($endYear + 1);
+                    $updateData['school_year'] = $nextSchoolYear;
+                }
+            }
+
+            $student->update($updateData);
 
             // Log activity
             ActivityLog::create([

@@ -2,6 +2,14 @@
 
 namespace App\Providers;
 
+use App\Models\ClassSection;
+use App\Models\GradeLevel;
+use App\Models\Room;
+use App\Models\Student;
+use App\Models\Subject;
+use App\Models\Teacher;
+use App\Models\TeacherSubject;
+use App\Observers\CacheInvalidationObserver;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -26,6 +34,14 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
         $this->configureMorphMap();
         $this->configureGates();
+
+        GradeLevel::observe(CacheInvalidationObserver::class);
+        Teacher::observe(CacheInvalidationObserver::class);
+        Subject::observe(CacheInvalidationObserver::class);
+        ClassSection::observe(CacheInvalidationObserver::class);
+        TeacherSubject::observe(CacheInvalidationObserver::class);
+        Room::observe(CacheInvalidationObserver::class);
+        Student::observe(CacheInvalidationObserver::class);
     }
 
     protected function configureGates(): void

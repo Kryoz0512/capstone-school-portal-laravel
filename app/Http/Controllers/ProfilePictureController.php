@@ -211,6 +211,8 @@ class ProfilePictureController extends Controller
 
             if ($profilePicture) {
                 Storage::disk('public')->delete($profilePicture->file_path);
+                // Mark as deleting from cascade to bypass the prevention trait
+                $profilePicture->markDeletingFromCascade(true);
                 $profilePicture->delete();
             }
 

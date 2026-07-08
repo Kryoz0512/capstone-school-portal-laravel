@@ -34,6 +34,8 @@ type GradeLevelRecord = {
     grade_level: string
     grade_level_id: number
     has_data: boolean
+    section_name?: string | null
+    school_year?: string | null
     subjects: SubjectGrade[]
     final_average: number | null
     remarks: string | null
@@ -62,6 +64,7 @@ type Props = {
         current_grade_level: string
         current_grade_level_id: number
         current_section: string
+        school_year: string
         ready_to_graduate: boolean
         is_grade_10: boolean
     }
@@ -264,11 +267,17 @@ export default function StudentAcademicRecord({ student, academic_record, grade_
                                         <>
                                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
                                                 <GraduationCap className="w-3 h-3" />
-                                                {student.current_grade_level}
+                                                {currentRecord?.grade_level || student.current_grade_level}
                                             </span>
-                                            {student.current_section && (
+                                            {currentRecord?.section_name && (
                                                 <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                                                    {student.current_section}
+                                                    {currentRecord.section_name}
+                                                </span>
+                                            )}
+                                            {currentRecord?.school_year && (
+                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                                                    <ClipboardList className="w-3 h-3" />
+                                                    SY {currentRecord.school_year}
                                                 </span>
                                             )}
                                         </>
@@ -363,7 +372,7 @@ export default function StudentAcademicRecord({ student, academic_record, grade_
                                     id="ready-to-graduate"
                                     checked={readyToGraduate}
                                     onCheckedChange={(checked) => handleGraduationToggle(checked as boolean)}
-                                    disabled={canMarkGraduate}
+                                    disabled={!canMarkGraduate}
                                     className="h-5 w-5"
                                 />
                                 <Label

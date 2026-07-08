@@ -13,6 +13,23 @@ export default function Portal({ slides = [] }: Props) {
     const [showPortalDropdown, setShowPortalDropdown] = useState(false)
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
+    // Prevent back button to this page after login
+    useEffect(() => {
+        // Replace current history entry to prevent back navigation after login
+        window.history.pushState(null, '', window.location.href)
+        
+        const handlePopState = () => {
+            // Push state again to keep user from going back
+            window.history.pushState(null, '', window.location.href)
+        }
+
+        window.addEventListener('popstate', handlePopState)
+
+        return () => {
+            window.removeEventListener('popstate', handlePopState)
+        }
+    }, [])
+
     useEffect(() => {
         if (slides.length <= 1) return
         const interval = setInterval(() => {

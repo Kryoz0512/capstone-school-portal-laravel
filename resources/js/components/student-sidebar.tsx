@@ -24,10 +24,10 @@ type SidebarProps = {
 
 const navItems = [
     { href: '/student/dashboard',         label: 'Dashboard',         Icon: LayoutDashboard },
-    { href: '/student/clearance',         label: 'Student Clearance', Icon: FileText },
     { href: '/student/enrolled-subjects', label: 'Enrolled Subjects', Icon: BookOpen },
     { href: '/student/schedule',          label: 'Student Schedule',  Icon: Calendar },
     { href: '/student/report-card',       label: 'Report Card',       Icon: FileSpreadsheet },
+    { href: '/student/clearance',         label: 'Student Clearance', Icon: FileText },
 ]
 
 export function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {

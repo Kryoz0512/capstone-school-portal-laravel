@@ -139,7 +139,7 @@ export default function CreateTeacher({ auth, subjects = [] }: Props) {
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Email Address <span className="text-red-500">*</span>
+                                Username <span className="text-red-500">*</span>
                             </label>
                             <Input
                                 required
@@ -155,7 +155,7 @@ export default function CreateTeacher({ auth, subjects = [] }: Props) {
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Employee Number <span className="text-red-500">*</span>
+                                DepEd Employee Number <span className="text-red-500">*</span>
                             </label>
                             <Input
                                 required
@@ -185,7 +185,7 @@ export default function CreateTeacher({ auth, subjects = [] }: Props) {
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Subject <span className="text-red-500">*</span>
+                                Subject Specialization<span className="text-red-500">*</span>
                             </label>
                             <Select value={data.subject} onValueChange={(value) => setData('subject', value)}>
                                 <SelectTrigger>

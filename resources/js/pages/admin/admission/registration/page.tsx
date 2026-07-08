@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useState, useRef, useEffect } from 'react'
 import { store } from '@/routes/admin/admission/registration'
 import { Download, Upload, FileSpreadsheet, CheckCircle2, Calendar } from 'lucide-react'
+import { AlertDialog } from '@/components/modals/alert-dialog'
 
 type GradeLevel = {
     id: number
@@ -309,8 +310,15 @@ export default function StudentRegistration({ auth, gradeLevels = [], sections =
     const [isSearching, setIsSearching] = useState(false)
     const [selectedStudent, setSelectedStudent] = useState<any>(null)
 
+    // Alert dialog state
+    const [showAlert, setShowAlert] = useState(false)
+    const [alertType, setAlertType] = useState<'success' | 'error' | 'warning' | 'info'>('info')
+    const [alertTitle, setAlertTitle] = useState('')
+    const [alertMessage, setAlertMessage] = useState<string | string[]>('')
+
     const page = usePage<any>()
     const flash = page.props.flash || {}
+    const validationErrors = page.props.errors || {}
 
     // Search for returning students
     const handleSearch = async (query: string) => {
@@ -366,6 +374,32 @@ export default function StudentRegistration({ auth, gradeLevels = [], sections =
             setData('school_year', '')
         }
     }, [startYear, endYear])
+
+    // Handle success and error flash messages
+    useEffect(() => {
+        if (flash.success) {
+            setAlertType('success')
+            setAlertTitle('Success!')
+            setAlertMessage(flash.success)
+            setShowAlert(true)
+        } else if (flash.error) {
+            setAlertType('error')
+            setAlertTitle('Error')
+            setAlertMessage(flash.error)
+            setShowAlert(true)
+        }
+    }, [flash.success, flash.error])
+
+    // Handle validation errors
+    useEffect(() => {
+        if (Object.keys(validationErrors).length > 0) {
+            const errorMessages = Object.values(validationErrors) as string[]
+            setAlertType('error')
+            setAlertTitle('Validation Error')
+            setAlertMessage(errorMessages)
+            setShowAlert(true)
+        }
+    }, [validationErrors])
 
     // Handle import flash data
     useEffect(() => {
@@ -445,12 +479,12 @@ export default function StudentRegistration({ auth, gradeLevels = [], sections =
             const grade7 = gradeLevels.find(g => g.name === 'Grade 7')
             return sections.filter(s => s.grade_level_id === grade7?.id && !s.is_full)
         }
-        
+
         // For old/transferee, filter by selected grade level
         if (data.grade_level_id) {
             return sections.filter(s => s.grade_level_id === parseInt(data.grade_level_id) && !s.is_full)
         }
-        
+
         return []
     }
 
@@ -548,6 +582,14 @@ export default function StudentRegistration({ auth, gradeLevels = [], sections =
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (file) {
+            // Check if file is Excel
+            const fileExtension = file.name.split('.').pop()?.toLowerCase()
+            if (fileExtension !== 'xlsx' && fileExtension !== 'xls') {
+                alert('Invalid file type. Only Excel files (.xlsx, .xls) are accepted. CSV files are not supported.\n\nPlease use an Excel file format for importing.')
+                if (fileInputRef.current) fileInputRef.current.value = ''
+                return
+            }
+
             const formData = new FormData()
             formData.append('file', file)
             router.post('/admin/admission/registration/import', formData, {
@@ -602,17 +644,10 @@ export default function StudentRegistration({ auth, gradeLevels = [], sections =
                     </div>
                 </div>
 
-                {/* Flash success */}
-                {flash.success && (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                        <p className="text-sm text-green-800">{flash.success}</p>
-                    </div>
-                )}
-
                 <input
                     ref={fileInputRef}
                     type="file"
-                    accept=".xlsx,.xls,.csv"
+                    accept=".xlsx,.xls"
                     onChange={handleFileChange}
                     className="hidden"
                 />
@@ -652,6 +687,158 @@ export default function StudentRegistration({ auth, gradeLevels = [], sections =
                                     </div>
                                 </TabsTrigger>
                             </TabsList>
+
+                            {/* Documents */}
+                            <div className="border-t border-gray-200 pt-6">
+                                <div className="flex items-center gap-2 mb-4">
+                                    <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-base font-semibold text-gray-900">Student Documents</h3>
+                                        <p className="text-xs text-gray-600">Check the documents that have been submitted (can be submitted as follow-up)</p>
+                                    </div>
+                                </div>
+
+                                {/* Requirements notice */}
+                                <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-xl p-4 mb-4">
+                                    <div className="flex items-start gap-3">
+                                        <div className="flex-shrink-0 w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center mt-0.5">
+                                            <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="text-sm font-semibold text-amber-900 mb-1">Document Requirements</p>
+                                            <div className="text-xs text-amber-800 space-y-1">
+                                                {activeTab === 'new' && (
+                                                    <>
+                                                        <p>• <strong>Form 138 (SF9)</strong> is required</p>
+                                                        <p>• <strong>Form 137 (SF10)</strong> — please submit as soon as possible</p>
+                                                        <p>• Other documents can be submitted as follow-up</p>
+                                                    </>
+                                                )}
+                                                {activeTab === 'transferee' && (
+                                                    <>
+                                                        <p>• <strong>Form 138 (SF9)</strong> is required</p>
+                                                        <p>• <strong>Good Moral Certificate</strong> is required for transferees</p>
+                                                        <p>• <strong>Form 137 (SF10)</strong> — please submit as soon as possible</p>
+                                                        <p>• Other documents can be submitted as follow-up</p>
+                                                    </>
+                                                )}
+                                                {activeTab === 'old' && (
+                                                    <>
+                                                        <p>• <strong>Form 138 (SF9)</strong> is required</p>
+                                                        <p>• <strong>PSA Birth Certificate</strong> is required</p>
+                                                        <p>• <strong>Good Moral Certificate</strong> is required</p>
+                                                        <p>• <strong>Form 137 (SF10)</strong> — please submit as soon as possible</p>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    {/* PSA Birth Certificate */}
+                                    <div className={`bg-white border-2 rounded-xl p-4 transition-colors ${activeTab === 'old' ? 'border-red-300 bg-gradient-to-br from-red-50 to-pink-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                                        <div className="flex items-start gap-3">
+                                            <input
+                                                type="checkbox"
+                                                id="psa_birth_certificate"
+                                                checked={data.has_psa_birth_certificate}
+                                                onChange={(e) => setData('has_psa_birth_certificate', e.target.checked)}
+                                                className={`mt-1 h-5 w-5 rounded border-gray-300 cursor-pointer ${activeTab === 'old' ? 'text-red-600 focus:ring-red-500' : 'text-gray-600 focus:ring-gray-500'}`}
+                                            />
+                                            <label htmlFor="psa_birth_certificate" className="flex-1 cursor-pointer">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-sm font-semibold text-gray-900">PSA Birth Certificate</span>
+                                                    {activeTab === 'old' && (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Required</span>
+                                                    )}
+                                                </div>
+                                                <p className="text-xs text-gray-600">
+                                                    {activeTab === 'old'
+                                                        ? 'Original or certified true copy from PSA'
+                                                        : 'Original or certified true copy from PSA (can be submitted as follow-up)'}
+                                                </p>
+                                            </label>
+                                        </div>
+                                        {errors.has_psa_birth_certificate && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_psa_birth_certificate}</p>}
+                                    </div>
+
+                                    {/* Form 137 (SF10) */}
+                                    <div className="bg-white border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl p-4 transition-colors">
+                                        <div className="flex items-start gap-3">
+                                            <input
+                                                type="checkbox"
+                                                id="sf9"
+                                                checked={data.has_sf9}
+                                                onChange={(e) => setData('has_sf9', e.target.checked)}
+                                                className="mt-1 h-5 w-5 rounded border-gray-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
+                                            />
+                                            <label htmlFor="sf9" className="flex-1 cursor-pointer">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-sm font-semibold text-gray-900">Form 137 (SF10)</span>
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Optional But Submit ASAP</span>
+                                                </div>
+                                                <p className="text-xs text-gray-600">Learner's Permanent Academic Record — not required at enrollment but must be submitted as soon as possible</p>
+                                            </label>
+                                        </div>
+                                        {errors.has_sf9 && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_sf9}</p>}
+                                    </div>
+
+                                    {/* Form 138 (SF9) */}
+                                    <div className="bg-white border-2 border-red-300 bg-gradient-to-br from-red-50 to-pink-50 rounded-xl p-4 transition-colors">
+                                        <div className="flex items-start gap-3">
+                                            <input
+                                                type="checkbox"
+                                                id="report_card"
+                                                checked={data.has_report_card}
+                                                onChange={(e) => setData('has_report_card', e.target.checked)}
+                                                className="mt-1 h-5 w-5 rounded border-gray-300 text-red-600 focus:ring-red-500 cursor-pointer"
+                                            />
+                                            <label htmlFor="report_card" className="flex-1 cursor-pointer">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-sm font-semibold text-gray-900">Form 138 (SF9)</span>
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Required</span>
+                                                </div>
+                                                <p className="text-xs text-gray-600">Learner's Progress Report Card (Report Card)</p>
+                                            </label>
+                                        </div>
+                                        {errors.has_report_card && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_report_card}</p>}
+                                    </div>
+
+                                    {/* Good Moral Certificate */}
+                                    <div className={`bg-white border-2 rounded-xl p-4 transition-colors ${activeTab === 'transferee' || activeTab === 'old' ? 'border-purple-300 bg-gradient-to-br from-purple-50 to-pink-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                                        <div className="flex items-start gap-3">
+                                            <input
+                                                type="checkbox"
+                                                id="good_moral"
+                                                checked={data.has_good_moral}
+                                                onChange={(e) => setData('has_good_moral', e.target.checked)}
+                                                className={`mt-1 h-5 w-5 rounded border-gray-300 cursor-pointer ${activeTab === 'transferee' || activeTab === 'old' ? 'text-purple-600 focus:ring-purple-500' : 'text-gray-600 focus:ring-gray-500'}`}
+                                            />
+                                            <label htmlFor="good_moral" className="flex-1 cursor-pointer">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-sm font-semibold text-gray-900">Good Moral Certificate</span>
+                                                    {(activeTab === 'transferee' || activeTab === 'old') && (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Required</span>
+                                                    )}
+                                                </div>
+                                                <p className="text-xs text-gray-600">
+                                                    {(activeTab === 'transferee' || activeTab === 'old')
+                                                        ? 'Certificate of Good Moral Character from previous school'
+                                                        : 'Certificate of Good Moral Character from previous school (can be submitted as follow-up)'}
+                                                </p>
+                                            </label>
+                                        </div>
+                                        {errors.has_good_moral && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_good_moral}</p>}
+                                    </div>
+                                </div>
+                            </div>
 
                             {/* ── New Student Banner ── */}
                             <TabsContent value="new">
@@ -757,11 +944,10 @@ export default function StudentRegistration({ auth, gradeLevels = [], sections =
                                                                 key={section.id}
                                                                 type="button"
                                                                 onClick={() => handleSectionSelect(section)}
-                                                                className={`w-full text-left px-3 py-2.5 rounded-md hover:bg-blue-50 transition-colors border-l-2 ${
-                                                                    data.section_id === section.id.toString() 
-                                                                        ? 'border-blue-500 bg-blue-50' 
+                                                                className={`w-full text-left px-3 py-2.5 rounded-md hover:bg-blue-50 transition-colors border-l-2 ${data.section_id === section.id.toString()
+                                                                        ? 'border-blue-500 bg-blue-50'
                                                                         : 'border-transparent'
-                                                                }`}
+                                                                    }`}
                                                             >
                                                                 <div className="flex items-center justify-between gap-3">
                                                                     <div className="flex-1 min-w-0">
@@ -773,11 +959,10 @@ export default function StudentRegistration({ auth, gradeLevels = [], sections =
                                                                         </p>
                                                                     </div>
                                                                     <div className="text-right flex-shrink-0">
-                                                                        <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                                                            section.available_slots <= 5 
-                                                                                ? 'bg-amber-100 text-amber-800' 
+                                                                        <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${section.available_slots <= 5
+                                                                                ? 'bg-amber-100 text-amber-800'
                                                                                 : 'bg-green-100 text-green-800'
-                                                                        }`}>
+                                                                            }`}>
                                                                             {section.available_slots} slots
                                                                         </div>
                                                                         <p className="text-xs text-gray-500 mt-0.5">
@@ -1059,11 +1244,10 @@ export default function StudentRegistration({ auth, gradeLevels = [], sections =
                                                             key={section.id}
                                                             type="button"
                                                             onClick={() => handleSectionSelect(section)}
-                                                            className={`w-full text-left px-3 py-2.5 rounded-md hover:bg-blue-50 transition-colors border-l-2 ${
-                                                                data.section_id === section.id.toString() 
-                                                                    ? 'border-blue-500 bg-blue-50' 
+                                                            className={`w-full text-left px-3 py-2.5 rounded-md hover:bg-blue-50 transition-colors border-l-2 ${data.section_id === section.id.toString()
+                                                                    ? 'border-blue-500 bg-blue-50'
                                                                     : 'border-transparent'
-                                                            }`}
+                                                                }`}
                                                         >
                                                             <div className="flex items-center justify-between gap-3">
                                                                 <div className="flex-1 min-w-0">
@@ -1075,11 +1259,10 @@ export default function StudentRegistration({ auth, gradeLevels = [], sections =
                                                                     </p>
                                                                 </div>
                                                                 <div className="text-right flex-shrink-0">
-                                                                    <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                                                                        section.available_slots <= 5 
-                                                                            ? 'bg-amber-100 text-amber-800' 
+                                                                    <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${section.available_slots <= 5
+                                                                            ? 'bg-amber-100 text-amber-800'
                                                                             : 'bg-green-100 text-green-800'
-                                                                    }`}>
+                                                                        }`}>
                                                                         {section.available_slots} slots
                                                                     </div>
                                                                     <p className="text-xs text-gray-500 mt-0.5">
@@ -1135,9 +1318,9 @@ export default function StudentRegistration({ auth, gradeLevels = [], sections =
                                     {/* Info messages */}
                                     {availableSections.length === 0 && (
                                         <p className="text-xs text-amber-600 mt-2">
-                                            {activeTab === 'new' 
+                                            {activeTab === 'new'
                                                 ? 'No Grade 7 sections available with open slots. The student will be registered without a section.'
-                                                : data.grade_level_id 
+                                                : data.grade_level_id
                                                     ? 'No sections available for the selected grade level. The student will be registered without a section.'
                                                     : 'Please select a grade level first.'}
                                         </p>
@@ -1233,157 +1416,7 @@ export default function StudentRegistration({ auth, gradeLevels = [], sections =
                                     </div>
                                 </div>
 
-                                {/* Documents */}
-                                <div className="border-t border-gray-200 pt-6">
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                                            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                            </svg>
-                                        </div>
-                                        <div>
-                                            <h3 className="text-base font-semibold text-gray-900">Student Documents</h3>
-                                            <p className="text-xs text-gray-600">Check the documents that have been submitted (can be submitted as follow-up)</p>
-                                        </div>
-                                    </div>
 
-                                    {/* Requirements notice */}
-                                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-xl p-4 mb-4">
-                                        <div className="flex items-start gap-3">
-                                            <div className="flex-shrink-0 w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center mt-0.5">
-                                                <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
-                                            </div>
-                                            <div className="flex-1">
-                                                <p className="text-sm font-semibold text-amber-900 mb-1">Document Requirements</p>
-                                                <div className="text-xs text-amber-800 space-y-1">
-                                                    {activeTab === 'new' && (
-                                                        <>
-                                                            <p>• <strong>Form 138 (SF9)</strong> is required</p>
-                                                            <p>• <strong>Form 137 (SF10)</strong> — please submit as soon as possible</p>
-                                                            <p>• Other documents can be submitted as follow-up</p>
-                                                        </>
-                                                    )}
-                                                    {activeTab === 'transferee' && (
-                                                        <>
-                                                            <p>• <strong>Form 138 (SF9)</strong> is required</p>
-                                                            <p>• <strong>Good Moral Certificate</strong> is required for transferees</p>
-                                                            <p>• <strong>Form 137 (SF10)</strong> — please submit as soon as possible</p>
-                                                            <p>• Other documents can be submitted as follow-up</p>
-                                                        </>
-                                                    )}
-                                                    {activeTab === 'old' && (
-                                                        <>
-                                                            <p>• <strong>Form 138 (SF9)</strong> is required</p>
-                                                            <p>• <strong>PSA Birth Certificate</strong> is required</p>
-                                                            <p>• <strong>Good Moral Certificate</strong> is required</p>
-                                                            <p>• <strong>Form 137 (SF10)</strong> — please submit as soon as possible</p>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        {/* PSA Birth Certificate */}
-                                        <div className={`bg-white border-2 rounded-xl p-4 transition-colors ${activeTab === 'old' ? 'border-red-300 bg-gradient-to-br from-red-50 to-pink-50' : 'border-gray-200 hover:border-gray-300'}`}>
-                                            <div className="flex items-start gap-3">
-                                                <input
-                                                    type="checkbox"
-                                                    id="psa_birth_certificate"
-                                                    checked={data.has_psa_birth_certificate}
-                                                    onChange={(e) => setData('has_psa_birth_certificate', e.target.checked)}
-                                                    className={`mt-1 h-5 w-5 rounded border-gray-300 cursor-pointer ${activeTab === 'old' ? 'text-red-600 focus:ring-red-500' : 'text-gray-600 focus:ring-gray-500'}`}
-                                                />
-                                                <label htmlFor="psa_birth_certificate" className="flex-1 cursor-pointer">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <span className="text-sm font-semibold text-gray-900">PSA Birth Certificate</span>
-                                                        {activeTab === 'old' && (
-                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Required</span>
-                                                        )}
-                                                    </div>
-                                                    <p className="text-xs text-gray-600">
-                                                        {activeTab === 'old'
-                                                            ? 'Original or certified true copy from PSA'
-                                                            : 'Original or certified true copy from PSA (can be submitted as follow-up)'}
-                                                    </p>
-                                                </label>
-                                            </div>
-                                            {errors.has_psa_birth_certificate && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_psa_birth_certificate}</p>}
-                                        </div>
-
-                                        {/* Form 137 (SF10) */}
-                                        <div className="bg-white border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl p-4 transition-colors">
-                                            <div className="flex items-start gap-3">
-                                                <input
-                                                    type="checkbox"
-                                                    id="sf9"
-                                                    checked={data.has_sf9}
-                                                    onChange={(e) => setData('has_sf9', e.target.checked)}
-                                                    className="mt-1 h-5 w-5 rounded border-gray-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
-                                                />
-                                                <label htmlFor="sf9" className="flex-1 cursor-pointer">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <span className="text-sm font-semibold text-gray-900">Form 137 (SF10)</span>
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Optional But Submit ASAP</span>
-                                                    </div>
-                                                    <p className="text-xs text-gray-600">Learner's Permanent Academic Record — not required at enrollment but must be submitted as soon as possible</p>
-                                                </label>
-                                            </div>
-                                            {errors.has_sf9 && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_sf9}</p>}
-                                        </div>
-
-                                        {/* Form 138 (SF9) */}
-                                        <div className="bg-white border-2 border-red-300 bg-gradient-to-br from-red-50 to-pink-50 rounded-xl p-4 transition-colors">
-                                            <div className="flex items-start gap-3">
-                                                <input
-                                                    type="checkbox"
-                                                    id="report_card"
-                                                    checked={data.has_report_card}
-                                                    onChange={(e) => setData('has_report_card', e.target.checked)}
-                                                    className="mt-1 h-5 w-5 rounded border-gray-300 text-red-600 focus:ring-red-500 cursor-pointer"
-                                                />
-                                                <label htmlFor="report_card" className="flex-1 cursor-pointer">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <span className="text-sm font-semibold text-gray-900">Form 138 (SF9)</span>
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Required</span>
-                                                    </div>
-                                                    <p className="text-xs text-gray-600">Learner's Progress Report Card (Report Card)</p>
-                                                </label>
-                                            </div>
-                                            {errors.has_report_card && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_report_card}</p>}
-                                        </div>
-
-                                        {/* Good Moral Certificate */}
-                                        <div className={`bg-white border-2 rounded-xl p-4 transition-colors ${activeTab === 'transferee' || activeTab === 'old' ? 'border-purple-300 bg-gradient-to-br from-purple-50 to-pink-50' : 'border-gray-200 hover:border-gray-300'}`}>
-                                            <div className="flex items-start gap-3">
-                                                <input
-                                                    type="checkbox"
-                                                    id="good_moral"
-                                                    checked={data.has_good_moral}
-                                                    onChange={(e) => setData('has_good_moral', e.target.checked)}
-                                                    className={`mt-1 h-5 w-5 rounded border-gray-300 cursor-pointer ${activeTab === 'transferee' || activeTab === 'old' ? 'text-purple-600 focus:ring-purple-500' : 'text-gray-600 focus:ring-gray-500'}`}
-                                                />
-                                                <label htmlFor="good_moral" className="flex-1 cursor-pointer">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <span className="text-sm font-semibold text-gray-900">Good Moral Certificate</span>
-                                                        {(activeTab === 'transferee' || activeTab === 'old') && (
-                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Required</span>
-                                                        )}
-                                                    </div>
-                                                    <p className="text-xs text-gray-600">
-                                                        {(activeTab === 'transferee' || activeTab === 'old')
-                                                            ? 'Certificate of Good Moral Character from previous school'
-                                                            : 'Certificate of Good Moral Character from previous school (can be submitted as follow-up)'}
-                                                    </p>
-                                                </label>
-                                            </div>
-                                            {errors.has_good_moral && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_good_moral}</p>}
-                                        </div>
-                                    </div>
-                                </div>
 
                                 {/* Form Actions */}
                                 <div className="flex gap-3 pt-6 border-t border-gray-200">
@@ -1567,6 +1600,15 @@ export default function StudentRegistration({ auth, gradeLevels = [], sections =
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* Alert Dialog for Success/Error Messages */}
+            <AlertDialog
+                open={showAlert}
+                onClose={() => setShowAlert(false)}
+                title={alertTitle}
+                message={alertMessage}
+                type={alertType}
+            />
         </AdminLayout>
     )
 }

@@ -2,6 +2,7 @@ import { ReactNode } from 'react'
 import { usePage } from '@inertiajs/react'
 import StudentSidebar from '@/components/student-sidebar'
 import StudentHeader from '@/components/student-header'
+import AutoLogoutWrapper from '@/components/auto-logout-wrapper'
 
 type StudentLayoutProps = {
     children: ReactNode
@@ -19,18 +20,20 @@ export default function StudentLayout({ children, user }: StudentLayoutProps) {
     const { auth } = usePage<{ auth: { student?: { profile_picture?: string | null } } }>().props
 
     return (
-        <div className="flex min-h-screen bg-white">
-            {/* Sidebar — desktop only */}
-            <StudentSidebar />
+        <AutoLogoutWrapper>
+            <div className="flex min-h-screen bg-white">
+                {/* Sidebar — desktop only */}
+                <StudentSidebar />
 
-            {/* Main content — no left margin on mobile, offset by sidebar width on desktop */}
-            <div className="flex-1 flex flex-col min-w-0 lg:ml-72">
-                <StudentHeader user={user} student={auth?.student} />
+                {/* Main content — no left margin on mobile, offset by sidebar width on desktop */}
+                <div className="flex-1 flex flex-col min-w-0 lg:ml-72">
+                    <StudentHeader user={user} student={auth?.student} />
 
-                <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-gray-50">
-                    {children}
-                </main>
+                    <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-gray-50">
+                        {children}
+                    </main>
+                </div>
             </div>
-        </div>
+        </AutoLogoutWrapper>
     )
 }

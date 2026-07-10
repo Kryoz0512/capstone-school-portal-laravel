@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'super-admin' => EnsureSuperAdmin::class,
             'guest' => RedirectIfAuthenticated::class,
+            'portal.access' => \App\Http\Middleware\CheckPortalAccess::class,
         ]);
 
         $middleware->web(append: [

@@ -66,20 +66,32 @@ return new class extends Migration
         }
 
         // Notifications table indexes
-        if (!$this->indexExists('tbl_notifications', 'notifications_user_read_idx')) {
-            Schema::table('tbl_notifications', function (Blueprint $table) {
-                $table->index(['user_id', 'is_read'], 'notifications_user_read_idx');
-                $table->index('announcement_id', 'notifications_announcement_idx');
-                $table->index('created_at', 'notifications_created_idx');
+        if (Schema::hasTable('notifications')) {
+            Schema::table('notifications', function (Blueprint $table) {
+                if (!$this->indexExists('notifications', 'notifications_user_read_idx')) {
+                    $table->index(['user_id', 'is_read'], 'notifications_user_read_idx');
+                }
+                if (!$this->indexExists('notifications', 'notifications_announcement_idx')) {
+                    $table->index('announcement_id', 'notifications_announcement_idx');
+                }
+                if (!$this->indexExists('notifications', 'notifications_created_idx')) {
+                    $table->index('created_at', 'notifications_created_idx');
+                }
             });
         }
 
         // Announcements table indexes
-        if (!$this->indexExists('tbl_announcements', 'announcements_section_idx')) {
-            Schema::table('tbl_announcements', function (Blueprint $table) {
-                $table->index('section_id', 'announcements_section_idx');
-                $table->index('author_id', 'announcements_author_idx');
-                $table->index('created_at', 'announcements_created_idx');
+        if (Schema::hasTable('announcements')) {
+            Schema::table('announcements', function (Blueprint $table) {
+                if (!$this->indexExists('announcements', 'announcements_section_idx')) {
+                    $table->index('section_id', 'announcements_section_idx');
+                }
+                if (!$this->indexExists('announcements', 'announcements_is_active_idx')) {
+                    $table->index('is_active', 'announcements_is_active_idx');
+                }
+                if (!$this->indexExists('announcements', 'announcements_created_idx')) {
+                    $table->index('created_at', 'announcements_created_idx');
+                }
             });
         }
 
@@ -111,10 +123,14 @@ return new class extends Migration
         }
 
         // Archives table indexes
-        if (!$this->indexExists('tbl_archives', 'archives_type_idx')) {
-            Schema::table('tbl_archives', function (Blueprint $table) {
-                $table->index('type', 'archives_type_idx');
-                $table->index('archived_at', 'archives_archived_at_idx');
+        if (Schema::hasTable('archives')) {
+            Schema::table('archives', function (Blueprint $table) {
+                if (!$this->indexExists('archives', 'archives_type_idx')) {
+                    $table->index('archivable_type', 'archives_type_idx');
+                }
+                if (!$this->indexExists('archives', 'archives_archived_at_idx')) {
+                    $table->index('created_at', 'archives_archived_at_idx');
+                }
             });
         }
     }
@@ -204,7 +220,7 @@ return new class extends Migration
         });
 
         // Drop indexes for Archives table
-        Schema::table('tbl_archives', function (Blueprint $table) {
+        Schema::table('archives', function (Blueprint $table) {
             $table->dropIndex('archives_type_idx');
             $table->dropIndex('archives_archived_at_idx');
         });
@@ -215,10 +231,6 @@ return new class extends Migration
      */
     private function indexExists(string $table, string $index): bool
     {
-        $conn = Schema::getConnection();
-        $dbSchemaManager = $conn->getDoctrineSchemaManager();
-        $doctrineTable = $dbSchemaManager->listTableDetails($table);
-        
-        return $doctrineTable->hasIndex($index);
+        return Schema::hasIndex($table, $index);
     }
 };

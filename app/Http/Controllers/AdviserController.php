@@ -21,8 +21,7 @@ class AdviserController extends Controller
             return $requested;
         }
 
-        return Student::orderBy('school_year', 'desc')
-            ->value('school_year') ?? date('Y') . '-' . (date('Y') + 1);
+        return \App\Services\SchoolYearService::current();
     }
 
     /**
@@ -67,28 +66,7 @@ class AdviserController extends Controller
         return [$teacher, $adviserSection, $schoolYear];
     }
 
-    private function getSchoolYears()
-    {
-        $dbSchoolYears = Student::select('school_year')
-            ->distinct()
-            ->pluck('school_year')
-            ->toArray();
 
-        $currentYear = (int) date('Y');
-        $generatedYears = [];
-
-        for ($year = 2018; $year <= $currentYear + 1; $year++) {
-            $generatedYears[] = $year . '-' . ($year + 1);
-        }
-
-        $allYears = array_unique(array_merge($generatedYears, $dbSchoolYears));
-        rsort($allYears);
-
-        return collect($allYears)->map(fn($year) => [
-            'value' => $year,
-            'label' => $year,
-        ]);
-    }
 
     private function mapAdvisorySection(AdviserSection $adviserSection): array
     {
@@ -193,7 +171,7 @@ class AdviserController extends Controller
         if (!$adviserSection) {
             return Inertia::render('adviser/class-list/page', [
                 'advisorySection' => null,
-                'schoolYears' => $this->getSchoolYears(),
+                'schoolYears' => \App\Services\SchoolYearService::getSchoolYears(),
                 'students' => [],
                 'pagination' => null,
                 'filters' => [
@@ -224,7 +202,7 @@ class AdviserController extends Controller
 
         return Inertia::render('adviser/class-list/page', [
             'advisorySection' => $section,
-            'schoolYears' => $this->getSchoolYears(),
+            'schoolYears' => \App\Services\SchoolYearService::getSchoolYears(),
             'students' => $students,
             'pagination' => [
                 'current_page' => $paginated->currentPage(),
@@ -259,7 +237,7 @@ class AdviserController extends Controller
                 'students' => [],
                 'pagination' => null,
                 'stats' => ['total' => 0, 'cleared' => 0, 'pending' => 0, 'not_cleared' => 0],
-                'schoolYears' => $this->getSchoolYears(),
+                'schoolYears' => \App\Services\SchoolYearService::getSchoolYears(),
                 'selectedStudent' => null,
                 'subjectClearances' => [],
                 'filters' => [
@@ -386,7 +364,7 @@ class AdviserController extends Controller
             'students' => $students,
             'pagination' => $pagination,
             'stats' => $stats,
-            'schoolYears' => $this->getSchoolYears(),
+            'schoolYears' => \App\Services\SchoolYearService::getSchoolYears(),
             'selectedStudent' => $selectedStudent,
             'subjectClearances' => $subjectClearances,
             'filters' => [
@@ -415,7 +393,7 @@ class AdviserController extends Controller
             return Inertia::render('adviser/advisory-grades/page', [
                 'advisorySection' => null,
                 'subjects' => [],
-                'schoolYears' => $this->getSchoolYears(),
+                'schoolYears' => \App\Services\SchoolYearService::getSchoolYears(),
                 'students' => [],
                 'pagination' => null,
                 'filters' => [
@@ -489,7 +467,7 @@ class AdviserController extends Controller
         return Inertia::render('adviser/advisory-grades/page', [
             'advisorySection' => $section,
             'subjects' => $subjects,
-            'schoolYears' => $this->getSchoolYears(),
+            'schoolYears' => \App\Services\SchoolYearService::getSchoolYears(),
             'students' => $students,
             'pagination' => $pagination,
             'filters' => [

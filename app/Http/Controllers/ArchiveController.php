@@ -28,25 +28,39 @@ class ArchiveController extends Controller
     {
         $tab = $request->input('tab', 'all');
 
-        $groups = $this->collectSoftDeletedRecords();
-        $legacyArchives = $this->collectLegacyArchives();
-
-        $allRecords = collect($groups)
-            ->flatten(1)
-            ->merge($legacyArchives)
-            ->sortByDesc('archived_at')
-            ->values();
-
         $counts = [
-            'all' => $allRecords->count(),
-            'teacher' => $allRecords->where('type', 'Teacher')->count(),
-            'admin' => $allRecords->where('type', 'Admin')->count(),
-            'student' => $allRecords->where('type', 'Student')->count(),
+            'teacher' => Teacher::onlyTrashed()->whereNull('purged_at')->count(),
+            'admin' => Admin::onlyTrashed()->whereNull('purged_at')->count(),
+            'student' => Student::onlyTrashed()->whereNull('purged_at')->count(),
+            // We use 'legacy' as a pseudo-type for counts, though the table shows the actual type
+            'legacy' => Archive::count(),
         ];
+        $counts['all'] = $counts['teacher'] + $counts['admin'] + $counts['student'] + $counts['legacy'];
 
-        $filtered = $tab === 'all'
-            ? $allRecords
-            : $allRecords->filter(fn ($item) => strtolower($item['type']) === $tab)->values();
+        $filtered = collect();
+
+        if ($tab === 'teacher') {
+            $filtered = collect($this->mapSoftDeletedTeachers());
+        } elseif ($tab === 'admin') {
+            $filtered = collect($this->mapSoftDeletedAdmins());
+        } elseif ($tab === 'student') {
+            $filtered = collect($this->mapSoftDeletedStudents());
+        } else {
+            // 'all' or specific legacy type. For 'all', we merge everything.
+            // If they click 'all', we have to load everything. The frontend handles pagination.
+            $groups = $this->collectSoftDeletedRecords();
+            $legacyArchives = $this->collectLegacyArchives();
+
+            $allRecords = collect($groups)
+                ->flatten(1)
+                ->merge($legacyArchives)
+                ->sortByDesc('archived_at')
+                ->values();
+
+            $filtered = $tab === 'all'
+                ? $allRecords
+                : $allRecords->filter(fn ($item) => strtolower($item['type']) === $tab)->values();
+        }
 
         return Inertia::render('admin/archive/page', [
             'archives' => $filtered,
@@ -167,6 +181,7 @@ class ArchiveController extends Controller
         return Student::onlyTrashed()
             ->whereNull('purged_at')
             ->with(['user' => fn ($q) => $q->withTrashed(), 'archivedByUser'])
+            ->withExists('grades')
             ->orderByDesc('deleted_at')
             ->get()
             ->map(fn (Student $student) => [
@@ -178,7 +193,7 @@ class ArchiveController extends Controller
                 'archived_by' => $student->archivedByUser?->name ?? 'Unknown',
                 'archived_at' => $student->deleted_at?->timezone('Asia/Manila')->format('M d, Y h:i A'),
                 'reason' => $student->archive_reason,
-                'has_academic_records' => Grade::where('student_id', $student->id)->exists(),
+                'has_academic_records' => $student->grades_exists,
             ])
             ->all();
     }

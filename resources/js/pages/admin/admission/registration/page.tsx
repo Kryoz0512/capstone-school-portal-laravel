@@ -50,10 +50,11 @@ type Props = {
     }
     gradeLevels: GradeLevel[]
     sections: Section[]
+    currentSchoolYear: string
 }
 
 // ─── DatePicker Component ────────────────────────────────────────────────────
-function DatePicker({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+function DatePicker({ value, onChange, hasError }: { value: string; onChange: (val: string) => void; hasError?: boolean }) {
     const [open, setOpen] = useState(false)
     const [view, setView] = useState<'days' | 'years'>('days')
     const [viewDate, setViewDate] = useState(() => {
@@ -158,7 +159,7 @@ function DatePicker({ value, onChange }: { value: string; onChange: (val: string
                     onChange={handleTextChange}
                     onFocus={() => { setOpen(true); setView('days') }}
                     maxLength={10}
-                    className="h-11 pr-10"
+                    className={`h-11 pr-10 ${hasError ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                 />
                 <button
                     type="button"
@@ -290,9 +291,9 @@ function DatePicker({ value, onChange }: { value: string; onChange: (val: string
     )
 }
 // ─── Main Component ──────────────────────────────────────────────────────────
-export default function StudentRegistration({ auth, gradeLevels = [], sections = [] }: Props) {
+export default function Registration({ auth, gradeLevels, sections, currentSchoolYear }: Props) {
     const [activeTab, setActiveTab] = useState('new')
-    const [studentStatus, setStudentStatus] = useState('')
+    const [studentStatus, setStudentStatus] = useState('new')
     const [gradeLevel, setGradeLevel] = useState('')
     const [sectionSearch, setSectionSearch] = useState('')
     const [showSectionDropdown, setShowSectionDropdown] = useState(false)
@@ -303,8 +304,8 @@ export default function StudentRegistration({ auth, gradeLevels = [], sections =
     const [duplicateStudents, setDuplicateStudents] = useState<Array<{ lrn: string; name: string }>>([])
     const [importErrors, setImportErrors] = useState<string[]>([])
     const [importStats, setImportStats] = useState({ imported: 0, duplicates: 0, errors: 0 })
-    const [startYear, setStartYear] = useState('')
-    const [endYear, setEndYear] = useState('')
+    const [startYear, setStartYear] = useState(() => currentSchoolYear ? currentSchoolYear.split('-')[0] : '')
+    const [endYear, setEndYear] = useState(() => currentSchoolYear ? currentSchoolYear.split('-')[1] : '')
     const [searchQuery, setSearchQuery] = useState('')
     const [searchResults, setSearchResults] = useState<any[]>([])
     const [isSearching, setIsSearching] = useState(false)
@@ -390,16 +391,7 @@ export default function StudentRegistration({ auth, gradeLevels = [], sections =
         }
     }, [flash.success, flash.error])
 
-    // Handle validation errors
-    useEffect(() => {
-        if (Object.keys(validationErrors).length > 0) {
-            const errorMessages = Object.values(validationErrors) as string[]
-            setAlertType('error')
-            setAlertTitle('Validation Error')
-            setAlertMessage(errorMessages)
-            setShowAlert(true)
-        }
-    }, [validationErrors])
+
 
     // Handle import flash data
     useEffect(() => {
@@ -438,10 +430,10 @@ export default function StudentRegistration({ auth, gradeLevels = [], sections =
         flash.error_count,
     ])
 
-    const { data, setData, post, processing, errors, reset } = useForm({
+    const { data, setData, post, processing, errors, reset, transform, clearErrors } = useForm({
         student_status: '',
         lrn: '',
-        school_year: '',
+        school_year: currentSchoolYear || '',
         gender: '',
         birth_date: '',
         last_name: '',
@@ -456,8 +448,19 @@ export default function StudentRegistration({ auth, gradeLevels = [], sections =
         has_good_moral: false,
     })
 
+    // Transform data before submission
+    transform((currentData) => {
+        let submitData = { ...currentData }
+        if (submitData.birth_date && submitData.birth_date.length === 10) {
+            const [mm, dd, yyyy] = submitData.birth_date.split('/')
+            submitData.birth_date = `${yyyy}-${mm}-${dd}`
+        }
+        return submitData
+    })
+
     // Sync student_status with active tab
     useEffect(() => {
+        clearErrors() // Clear validation errors when switching tabs
         if (activeTab === 'new') {
             setData('student_status', 'new')
             setStudentStatus('new')
@@ -543,15 +546,7 @@ export default function StudentRegistration({ auth, gradeLevels = [], sections =
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
 
-        // Convert MM/DD/YYYY → YYYY-MM-DD before sending to Laravel
-        let submitData = { ...data }
-        if (data.birth_date && data.birth_date.length === 10) {
-            const [mm, dd, yyyy] = data.birth_date.split('/')
-            submitData.birth_date = `${yyyy}-${mm}-${dd}`
-        }
-
-        // Submit using router.post instead of form's post method
-        router.post(store.url(), submitData, {
+        post(store.url(), {
             preserveScroll: true,
             onSuccess: () => {
                 reset()
@@ -688,157 +683,7 @@ export default function StudentRegistration({ auth, gradeLevels = [], sections =
                                 </TabsTrigger>
                             </TabsList>
 
-                            {/* Documents */}
-                            <div className="border-t border-gray-200 pt-6">
-                                <div className="flex items-center gap-2 mb-4">
-                                    <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                        </svg>
-                                    </div>
-                                    <div>
-                                        <h3 className="text-base font-semibold text-gray-900">Student Documents</h3>
-                                        <p className="text-xs text-gray-600">Check the documents that have been submitted (can be submitted as follow-up)</p>
-                                    </div>
-                                </div>
-
-                                {/* Requirements notice */}
-                                <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-xl p-4 mb-4">
-                                    <div className="flex items-start gap-3">
-                                        <div className="flex-shrink-0 w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center mt-0.5">
-                                            <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                        </div>
-                                        <div className="flex-1">
-                                            <p className="text-sm font-semibold text-amber-900 mb-1">Document Requirements</p>
-                                            <div className="text-xs text-amber-800 space-y-1">
-                                                {activeTab === 'new' && (
-                                                    <>
-                                                        <p>• <strong>Form 138 (SF9)</strong> is required</p>
-                                                        <p>• <strong>Form 137 (SF10)</strong> — please submit as soon as possible</p>
-                                                        <p>• Other documents can be submitted as follow-up</p>
-                                                    </>
-                                                )}
-                                                {activeTab === 'transferee' && (
-                                                    <>
-                                                        <p>• <strong>Form 138 (SF9)</strong> is required</p>
-                                                        <p>• <strong>Good Moral Certificate</strong> is required for transferees</p>
-                                                        <p>• <strong>Form 137 (SF10)</strong> — please submit as soon as possible</p>
-                                                        <p>• Other documents can be submitted as follow-up</p>
-                                                    </>
-                                                )}
-                                                {activeTab === 'old' && (
-                                                    <>
-                                                        <p>• <strong>Form 138 (SF9)</strong> is required</p>
-                                                        <p>• <strong>PSA Birth Certificate</strong> is required</p>
-                                                        <p>• <strong>Good Moral Certificate</strong> is required</p>
-                                                        <p>• <strong>Form 137 (SF10)</strong> — please submit as soon as possible</p>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-4">
-                                    {/* PSA Birth Certificate */}
-                                    <div className={`bg-white border-2 rounded-xl p-4 transition-colors ${activeTab === 'old' ? 'border-red-300 bg-gradient-to-br from-red-50 to-pink-50' : 'border-gray-200 hover:border-gray-300'}`}>
-                                        <div className="flex items-start gap-3">
-                                            <input
-                                                type="checkbox"
-                                                id="psa_birth_certificate"
-                                                checked={data.has_psa_birth_certificate}
-                                                onChange={(e) => setData('has_psa_birth_certificate', e.target.checked)}
-                                                className={`mt-1 h-5 w-5 rounded border-gray-300 cursor-pointer ${activeTab === 'old' ? 'text-red-600 focus:ring-red-500' : 'text-gray-600 focus:ring-gray-500'}`}
-                                            />
-                                            <label htmlFor="psa_birth_certificate" className="flex-1 cursor-pointer">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <span className="text-sm font-semibold text-gray-900">PSA Birth Certificate</span>
-                                                    {activeTab === 'old' && (
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Required</span>
-                                                    )}
-                                                </div>
-                                                <p className="text-xs text-gray-600">
-                                                    {activeTab === 'old'
-                                                        ? 'Original or certified true copy from PSA'
-                                                        : 'Original or certified true copy from PSA (can be submitted as follow-up)'}
-                                                </p>
-                                            </label>
-                                        </div>
-                                        {errors.has_psa_birth_certificate && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_psa_birth_certificate}</p>}
-                                    </div>
-
-                                    {/* Form 137 (SF10) */}
-                                    <div className="bg-white border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl p-4 transition-colors">
-                                        <div className="flex items-start gap-3">
-                                            <input
-                                                type="checkbox"
-                                                id="sf9"
-                                                checked={data.has_sf9}
-                                                onChange={(e) => setData('has_sf9', e.target.checked)}
-                                                className="mt-1 h-5 w-5 rounded border-gray-300 text-amber-600 focus:ring-amber-500 cursor-pointer"
-                                            />
-                                            <label htmlFor="sf9" className="flex-1 cursor-pointer">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <span className="text-sm font-semibold text-gray-900">Form 137 (SF10)</span>
-                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Optional But Submit ASAP</span>
-                                                </div>
-                                                <p className="text-xs text-gray-600">Learner's Permanent Academic Record — not required at enrollment but must be submitted as soon as possible</p>
-                                            </label>
-                                        </div>
-                                        {errors.has_sf9 && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_sf9}</p>}
-                                    </div>
-
-                                    {/* Form 138 (SF9) */}
-                                    <div className="bg-white border-2 border-red-300 bg-gradient-to-br from-red-50 to-pink-50 rounded-xl p-4 transition-colors">
-                                        <div className="flex items-start gap-3">
-                                            <input
-                                                type="checkbox"
-                                                id="report_card"
-                                                checked={data.has_report_card}
-                                                onChange={(e) => setData('has_report_card', e.target.checked)}
-                                                className="mt-1 h-5 w-5 rounded border-gray-300 text-red-600 focus:ring-red-500 cursor-pointer"
-                                            />
-                                            <label htmlFor="report_card" className="flex-1 cursor-pointer">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <span className="text-sm font-semibold text-gray-900">Form 138 (SF9)</span>
-                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Required</span>
-                                                </div>
-                                                <p className="text-xs text-gray-600">Learner's Progress Report Card (Report Card)</p>
-                                            </label>
-                                        </div>
-                                        {errors.has_report_card && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_report_card}</p>}
-                                    </div>
-
-                                    {/* Good Moral Certificate */}
-                                    <div className={`bg-white border-2 rounded-xl p-4 transition-colors ${activeTab === 'transferee' || activeTab === 'old' ? 'border-purple-300 bg-gradient-to-br from-purple-50 to-pink-50' : 'border-gray-200 hover:border-gray-300'}`}>
-                                        <div className="flex items-start gap-3">
-                                            <input
-                                                type="checkbox"
-                                                id="good_moral"
-                                                checked={data.has_good_moral}
-                                                onChange={(e) => setData('has_good_moral', e.target.checked)}
-                                                className={`mt-1 h-5 w-5 rounded border-gray-300 cursor-pointer ${activeTab === 'transferee' || activeTab === 'old' ? 'text-purple-600 focus:ring-purple-500' : 'text-gray-600 focus:ring-gray-500'}`}
-                                            />
-                                            <label htmlFor="good_moral" className="flex-1 cursor-pointer">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <span className="text-sm font-semibold text-gray-900">Good Moral Certificate</span>
-                                                    {(activeTab === 'transferee' || activeTab === 'old') && (
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Required</span>
-                                                    )}
-                                                </div>
-                                                <p className="text-xs text-gray-600">
-                                                    {(activeTab === 'transferee' || activeTab === 'old')
-                                                        ? 'Certificate of Good Moral Character from previous school'
-                                                        : 'Certificate of Good Moral Character from previous school (can be submitted as follow-up)'}
-                                                </p>
-                                            </label>
-                                        </div>
-                                        {errors.has_good_moral && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_good_moral}</p>}
-                                    </div>
-                                </div>
-                            </div>
+                            {/* Documents section moved to bottom of form */}
 
                             {/* ── New Student Banner ── */}
                             <TabsContent value="new">
@@ -1143,7 +988,7 @@ export default function StudentRegistration({ auth, gradeLevels = [], sections =
                                             value={data.lrn}
                                             onChange={(e) => setData('lrn', e.target.value.replace(/[^0-9]/g, ''))}
                                             maxLength={12}
-                                            className="h-11"
+                                            className={`h-11 ${errors.lrn ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                                         />
                                         {errors.lrn && <p className="text-xs text-red-500 mt-2">{errors.lrn}</p>}
                                     </div>
@@ -1156,28 +1001,21 @@ export default function StudentRegistration({ auth, gradeLevels = [], sections =
                                                 type="text"
                                                 placeholder="Start year"
                                                 value={startYear}
-                                                onChange={(e) => {
-                                                    const val = e.target.value.replace(/[^0-9]/g, '')
-                                                    setStartYear(val)
-                                                    if (val.length === 4) {
-                                                        setEndYear(String(parseInt(val) + 1))
-                                                    }
-                                                }}
-                                                maxLength={4}
-                                                className="h-11 text-center"
+                                                readOnly
+                                                disabled
+                                                className="h-11 text-center bg-gray-50"
                                             />
                                             <span className="text-gray-500 font-semibold">-</span>
                                             <Input
                                                 type="text"
                                                 placeholder="End year"
                                                 value={endYear}
-                                                onChange={(e) => setEndYear(e.target.value.replace(/[^0-9]/g, ''))}
-                                                maxLength={4}
-                                                className="h-11 text-center"
+                                                readOnly
                                                 disabled
+                                                className="h-11 text-center bg-gray-50"
                                             />
                                         </div>
-                                        <p className="text-xs text-gray-500 mt-1">Enter 4-digit start year (e.g., 2026 → auto-fills 2027)</p>
+                                        <p className="text-xs text-gray-500 mt-1">Automatically set to the current system school year.</p>
                                         {errors.school_year && <p className="text-xs text-red-500 mt-2">{errors.school_year}</p>}
                                     </div>
                                 </div>
@@ -1193,7 +1031,7 @@ export default function StudentRegistration({ auth, gradeLevels = [], sections =
                                             setData('section_id', '') // Reset section when grade level changes
                                             setSectionSearch('') // Clear section search
                                         }}>
-                                            <SelectTrigger className="h-11">
+                                            <SelectTrigger className={`h-11 ${errors.grade_level_id ? 'border-red-500 focus-visible:ring-red-500' : ''}`}>
                                                 <SelectValue placeholder="Select grade level" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -1223,7 +1061,7 @@ export default function StudentRegistration({ auth, gradeLevels = [], sections =
                                                 onChange={(e) => handleSectionSearchChange(e.target.value)}
                                                 onFocus={() => setShowSectionDropdown(true)}
                                                 disabled={availableSections.length === 0}
-                                                className="h-11 pr-10"
+                                                className={`h-11 pr-10 ${errors.section_id ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                                             />
                                             <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                                                 <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1341,7 +1179,7 @@ export default function StudentRegistration({ auth, gradeLevels = [], sections =
                                                 placeholder="Enter last name"
                                                 value={data.last_name}
                                                 onChange={(e) => setData('last_name', e.target.value)}
-                                                className="h-11"
+                                                className={`h-11 ${errors.last_name ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                                             />
                                             {errors.last_name && <p className="text-xs text-red-500 mt-2">{errors.last_name}</p>}
                                         </div>
@@ -1354,7 +1192,7 @@ export default function StudentRegistration({ auth, gradeLevels = [], sections =
                                                 placeholder="Enter first name"
                                                 value={data.first_name}
                                                 onChange={(e) => setData('first_name', e.target.value)}
-                                                className="h-11"
+                                                className={`h-11 ${errors.first_name ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                                             />
                                             {errors.first_name && <p className="text-xs text-red-500 mt-2">{errors.first_name}</p>}
                                         </div>
@@ -1394,7 +1232,7 @@ export default function StudentRegistration({ auth, gradeLevels = [], sections =
                                             Gender <span className="text-red-500">*</span>
                                         </label>
                                         <Select value={data.gender} onValueChange={(value) => setData('gender', value)}>
-                                            <SelectTrigger className="h-11">
+                                            <SelectTrigger className={`h-11 ${errors.gender ? 'border-red-500 focus-visible:ring-red-500' : ''}`}>
                                                 <SelectValue placeholder="Select gender" />
                                             </SelectTrigger>
                                             <SelectContent>
@@ -1411,12 +1249,163 @@ export default function StudentRegistration({ auth, gradeLevels = [], sections =
                                         <DatePicker
                                             value={data.birth_date}
                                             onChange={(val) => setData('birth_date', val)}
+                                            hasError={!!errors.birth_date}
                                         />
                                         {errors.birth_date && <p className="text-xs text-red-500 mt-2">{errors.birth_date}</p>}
                                     </div>
                                 </div>
 
 
+                                {/* Dynamic Documents Section */}
+                                <div className="border-t border-gray-200 pt-6 mt-6">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                                            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-base font-semibold text-gray-900">Student Documents</h3>
+                                            <p className="text-xs text-gray-600">Check the documents that have been submitted</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Define Reusable Checkbox Renderers */}
+                                    {(() => {
+                                        const SF9 = (
+                                            <div key="sf9" className="bg-white border-2 border-red-300 bg-gradient-to-br from-red-50 to-pink-50 rounded-xl p-4 transition-colors">
+                                                <div className="flex items-start gap-3">
+                                                    <input type="checkbox" id="report_card" checked={data.has_report_card} onChange={(e) => setData('has_report_card', e.target.checked)} className="mt-1 h-5 w-5 rounded border-gray-300 text-red-600 focus:ring-red-500 cursor-pointer" />
+                                                    <label htmlFor="report_card" className="flex-1 cursor-pointer">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span className="text-sm font-semibold text-gray-900">Form 138 (SF9)</span>
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Required</span>
+                                                        </div>
+                                                        <p className="text-xs text-gray-600">Learner's Progress Report Card</p>
+                                                    </label>
+                                                </div>
+                                                {errors.has_report_card && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_report_card}</p>}
+                                            </div>
+                                        );
+
+                                        const GoodMoralRequired = (
+                                            <div key="good_moral_req" className="bg-white border-2 border-purple-300 bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-4 transition-colors">
+                                                <div className="flex items-start gap-3">
+                                                    <input type="checkbox" id="good_moral" checked={data.has_good_moral} onChange={(e) => setData('has_good_moral', e.target.checked)} className="mt-1 h-5 w-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500 cursor-pointer" />
+                                                    <label htmlFor="good_moral" className="flex-1 cursor-pointer">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span className="text-sm font-semibold text-gray-900">Good Moral Certificate</span>
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Required</span>
+                                                        </div>
+                                                        <p className="text-xs text-gray-600">Certificate of Good Moral Character from previous school</p>
+                                                    </label>
+                                                </div>
+                                                {errors.has_good_moral && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_good_moral}</p>}
+                                            </div>
+                                        );
+
+                                        const PSARequired = (
+                                            <div key="psa_req" className="bg-white border-2 border-red-300 bg-gradient-to-br from-red-50 to-pink-50 rounded-xl p-4 transition-colors">
+                                                <div className="flex items-start gap-3">
+                                                    <input type="checkbox" id="psa_birth_certificate" checked={data.has_psa_birth_certificate} onChange={(e) => setData('has_psa_birth_certificate', e.target.checked)} className="mt-1 h-5 w-5 rounded border-gray-300 text-red-600 focus:ring-red-500 cursor-pointer" />
+                                                    <label htmlFor="psa_birth_certificate" className="flex-1 cursor-pointer">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span className="text-sm font-semibold text-gray-900">PSA Birth Certificate</span>
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Required</span>
+                                                        </div>
+                                                        <p className="text-xs text-gray-600">Original or certified true copy from PSA</p>
+                                                    </label>
+                                                </div>
+                                                {errors.has_psa_birth_certificate && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_psa_birth_certificate}</p>}
+                                            </div>
+                                        );
+
+                                        const SF10Optional = (
+                                            <div key="sf10" className="bg-white border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 rounded-xl p-4 transition-colors">
+                                                <div className="flex items-start gap-3">
+                                                    <input type="checkbox" id="sf9_optional" checked={data.has_sf9} onChange={(e) => setData('has_sf9', e.target.checked)} className="mt-1 h-5 w-5 rounded border-gray-300 text-amber-600 focus:ring-amber-500 cursor-pointer" />
+                                                    <label htmlFor="sf9_optional" className="flex-1 cursor-pointer">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span className="text-sm font-semibold text-gray-900">Form 137 (SF10)</span>
+                                                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">Submit ASAP</span>
+                                                        </div>
+                                                        <p className="text-xs text-gray-600">Learner's Permanent Academic Record</p>
+                                                    </label>
+                                                </div>
+                                                {errors.has_sf9 && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_sf9}</p>}
+                                            </div>
+                                        );
+
+                                        const PSAOptional = (
+                                            <div key="psa_opt" className="bg-white border-2 border-gray-200 hover:border-gray-300 rounded-xl p-4 transition-colors">
+                                                <div className="flex items-start gap-3">
+                                                    <input type="checkbox" id="psa_opt" checked={data.has_psa_birth_certificate} onChange={(e) => setData('has_psa_birth_certificate', e.target.checked)} className="mt-1 h-5 w-5 rounded border-gray-300 text-gray-600 focus:ring-gray-500 cursor-pointer" />
+                                                    <label htmlFor="psa_opt" className="flex-1 cursor-pointer">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span className="text-sm font-semibold text-gray-900">PSA Birth Certificate</span>
+                                                        </div>
+                                                        <p className="text-xs text-gray-600">Original or certified true copy from PSA</p>
+                                                    </label>
+                                                </div>
+                                                {errors.has_psa_birth_certificate && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_psa_birth_certificate}</p>}
+                                            </div>
+                                        );
+
+                                        const GoodMoralOptional = (
+                                            <div key="gm_opt" className="bg-white border-2 border-gray-200 hover:border-gray-300 rounded-xl p-4 transition-colors">
+                                                <div className="flex items-start gap-3">
+                                                    <input type="checkbox" id="gm_opt" checked={data.has_good_moral} onChange={(e) => setData('has_good_moral', e.target.checked)} className="mt-1 h-5 w-5 rounded border-gray-300 text-gray-600 focus:ring-gray-500 cursor-pointer" />
+                                                    <label htmlFor="gm_opt" className="flex-1 cursor-pointer">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span className="text-sm font-semibold text-gray-900">Good Moral Certificate</span>
+                                                        </div>
+                                                        <p className="text-xs text-gray-600">Certificate of Good Moral Character from previous school</p>
+                                                    </label>
+                                                </div>
+                                                {errors.has_good_moral && <p className="text-xs text-red-500 mt-2 ml-8">{errors.has_good_moral}</p>}
+                                            </div>
+                                        );
+
+                                        // Determine which array elements to render based on tab
+                                        let requiredDocs = [SF9];
+                                        let optionalDocs = [SF10Optional];
+
+                                        if (activeTab === 'new') {
+                                            optionalDocs.push(PSAOptional, GoodMoralOptional);
+                                        } else if (activeTab === 'transferee') {
+                                            requiredDocs.push(GoodMoralRequired);
+                                            optionalDocs.push(PSAOptional);
+                                        } else if (activeTab === 'old') {
+                                            requiredDocs.push(GoodMoralRequired, PSARequired);
+                                        }
+
+                                        return (
+                                            <div className="space-y-6">
+                                                {/* Required Section */}
+                                                <div>
+                                                    <div className="flex items-center gap-2 mb-3">
+                                                        <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                                                        <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Required Now</h4>
+                                                    </div>
+                                                    <div className="space-y-4">
+                                                        {requiredDocs}
+                                                    </div>
+                                                </div>
+
+                                                {/* Optional Section */}
+                                                <div>
+                                                    <div className="flex items-center gap-2 mb-3">
+                                                        <div className="w-2 h-2 rounded-full bg-gray-400"></div>
+                                                        <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Submit as Follow-up</h4>
+                                                    </div>
+                                                    <div className="space-y-4">
+                                                        {optionalDocs}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )
+                                    })()}
+                                </div>
 
                                 {/* Form Actions */}
                                 <div className="flex gap-3 pt-6 border-t border-gray-200">

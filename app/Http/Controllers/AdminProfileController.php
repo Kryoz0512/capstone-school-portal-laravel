@@ -62,7 +62,7 @@ class AdminProfileController extends Controller
     public function uploadProfilePicture(Request $request)
     {
         $request->validate([
-            'profile_picture' => ['required', 'image', 'mimes:jpeg,jpg,png', 'max:2048'], // 2MB max
+            'profile_picture' => ['required', 'image', 'mimes:jpeg,jpg,png,webp', 'max:2048'], // 2MB max
         ]);
 
         $user = Auth::user();

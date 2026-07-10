@@ -3,6 +3,7 @@ import { usePage } from '@inertiajs/react'
 import TeacherSidebar from '@/components/teacher-sidebar'
 import TeacherHeader from '@/components/teacher-header'
 import { Toaster } from 'sonner'
+import AutoLogoutWrapper from '@/components/auto-logout-wrapper'
 
 type TeacherLayoutProps = {
     children: ReactNode
@@ -20,20 +21,22 @@ export default function TeacherLayout({ children, user }: TeacherLayoutProps) {
     const { auth } = usePage<{ auth: { teacher?: { profile_picture?: string | null } } }>().props
 
     return (
-        <div className="flex min-h-screen bg-white">
-            <Toaster position="top-right" richColors closeButton />
-            
-            {/* Sidebar — desktop only (hidden on mobile) */}
-            <TeacherSidebar />
+        <AutoLogoutWrapper>
+            <div className="flex min-h-screen bg-white">
+                <Toaster position="top-right" richColors closeButton />
+                
+                {/* Sidebar — desktop only (hidden on mobile) */}
+                <TeacherSidebar />
 
-            {/* Main content — no left margin on mobile, offset by sidebar width on desktop */}
-            <div className="flex-1 flex flex-col min-w-0 lg:ml-72">
-                <TeacherHeader user={user} teacher={auth?.teacher} />
+                {/* Main content — no left margin on mobile, offset by sidebar width on desktop */}
+                <div className="flex-1 flex flex-col min-w-0 lg:ml-72">
+                    <TeacherHeader user={user} teacher={auth?.teacher} />
 
-                <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-gray-50">
-                    {children}
-                </main>
+                    <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-gray-50">
+                        {children}
+                    </main>
+                </div>
             </div>
-        </div>
+        </AutoLogoutWrapper>
     )
 }

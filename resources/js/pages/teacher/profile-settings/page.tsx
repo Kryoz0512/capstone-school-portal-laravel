@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Camera, Trash2, Upload, X } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
+import { convertToWebP } from '@/utils/image-converter'
 
 type Teacher = { firstName: string; lastName: string; email: string; phone: string; address: string; profile_picture?: string | null }
 type Props = { teacher: Teacher; auth?: { user: { id: number; name: string; email: string; role: string }; teacher?: { profile_picture?: string | null } } }
@@ -44,7 +45,7 @@ export default function ProfileSettings({ teacher, auth }: Props) {
         router.post('/logout')
     }
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (!file) return
         if (!file.type.startsWith('image/')) { alert('Please select an image file'); return }
@@ -52,9 +53,16 @@ export default function ProfileSettings({ teacher, auth }: Props) {
         const reader = new FileReader()
         reader.onloadend = () => setPreviewImage(reader.result as string)
         reader.readAsDataURL(file)
-        const formData = new FormData()
-        formData.append('profile_picture', file)
-        router.post('/teacher/profile-settings/picture', formData, { preserveScroll: true, onError: (errors) => { alert(errors.profile_picture || 'Failed to upload image'); setPreviewImage(teacher.profile_picture || null) } })
+        
+        try {
+            const webpFile = await convertToWebP(file)
+            const formData = new FormData()
+            formData.append('profile_picture', webpFile)
+            router.post('/teacher/profile-settings/picture', formData, { preserveScroll: true, onError: (errors) => { alert(errors.profile_picture || 'Failed to upload image'); setPreviewImage(teacher.profile_picture || null) } })
+        } catch (error) {
+            console.error(error)
+            alert('Failed to process image before upload')
+        }
     }
 
     const handleDeletePicture = () => {
@@ -82,19 +90,26 @@ export default function ProfileSettings({ teacher, auth }: Props) {
         canvas.width = videoRef.current.videoWidth
         canvas.height = videoRef.current.videoHeight
         canvas.getContext('2d')?.drawImage(videoRef.current, 0, 0)
-        canvas.toBlob(blob => {
+        canvas.toBlob(async blob => {
             if (blob) {
-                const file = new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' })
+                const file = new File([blob], 'camera-photo.webp', { type: 'image/webp' })
                 const reader = new FileReader()
                 reader.onloadend = () => setPreviewImage(reader.result as string)
                 reader.readAsDataURL(file)
-                const formData = new FormData()
-                formData.append('profile_picture', file)
-                router.post('/teacher/profile-settings/picture', formData, { preserveScroll: true, onError: (errors) => { alert(errors.profile_picture || 'Failed to upload image'); setPreviewImage(teacher.profile_picture || null) } })
-                stopCamera()
-                setShowCameraDialog(false)
+                
+                try {
+                    const webpFile = await convertToWebP(file)
+                    const formData = new FormData()
+                    formData.append('profile_picture', webpFile)
+                    router.post('/teacher/profile-settings/picture', formData, { preserveScroll: true, onError: (errors) => { alert(errors.profile_picture || 'Failed to upload image'); setPreviewImage(teacher.profile_picture || null) } })
+                    stopCamera()
+                    setShowCameraDialog(false)
+                } catch (error) {
+                    console.error(error)
+                    alert('Failed to process image before upload')
+                }
             }
-        }, 'image/jpeg', 0.95)
+        }, 'image/webp', 0.95)
     }
 
     useEffect(() => {
@@ -166,40 +181,30 @@ export default function ProfileSettings({ teacher, auth }: Props) {
                 {/* Personal Information */}
                 <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
                     <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-4 sm:mb-6">Personal Information</h2>
-                    <form onSubmit={handleProfileSubmit} className="space-y-4">
+                    <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
-                                <Input type="text" value={profileForm.data.firstName} onChange={e => profileForm.setData('firstName', e.target.value)} required />
-                                {profileForm.errors.firstName && <p className="text-xs text-red-500 mt-1">{profileForm.errors.firstName}</p>}
+                                <Input type="text" value={profileForm.data.firstName} disabled readOnly />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
-                                <Input type="text" value={profileForm.data.lastName} onChange={e => profileForm.setData('lastName', e.target.value)} required />
-                                {profileForm.errors.lastName && <p className="text-xs text-red-500 mt-1">{profileForm.errors.lastName}</p>}
+                                <Input type="text" value={profileForm.data.lastName} disabled readOnly />
                             </div>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                                <Input type="email" value={teacher.email} disabled className="bg-gray-50" />
-                                <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                                <Input type="email" value={teacher.email} disabled readOnly className="bg-gray-50" />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                                <PhoneInput value={profileForm.data.phone} onChange={v => profileForm.setData('phone', v)} />
-                                {profileForm.errors.phone && <p className="text-xs text-red-500 mt-1">{profileForm.errors.phone}</p>}
+                                <PhoneInput value={profileForm.data.phone} onChange={() => {}} disabled />
                             </div>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
-                            <Input type="text" value={profileForm.data.address} onChange={e => profileForm.setData('address', e.target.value)} placeholder="Enter address" />
-                            {profileForm.errors.address && <p className="text-xs text-red-500 mt-1">{profileForm.errors.address}</p>}
-                        </div>
-                        <div className="pt-2 sm:pt-4">
-                            <Button type="submit" className="bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto" disabled={profileForm.processing}>
-                                {profileForm.processing ? 'Saving...' : 'Save Changes'}
-                            </Button>
+                            <Input type="text" value={profileForm.data.address} disabled readOnly />
                         </div>
                     </form>
                 </div>

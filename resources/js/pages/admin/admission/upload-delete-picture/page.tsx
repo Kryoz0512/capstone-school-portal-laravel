@@ -29,6 +29,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import axios from 'axios'
+import { convertToWebP } from '@/utils/image-converter'
 
 type Props = {
     auth?: {
@@ -142,8 +143,10 @@ export default function UploadDeletePicturePage({ auth, people, counts, filters 
         setBusyId(row.id)
 
         try {
+            const webpFile = await convertToWebP(file)
+            
             const formData = new FormData()
-            formData.append('picture', file)
+            formData.append('picture', webpFile)
             formData.append('user_id', row.id.toString())
             formData.append('user_type', row.type)
 

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Eye, EyeOff, Camera, Trash2, Upload, X } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
+import { convertToWebP } from '@/utils/image-converter'
 import { useForm, usePage } from '@inertiajs/react'
 
 type Student = {
@@ -95,7 +96,7 @@ export default function ProfileSettings({ student, auth }: Props) {
         })
     }
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (!file) return
         if (!file.type.startsWith('image/')) { alert('Please select an image file'); return }
@@ -103,15 +104,22 @@ export default function ProfileSettings({ student, auth }: Props) {
         const reader = new FileReader()
         reader.onloadend = () => setPreviewImage(reader.result as string)
         reader.readAsDataURL(file)
-        const formData = new FormData()
-        formData.append('profile_picture', file)
-        router.post('/student/profile-settings/picture', formData, {
-            preserveScroll: true,
-            onError: (errors) => {
-                alert(errors.profile_picture || 'Failed to upload image')
-                setPreviewImage(student.profile_picture || null)
-            },
-        })
+        
+        try {
+            const webpFile = await convertToWebP(file)
+            const formData = new FormData()
+            formData.append('profile_picture', webpFile)
+            router.post('/student/profile-settings/picture', formData, {
+                preserveScroll: true,
+                onError: (errors) => {
+                    alert(errors.profile_picture || 'Failed to upload image')
+                    setPreviewImage(student.profile_picture || null)
+                },
+            })
+        } catch (error) {
+            console.error(error)
+            alert('Failed to process image before upload')
+        }
     }
 
     const handleDeletePicture = () => {
@@ -151,25 +159,32 @@ export default function ProfileSettings({ student, auth }: Props) {
         canvas.getContext('2d')?.drawImage(video, 0, 0)
         canvas.toBlob((blob) => {
             if (!blob) return
-            uploadImage(new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' }))
+            uploadImage(new File([blob], 'camera-photo.webp', { type: 'image/webp' }))
             stopCamera()
             setShowCameraDialog(false)
-        }, 'image/jpeg', 0.95)
+        }, 'image/webp', 0.95)
     }
 
-    const uploadImage = (file: File) => {
+    const uploadImage = async (file: File) => {
         const reader = new FileReader()
         reader.onloadend = () => setPreviewImage(reader.result as string)
         reader.readAsDataURL(file)
-        const formData = new FormData()
-        formData.append('profile_picture', file)
-        router.post('/student/profile-settings/picture', formData, {
-            preserveScroll: true,
-            onError: (errors) => {
-                alert(errors.profile_picture || 'Failed to upload image')
-                setPreviewImage(student.profile_picture || null)
-            },
-        })
+        
+        try {
+            const webpFile = await convertToWebP(file)
+            const formData = new FormData()
+            formData.append('profile_picture', webpFile)
+            router.post('/student/profile-settings/picture', formData, {
+                preserveScroll: true,
+                onError: (errors) => {
+                    alert(errors.profile_picture || 'Failed to upload image')
+                    setPreviewImage(student.profile_picture || null)
+                },
+            })
+        } catch (error) {
+            console.error(error)
+            alert('Failed to process image before upload')
+        }
     }
 
     const handleCameraDialogClose = () => { stopCamera(); setShowCameraDialog(false) }
@@ -219,46 +234,23 @@ export default function ProfileSettings({ student, auth }: Props) {
                                     </div>
                                 )}
                                 <div className="upload-options-container">
-                                    <button
-                                        onClick={() => setShowUploadOptions(!showUploadOptions)}
-                                        className="absolute bottom-0 right-0 bg-green-700 hover:bg-green-800 text-white p-2 rounded-full shadow-lg transition-colors"
-                                        title="Change profile picture"
-                                    >
-                                        <Camera className="w-4 h-4" />
+                                    <button onClick={() => setShowUploadOptions(!showUploadOptions)} className="absolute bottom-0 right-0 bg-green-600 hover:bg-green-700 text-white p-1.5 sm:p-2 rounded-full shadow-lg transition-colors" title="Change profile picture">
+                                        <Camera className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                     </button>
                                     {showUploadOptions && (
-                                        <div className="absolute top-full left-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 p-2 z-10 min-w-[200px]">
-                                            <button
-                                                onClick={() => {
-                                                    setShowCameraDialog(true)
-                                                    setShowUploadOptions(false)
-                                                    setTimeout(() => startCamera(), 100)
-                                                }}
-                                                className="w-full flex items-center gap-2 px-4 py-2 text-left hover:bg-gray-100 rounded-md transition-colors"
-                                            >
-                                                <Camera className="w-4 h-4" />
-                                                <span className="text-sm">Take Photo</span>
+                                        <div className="absolute top-full right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 p-2 z-10 min-w-[180px] sm:min-w-[200px]">
+                                            <button onClick={() => { setShowCameraDialog(true); setShowUploadOptions(false); setTimeout(() => startCamera(), 100) }} className="w-full flex items-center gap-2 px-4 py-2 text-left hover:bg-gray-100 rounded-md transition-colors">
+                                                <Camera className="w-4 h-4" /><span className="text-sm">Take Photo</span>
                                             </button>
-                                            <button
-                                                onClick={() => {
-                                                    fileInputRef.current?.click()
-                                                    setShowUploadOptions(false)
-                                                }}
-                                                className="w-full flex items-center gap-2 px-4 py-2 text-left hover:bg-gray-100 rounded-md transition-colors"
-                                            >
-                                                <Upload className="w-4 h-4" />
-                                                <span className="text-sm">Upload Photo</span>
+                                            <button onClick={() => { fileInputRef.current?.click(); setShowUploadOptions(false) }} className="w-full flex items-center gap-2 px-4 py-2 text-left hover:bg-gray-100 rounded-md transition-colors">
+                                                <Upload className="w-4 h-4" /><span className="text-sm">Upload Photo</span>
                                             </button>
                                         </div>
                                     )}
                                 </div>
                                 {previewImage && (
-                                    <button
-                                        onClick={handleDeletePicture}
-                                        className="absolute top-0 right-0 bg-red-600 hover:bg-red-700 text-white p-1.5 rounded-full shadow-lg transition-colors"
-                                        title="Delete profile picture"
-                                    >
-                                        <Trash2 className="w-3.5 h-3.5" />
+                                    <button onClick={handleDeletePicture} className="absolute top-0 right-0 bg-red-600 hover:bg-red-700 text-white p-1.5 sm:p-2 rounded-full shadow-lg transition-colors" title="Delete profile picture">
+                                        <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                     </button>
                                 )}
                                 <input ref={fileInputRef} type="file" accept="image/jpeg,image/jpg,image/png" onChange={handleFileSelect} className="hidden" />
@@ -278,81 +270,64 @@ export default function ProfileSettings({ student, auth }: Props) {
                         <CardTitle>Personal Information</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <form onSubmit={handleProfileSubmit}>
+                        <form onSubmit={(e) => e.preventDefault()}>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
                                     <Input
                                         value={profileForm.data.firstName}
-                                        onChange={(e) => profileForm.setData('firstName', e.target.value)}
-                                        required
+                                        disabled
+                                        readOnly
                                     />
-                                    {profileForm.errors.firstName && <p className="text-xs text-red-500 mt-1">{profileForm.errors.firstName}</p>}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
                                     <Input
                                         value={profileForm.data.lastName}
-                                        onChange={(e) => profileForm.setData('lastName', e.target.value)}
-                                        required
+                                        disabled
+                                        readOnly
                                     />
-                                    {profileForm.errors.lastName && <p className="text-xs text-red-500 mt-1">{profileForm.errors.lastName}</p>}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-                                    <Input type="email" value={student.email} disabled className="bg-gray-50" />
-                                    <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                                    <Input type="email" value={student.email} disabled readOnly className="bg-gray-50" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Mobile Number</label>
-                                    <PhoneInput value={profileForm.data.mobileNumber} onChange={(value) => profileForm.setData('mobileNumber', value)} />
-                                    {profileForm.errors.mobileNumber && <p className="text-xs text-red-500 mt-1">{profileForm.errors.mobileNumber}</p>}
+                                    <PhoneInput value={profileForm.data.mobileNumber} onChange={() => {}} disabled />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Guardian's Contact Number</label>
-                                    <PhoneInput value={profileForm.data.contactNumber} onChange={(value) => profileForm.setData('contactNumber', value)} />
-                                    {profileForm.errors.contactNumber && <p className="text-xs text-red-500 mt-1">{profileForm.errors.contactNumber}</p>}
+                                    <PhoneInput value={profileForm.data.contactNumber} onChange={() => {}} disabled />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
-                                    <Input type="date" value={profileForm.data.birthDate} onChange={(e) => profileForm.setData('birthDate', e.target.value)} />
-                                    {profileForm.errors.birthDate && <p className="text-xs text-red-500 mt-1">{profileForm.errors.birthDate}</p>}
+                                    <Input type="date" value={profileForm.data.birthDate} disabled readOnly />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Place of Birth</label>
-                                    <Input value={profileForm.data.placeOfBirth} onChange={(e) => profileForm.setData('placeOfBirth', e.target.value)} placeholder="Enter place of birth" />
-                                    {profileForm.errors.placeOfBirth && <p className="text-xs text-red-500 mt-1">{profileForm.errors.placeOfBirth}</p>}
+                                    <Input value={profileForm.data.placeOfBirth} disabled readOnly />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">City/Municipality</label>
-                                    <Input value={profileForm.data.cityMunicipality} onChange={(e) => profileForm.setData('cityMunicipality', e.target.value)} placeholder="Enter city/municipality" />
-                                    {profileForm.errors.cityMunicipality && <p className="text-xs text-red-500 mt-1">{profileForm.errors.cityMunicipality}</p>}
+                                    <Input value={profileForm.data.cityMunicipality} disabled readOnly />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Province/State</label>
-                                    <Input value={profileForm.data.provinceState} onChange={(e) => profileForm.setData('provinceState', e.target.value)} placeholder="Enter province/state" />
-                                    {profileForm.errors.provinceState && <p className="text-xs text-red-500 mt-1">{profileForm.errors.provinceState}</p>}
+                                    <Input value={profileForm.data.provinceState} disabled readOnly />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
-                                    <Input value={profileForm.data.country} onChange={(e) => profileForm.setData('country', e.target.value)} placeholder="Enter country" />
-                                    {profileForm.errors.country && <p className="text-xs text-red-500 mt-1">{profileForm.errors.country}</p>}
+                                    <Input value={profileForm.data.country} disabled readOnly />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Nationality</label>
-                                    <Input value={profileForm.data.nationality} onChange={(e) => profileForm.setData('nationality', e.target.value)} placeholder="Enter nationality" />
-                                    {profileForm.errors.nationality && <p className="text-xs text-red-500 mt-1">{profileForm.errors.nationality}</p>}
+                                    <Input value={profileForm.data.nationality} disabled readOnly />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Religion</label>
-                                    <Input value={profileForm.data.religion} onChange={(e) => profileForm.setData('religion', e.target.value)} placeholder="Enter religion" />
-                                    {profileForm.errors.religion && <p className="text-xs text-red-500 mt-1">{profileForm.errors.religion}</p>}
+                                    <Input value={profileForm.data.religion} disabled readOnly />
                                 </div>
-                            </div>
-                            <div className="mt-6">
-                                <Button type="submit" className="bg-green-700 hover:bg-green-800 w-full sm:w-auto" disabled={profileForm.processing}>
-                                    {profileForm.processing ? 'Saving...' : 'Save Changes'}
-                                </Button>
                             </div>
                         </form>
                     </CardContent>

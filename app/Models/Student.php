@@ -107,6 +107,11 @@ class Student extends Model
         return $this->morphOne(ProfilePicture::class, 'profileable');
     }
 
+    public function grades()
+    {
+        return $this->hasMany(Grade::class, 'student_id');
+    }
+
     public function archivedByUser()
     {
         return $this->belongsTo(User::class, 'archived_by');

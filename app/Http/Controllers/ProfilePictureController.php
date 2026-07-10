@@ -114,7 +114,7 @@ class ProfilePictureController extends Controller
         $validated = $request->validate([
             'user_id' => 'required|integer',
             'user_type' => 'required|in:student,teacher,staff_admin',
-            'picture' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'picture' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ]);
 
         try {

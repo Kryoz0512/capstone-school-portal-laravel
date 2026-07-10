@@ -1,5 +1,6 @@
 import { Head, router, useForm } from '@inertiajs/react'
 import AdminLayout from '@/layouts/admin-layout'
+import { convertToWebP } from '@/utils/image-converter'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PhoneInput } from '@/components/ui/phone-input'
@@ -323,8 +324,10 @@ export default function EditStudentGSPIS({ auth, student }: Props) {
         setUploadingPicture(true)
 
         try {
+            const webpFile = await convertToWebP(file)
+            
             const formData = new FormData()
-            formData.append('picture', file)
+            formData.append('picture', webpFile)
             formData.append('user_id', student.id.toString())
             formData.append('user_type', 'student')
 

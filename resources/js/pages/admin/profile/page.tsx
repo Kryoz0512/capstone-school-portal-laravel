@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Camera, Trash2, Upload, X } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
+import { convertToWebP } from '@/utils/image-converter'
 
 type Props = {
     profile: {
@@ -140,17 +141,17 @@ export default function ProfileSettings({ profile }: Props) {
                 
                 canvas.toBlob((blob) => {
                     if (blob) {
-                        const file = new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' })
+                        const file = new File([blob], 'camera-photo.webp', { type: 'image/webp' })
                         uploadImage(file)
                         stopCamera()
                         setShowCameraDialog(false)
                     }
-                }, 'image/jpeg', 0.95)
+                }, 'image/webp', 0.95)
             }
         }
     }
 
-    const uploadImage = (file: File) => {
+    const uploadImage = async (file: File) => {
         // Preview image
         const reader = new FileReader()
         reader.onloadend = () => {
@@ -158,20 +159,27 @@ export default function ProfileSettings({ profile }: Props) {
         }
         reader.readAsDataURL(file)
 
-        // Upload image
-        const formData = new FormData()
-        formData.append('profile_picture', file)
+        try {
+            const webpFile = await convertToWebP(file)
+            
+            // Upload image
+            const formData = new FormData()
+            formData.append('profile_picture', webpFile)
 
-        router.post('/admin/profile/picture', formData, {
-            preserveScroll: true,
-            onSuccess: () => {
-                // Image uploaded successfully
-            },
-            onError: (errors) => {
-                alert(errors.profile_picture || 'Failed to upload image')
-                setPreviewImage(profile.profile_picture)
-            }
-        })
+            router.post('/admin/profile/picture', formData, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    // Image uploaded successfully
+                },
+                onError: (errors) => {
+                    alert(errors.profile_picture || 'Failed to upload image')
+                    setPreviewImage(profile.profile_picture)
+                }
+            })
+        } catch (error) {
+            console.error('Failed to convert image:', error)
+            alert('Failed to process the image before uploading')
+        }
     }
 
     const handleCameraDialogClose = () => {

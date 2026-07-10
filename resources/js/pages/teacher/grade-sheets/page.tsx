@@ -89,6 +89,29 @@ export default function GradeManagement({ gradeLevels, sections, subjects, stude
     }, [gradeLevel, section, subject, schoolYear])
 
     useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search)
+        if (urlParams.get('print') === 'true') {
+            const timer = setTimeout(() => window.print(), 800)
+            return () => clearTimeout(timer)
+        }
+    }, [])
+
+    const handlePrintAll = () => {
+        if (!section || !subject) {
+            toast.error('Please select a section and subject first')
+            return
+        }
+        const params = new URLSearchParams()
+        if (gradeLevel) params.set('grade_level_id', gradeLevel)
+        if (section) params.set('section_id', section)
+        if (subject) params.set('subject_id', subject)
+        if (schoolYear) params.set('school_year', schoolYear)
+        params.set('per_page', '99999')
+        params.set('print', 'true')
+        window.open(`/teacher/grade-sheets?${params.toString()}`, '_blank')
+    }
+
+    useEffect(() => {
         if (searchDebounce.current) clearTimeout(searchDebounce.current)
         searchDebounce.current = setTimeout(() => {
             if (section && subject) {
@@ -391,13 +414,18 @@ export default function GradeManagement({ gradeLevels, sections, subjects, stude
                             </div>
 
                             <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
-                                <div className="p-4 border-b border-gray-200 flex items-center justify-between no-print">
+                                <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between no-print">
                                     <p className="text-sm text-gray-600">
                                         <span className="font-medium text-blue-600">Tip:</span> Click on any quarter cell to input or edit grades
                                     </p>
-                                    <Button variant="outline" size="sm" onClick={() => window.print()}>
-                                        <Printer className="w-4 h-4 mr-2" /> Print
-                                    </Button>
+                                    <div className="flex items-center gap-2">
+                                        <Button variant="outline" size="sm" onClick={handlePrintAll}>
+                                            <Printer className="w-4 h-4 mr-2" /> Print All
+                                        </Button>
+                                        <Button variant="outline" size="sm" onClick={() => window.print()}>
+                                            <Printer className="w-4 h-4 mr-2" /> Print Page
+                                        </Button>
+                                    </div>
                                 </div>
                                 <div className="overflow-x-auto">
                                     <table className="w-full min-w-[900px]">

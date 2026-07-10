@@ -36,41 +36,46 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         $user = $request->user();
-        $profilePicture = null;
         $userTypeData = null;
 
         if ($user) {
-            // Get profile picture based on user role
             switch ($user->role) {
                 case 'admin':
                 case 'super_admin':
-                    $admin = \App\Models\Admin::where('user_id', $user->id)->with('profilePicture')->first();
-                    if ($admin) {
-                        $profilePicture = $admin->profilePicture?->file_path
-                            ? asset('storage/' . $admin->profilePicture->file_path)
-                            : null;
+                    $admin = \App\Models\Admin::select('id', 'user_id', 'role', 'position')
+                        ->where('user_id', $user->id)
+                        ->with(['profilePicture:id,profileable_id,profileable_type,file_path'])
+                        ->first();
 
+                    if ($admin) {
                         $userTypeData = [
                             'role' => $admin->role,
                             'position' => $admin->position,
-                            'profile_picture' => $profilePicture,
+                            'profile_picture' => $admin->profilePicture?->file_path
+                                ? asset('storage/' . $admin->profilePicture->file_path)
+                                : null,
                         ];
                     }
                     break;
 
                 case 'teacher':
-                    $teacher = \App\Models\Teacher::where('user_id', $user->id)->with('profilePicture')->first();
+                    $teacher = \App\Models\Teacher::select('id', 'user_id')
+                        ->where('user_id', $user->id)
+                        ->with(['profilePicture:id,profileable_id,profileable_type,file_path'])
+                        ->first();
+
                     if ($teacher) {
                         $profilePicture = $teacher->profilePicture?->file_path
                             ? asset('storage/' . $teacher->profilePicture->file_path)
                             : null;
 
-                        $schoolYear = \App\Models\Student::orderBy('school_year', 'desc')
-                            ->value('school_year') ?? date('Y') . '-' . (date('Y') + 1);
+                        // Cache school year per-request to avoid duplicate queries in controllers
+                        $schoolYear = \App\Services\SchoolYearService::current();
 
-                        $advisoryAssignment = \App\Models\AdviserSection::where('teacher_id', $teacher->id)
+                        $advisoryAssignment = \App\Models\AdviserSection::select('id', 'teacher_id', 'class_section_id', 'school_year')
+                            ->where('teacher_id', $teacher->id)
                             ->where('school_year', $schoolYear)
-                            ->with('classSection.gradeLevel')
+                            ->with(['classSection:id,section_name,grade_level_id', 'classSection.gradeLevel:id,name'])
                             ->first();
 
                         $userTypeData = [
@@ -87,20 +92,23 @@ class HandleInertiaRequests extends Middleware
                     break;
 
                 case 'student':
-                    $student = \App\Models\Student::where('user_id', $user->id)->with('profilePicture')->first();
+                    $student = \App\Models\Student::select('id', 'user_id')
+                        ->where('user_id', $user->id)
+                        ->with(['profilePicture:id,profileable_id,profileable_type,file_path'])
+                        ->first();
+
                     if ($student) {
-                        $profilePicture = $student->profilePicture?->file_path
-                            ? asset('storage/' . $student->profilePicture->file_path)
-                            : null;
                         $userTypeData = [
-                            'profile_picture' => $profilePicture,
+                            'profile_picture' => $student->profilePicture?->file_path
+                                ? asset('storage/' . $student->profilePicture->file_path)
+                                : null,
                         ];
                     }
                     break;
             }
         }
 
-        $sharedData = [
+        return [
             ...parent::share($request),
             'name' => config('app.name'),
             'auth' => [
@@ -121,7 +129,5 @@ class HandleInertiaRequests extends Middleware
                 'import_row_errors' => session('import_row_errors'), // renamed
             ],
         ];
-
-        return $sharedData;
     }
 }

@@ -21,7 +21,7 @@ type Student = {
 type GradeLevel = {
     id: number
     name: string
-    student_count?: number
+    students_count?: number
 }
 
 type Section = {
@@ -258,7 +258,7 @@ export default function EnrollmentList({ auth, students, gradeLevels = [], secti
                                     </div>
                                     <div className="text-right">
                                         <p className="text-2xl font-semibold text-slate-900">
-                                            {grade.student_count || 0}
+                                            {grade.students_count || 0}
                                         </p>
                                         <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
                                             Students

@@ -48,6 +48,25 @@ export default function ClassList({ subjects, sections, schoolYears, students, p
         navigate(1)
     }, [subject, section, schoolYear])
 
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search)
+        if (urlParams.get('print') === 'true') {
+            const timer = setTimeout(() => window.print(), 800)
+            return () => clearTimeout(timer)
+        }
+    }, [])
+
+    const handlePrintAll = () => {
+        if (!section) return
+        const params = new URLSearchParams()
+        if (subject) params.set('subject_id', subject)
+        if (section) params.set('section_id', section)
+        if (schoolYear) params.set('school_year', schoolYear)
+        params.set('per_page', '99999')
+        params.set('print', 'true')
+        window.open(`/teacher/class-list?${params.toString()}`, '_blank')
+    }
+
     // Search with debounce
     useEffect(() => {
         if (searchDebounce.current) clearTimeout(searchDebounce.current)
@@ -155,9 +174,12 @@ export default function ClassList({ subjects, sections, schoolYears, students, p
                             </div>
 
                             <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
-                            <div className="p-4 border-b border-gray-200 flex items-center justify-end no-print">
+                            <div className="p-4 border-b border-gray-200 flex items-center justify-end gap-2 no-print">
+                                <Button variant="outline" size="sm" onClick={handlePrintAll}>
+                                    <Printer className="w-4 h-4 mr-2" /> Print All
+                                </Button>
                                 <Button variant="outline" size="sm" onClick={() => window.print()}>
-                                    <Printer className="w-4 h-4 mr-2" /> Print
+                                    <Printer className="w-4 h-4 mr-2" /> Print Page
                                 </Button>
                             </div>
                             <div className="overflow-x-auto">

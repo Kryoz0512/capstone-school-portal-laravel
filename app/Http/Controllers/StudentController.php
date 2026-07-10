@@ -760,7 +760,7 @@ class StudentController extends Controller
         $gradeLevelFilter = $request->input('grade_level', 'all');
         $perPage = (int) $request->input('per_page', 10);
 
-        $query = Student::with('gradeLevel');
+        $query = Student::with(['gradeLevel', 'user:id,password_changed']);
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
@@ -785,7 +785,7 @@ class StudentController extends Controller
                     'lrn' => $student->lrn,
                     'name' => trim($student->first_name . ' ' . ($student->middle_name ? $student->middle_name . ' ' : '') . $student->last_name),
                     'grade_level' => $student->gradeLevel ? $student->gradeLevel->name : 'N/A',
-                    'requires_password_change' => $this->studentRequiresPasswordChange($student),
+                    'requires_password_change' => $student->user ? !$student->user->password_changed : false,
                 ];
             });
 
@@ -812,11 +812,7 @@ class StudentController extends Controller
         ]);
     }
 
-    private function studentRequiresPasswordChange(Student $student): bool
-    {
-        $user = User::find($student->user_id);
-        return $user ? !$user->password_changed : false;
-    }
+    // studentRequiresPasswordChange() removed — inlined into userManagement() after eager-loading user
 
     public function resetPassword(Student $student)
     {
@@ -1449,7 +1445,7 @@ class StudentController extends Controller
                 return back()->withErrors(['export' => 'XLSX export is not available. Please use CSV format or enable the zip extension.']);
             }
 
-            $students = Student::with(['gradeLevel'])->get();
+            $students = Student::with(['gradeLevel'])->cursor();
             $extension = $format === 'xlsx' ? 'xlsx' : 'csv';
 
             $writer = \Spatie\SimpleExcel\SimpleExcelWriter::streamDownload(
@@ -1531,6 +1527,11 @@ class StudentController extends Controller
             $duplicateStudents = [];
 
             $isFirstRow = true;
+
+            // Preload lookups to avoid N+1 queries during import
+            $gradeLevelsCache = \App\Models\GradeLevel::all()->keyBy(fn($g) => strtolower(trim($g->name)));
+            $sectionsCache = \App\Models\ClassSection::with('gradeLevel')->get()->groupBy(fn($s) => strtolower(trim($s->section_name)));
+            $studentsCache = \App\Models\Student::select('id', 'lrn', 'school_year', 'user_id')->get()->keyBy('lrn');
 
             foreach ($rows as $index => $row) {
                 // Skip header row
@@ -1615,7 +1616,7 @@ class StudentController extends Controller
                 // Checked independently, first, so it always reports regardless of
                 // whether grade level / section further down are valid or not.
                 $duplicateLrn = false;
-                $existingStudentForCheck = $lrn ? Student::where('lrn', $lrn)->first() : null;
+                $existingStudentForCheck = $lrn ? $studentsCache->get($lrn) : null;
                 if ($existingStudentForCheck && $existingStudentForCheck->school_year === $schoolYear) {
                     $rowErrors[] = "Row {$rowNum}: LRN '{$lrn}' already exists in the system for this school year. Student will be marked as invalid.";
                     $duplicateLrn = true;
@@ -1632,7 +1633,7 @@ class StudentController extends Controller
                     if (empty($gradeLevelName) || trim($gradeLevelName) === '') {
                         $rowErrors[] = "Row {$rowNum}: Grade level is blank. This student will be automatically assigned to Grade 7 (default for new students).";
                     }
-                    $gradeLevel = GradeLevel::where('name', 'Grade 7')->first();
+                    $gradeLevel = $gradeLevelsCache->get('grade 7');
                 } else {
                     // Check if grade level is null or blank for non-new students
                     if (empty($gradeLevelName) || trim($gradeLevelName) === '') {
@@ -1640,7 +1641,7 @@ class StudentController extends Controller
                         $invalidGradeLevel = true;
                     } else {
                         // Try to find the grade level in the system
-                        $gradeLevel = GradeLevel::where('name', $gradeLevelName)->first();
+                        $gradeLevel = $gradeLevelsCache->get(strtolower($gradeLevelName));
 
                         if (!$gradeLevel) {
                             $rowErrors[] = "Row {$rowNum}: There is no grade level like '{$gradeLevelName}' on the system. Student will be marked as invalid.";
@@ -1671,13 +1672,12 @@ class StudentController extends Controller
                         $invalidSection = true;
                     } else {
                         // Check if section exists in the specified grade level
-                        $section = ClassSection::whereRaw('LOWER(section_name) = ?', [strtolower($sectionName)])
-                            ->where('grade_level_id', $gradeLevel->id)
-                            ->first();
+                        $sectionMatches = $sectionsCache->get(strtolower($sectionName));
+                        $section = $sectionMatches ? $sectionMatches->firstWhere('grade_level_id', $gradeLevel->id) : null;
 
                         if (!$section) {
                             // Check if section exists in ANY grade level
-                            $sectionExistsElsewhere = ClassSection::whereRaw('LOWER(section_name) = ?', [strtolower($sectionName)])->first();
+                            $sectionExistsElsewhere = $sectionMatches ? $sectionMatches->first() : null;
 
                             if ($sectionExistsElsewhere) {
                                 // Section exists but in different grade level
@@ -1718,7 +1718,7 @@ class StudentController extends Controller
                         $invalidReasonText = "Grade level '{$gradeLevelName}' does not exist in the system";
                     } else if ($invalidSection && !empty($sectionName)) {
                         // Check if section exists elsewhere to provide detailed reason
-                        $sectionExistsElsewhere = ClassSection::whereRaw('LOWER(section_name) = ?', [strtolower($sectionName)])->first();
+                        $sectionExistsElsewhere = $sectionsCache->get(strtolower($sectionName))?->first();
                         if ($sectionExistsElsewhere) {
                             $actualGradeName = $sectionExistsElsewhere->gradeLevel->name ?? 'Unknown';
                             $invalidReasonText = "Section '{$sectionName}' exists in {$actualGradeName}, not in {$gradeLevel->name}";
@@ -1748,7 +1748,7 @@ class StudentController extends Controller
 
                 DB::beginTransaction();
                 try {
-                    $existingStudent = Student::where('lrn', $lrn)->first();
+                    $existingStudent = $lrn ? Student::where('lrn', $lrn)->first() : null; // Fetch fresh for update
 
                     if ($existingStudent) {
                         // Same school year = duplicate, skip
@@ -1996,13 +1996,13 @@ class StudentController extends Controller
         $sortOrder = $request->input('sort', 'asc') === 'desc' ? 'desc' : 'asc';
         $perPage = (int) $request->input('per_page', 10);
 
-        // Global stats (always unfiltered, matches the summary cards at the top)
-        $totalStudents = Student::count();
-        $completeDocsCount = Student::where('has_psa_birth_certificate', true)
-            ->where('has_sf9', true)
-            ->where('has_report_card', true)
-            ->where('has_good_moral', true)
-            ->count();
+        // Global stats in a single query (avoids 2 separate COUNT queries)
+        $stats = Student::selectRaw('
+            COUNT(*) as total,
+            SUM(CASE WHEN has_psa_birth_certificate = 1 AND has_sf9 = 1 AND has_report_card = 1 AND has_good_moral = 1 THEN 1 ELSE 0 END) as complete
+        ')->first();
+        $totalStudents = (int) $stats->total;
+        $completeDocsCount = (int) $stats->complete;
         $incompleteDocsCount = $totalStudents - $completeDocsCount;
 
         // Filtered + paginated table query
@@ -2123,9 +2123,14 @@ class StudentController extends Controller
     public function enrollmentList(Request $request)
     {
         $perPage = (int) $request->input('per_page', 10);
+        $currentSchoolYear = \App\Services\SchoolYearService::current();
 
-        // Get all grade levels with student counts
-        $gradeLevels = \App\Models\GradeLevel::orderByRaw("
+        // Get all grade levels with student counts in a single query (avoids N+1)
+        $gradeLevels = \App\Models\GradeLevel::withCount(['students' => function ($query) use ($currentSchoolYear) {
+                $query->whereNotNull('current_section_id')
+                      ->where('school_year', $currentSchoolYear);
+            }])
+            ->orderByRaw("
             CASE
                 WHEN name = 'Grade 7' THEN 1
                 WHEN name = 'Grade 8' THEN 2
@@ -2135,18 +2140,13 @@ class StudentController extends Controller
             END
         ")->get();
 
-        // Add student count for each grade level
-        $gradeLevels->each(function ($grade) {
-            $grade->student_count = Student::whereNotNull('current_section_id')
-                ->where('current_grade_level_id', $grade->id)
-                ->count();
-        });
-
         // If no grade level is selected, return empty students list
         if (!$request->filled('grade_level')) {
             $students = new \Illuminate\Pagination\LengthAwarePaginator(
                 [],
-                Student::whereNotNull('current_section_id')->count(),
+                Student::whereNotNull('current_section_id')
+                    ->where('school_year', $currentSchoolYear)
+                    ->count(),
                 $perPage,
                 1
             );
@@ -2180,7 +2180,8 @@ class StudentController extends Controller
             'section.adviserSections.teacher',
             'gradeLevel'
         ])
-            ->whereNotNull('current_section_id');
+            ->whereNotNull('current_section_id')
+            ->where('school_year', $currentSchoolYear);
 
         if ($request->filled('grade_level')) {
             $query->where('current_grade_level_id', $request->grade_level);
@@ -2248,7 +2249,7 @@ class StudentController extends Controller
     public function uploadProfilePicture(Request $request)
     {
         $request->validate([
-            'profile_picture' => ['required', 'image', 'mimes:jpeg,jpg,png', 'max:2048'],
+            'profile_picture' => ['required', 'image', 'mimes:jpeg,jpg,png,webp', 'max:2048'],
         ]);
 
         $user = Auth::user();

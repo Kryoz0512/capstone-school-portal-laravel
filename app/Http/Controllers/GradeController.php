@@ -24,36 +24,7 @@ class GradeController extends Controller
      * Format: 2018-2019, 2019-2020, etc.
      * Also includes unique school years from database
      */
-    private function getSchoolYears()
-    {
-        // Get school years from database
-        $dbSchoolYears = Student::select('school_year')
-            ->distinct()
-            ->pluck('school_year')
-            ->toArray();
 
-        // Generate school years from 2018 to current year + 1
-        $currentYear = (int) date('Y');
-        $generatedYears = [];
-
-        for ($year = 2018; $year <= $currentYear + 1; $year++) {
-            $generatedYears[] = $year . '-' . ($year + 1);
-        }
-
-        // Merge and get unique values
-        $allYears = array_unique(array_merge($generatedYears, $dbSchoolYears));
-
-        // Sort in descending order
-        rsort($allYears);
-
-        // Format for select dropdown
-        return collect($allYears)->map(function ($year) {
-            return [
-                'value' => $year,
-                'label' => $year,
-            ];
-        });
-    }
 
     private function formatGradeValue($value)
     {
@@ -101,8 +72,7 @@ class GradeController extends Controller
         $perPage = (int) $request->input('per_page', 10);
 
         if (!$schoolYear) {
-            $schoolYear = Student::orderBy('school_year', 'desc')
-                ->value('school_year') ?? date('Y') . '-' . (date('Y') + 1);
+            $schoolYear = \App\Services\SchoolYearService::current();
         }
 
         $gradeLevels = GradeLevel::all()->map(function ($level) {
@@ -212,7 +182,7 @@ class GradeController extends Controller
             ];
         }
 
-        $schoolYears = $this->getSchoolYears();
+        $schoolYears = \App\Services\SchoolYearService::getSchoolYears();
 
         return Inertia::render('teacher/grade-sheets/page', [
             'gradeLevels' => $gradeLevels,
@@ -252,8 +222,7 @@ class GradeController extends Controller
         $perPage = (int) $request->input('per_page', 10);
 
         if (!$schoolYear) {
-            $schoolYear = Student::orderBy('school_year', 'desc')
-                ->value('school_year') ?? date('Y') . '-' . (date('Y') + 1);
+            $schoolYear = \App\Services\SchoolYearService::current();
         }
 
         $gradeLevels = GradeLevel::all()->map(function ($level) {
@@ -343,7 +312,7 @@ class GradeController extends Controller
             ];
         }
 
-        $schoolYears = $this->getSchoolYears();
+        $schoolYears = \App\Services\SchoolYearService::getSchoolYears();
 
         return Inertia::render('teacher/grade-sheets/page', [
             'gradeLevels' => $gradeLevels,
@@ -494,12 +463,11 @@ class GradeController extends Controller
 
         // Get current school year if not provided
         if (!$schoolYear) {
-            $schoolYear = Student::orderBy('school_year', 'desc')
-                ->value('school_year') ?? date('Y') . '-' . (date('Y') + 1);
+            $schoolYear = \App\Services\SchoolYearService::current();
         }
 
         // Get available school years
-        $schoolYears = $this->getSchoolYears();
+        $schoolYears = \App\Services\SchoolYearService::getSchoolYears();
 
         // Get grade levels - ordered properly (7, 8, 9, 10)
         $gradeLevels = GradeLevel::orderByRaw("

@@ -25,60 +25,28 @@ use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\DocumentController;
 
 Route::get('/', function () {
-    $slides = \App\Models\LoginSlide::where('is_active', true)
-        ->orderBy('order')
-        ->get()
-        ->map(function ($slide) {
-            return \Illuminate\Support\Facades\Storage::url($slide->image_path);
-        })
-        ->toArray();
-
     return \Inertia\Inertia::render('portal', [
-        'slides' => $slides
+        'slides' => \App\Models\LoginSlide::getActiveSlideUrls()
     ]);
 })->middleware('guest')->name('home');
 
 Route::get('/login/student', function () {
-    $slides = \App\Models\LoginSlide::where('is_active', true)
-        ->orderBy('order')
-        ->get()
-        ->map(function ($slide) {
-            return \Illuminate\Support\Facades\Storage::url($slide->image_path);
-        })
-        ->toArray();
-
     return \Inertia\Inertia::render('auth/login', [
-        'slides' => $slides,
+        'slides' => \App\Models\LoginSlide::getActiveSlideUrls(),
         'role' => 'student'
     ]);
 })->middleware('guest')->name('login.student');
 
 Route::get('/login/teacher', function () {
-    $slides = \App\Models\LoginSlide::where('is_active', true)
-        ->orderBy('order')
-        ->get()
-        ->map(function ($slide) {
-            return \Illuminate\Support\Facades\Storage::url($slide->image_path);
-        })
-        ->toArray();
-
     return \Inertia\Inertia::render('auth/login', [
-        'slides' => $slides,
+        'slides' => \App\Models\LoginSlide::getActiveSlideUrls(),
         'role' => 'teacher'
     ]);
 })->middleware('guest')->name('login.teacher');
 
 Route::get('/login/adviser', function () {
-    $slides = \App\Models\LoginSlide::where('is_active', true)
-        ->orderBy('order')
-        ->get()
-        ->map(function ($slide) {
-            return \Illuminate\Support\Facades\Storage::url($slide->image_path);
-        })
-        ->toArray();
-
     return \Inertia\Inertia::render('auth/login', [
-        'slides' => $slides,
+        'slides' => \App\Models\LoginSlide::getActiveSlideUrls(),
         'role' => 'teacher',
         'redirectTo' => '/adviser/dashboard',
         'portalLabel' => 'Adviser Portal',
@@ -104,7 +72,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('change-password', [PasswordChangeController::class, 'update']);
 });
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', 'portal.access'])->group(function () {
     Route::inertia('dashboard', 'dashboard')->name('dashboard');
 
     // Student routes
@@ -146,9 +114,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('teacher/final-report', [TeacherController::class, 'finalReport'])->name('teacher.final-report');
     Route::put('teacher/students/{student}/graduation-readiness', [TeacherController::class, 'updateGraduationReadiness'])->name('teacher.students.graduation-readiness');
 
-    Route::get('teacher/transcript-of-records', function () {
-        return \Inertia\Inertia::render('teacher/transcript-of-records/page');
-    })->name('teacher.transcript-of-records');
+    Route::get('teacher/transcript-of-records', [TeacherController::class, 'transcriptOfRecords'])->name('teacher.transcript-of-records');
 
     Route::get('teacher/schedule', [TeacherController::class, 'schedule'])->name('teacher.schedule');
 
@@ -260,6 +226,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return \Inertia\Inertia::render('admin/admission/registration/page', [
             'gradeLevels' => $gradeLevels,
             'sections' => $sections,
+            'currentSchoolYear' => \App\Services\SchoolYearService::current(),
         ]);
     })->name('admin.admission.registration');
 
@@ -341,10 +308,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('admin/documents/{document}/download', [DocumentController::class, 'download'])->name('admin.documents.download');
 
     // Admin Maintenance routes
-    Route::get('admin/maintenance/login-slides', [App\Http\Controllers\LoginSlideController::class, 'index'])->name('admin.maintenance.login-slides');
-    Route::post('admin/maintenance/login-slides', [App\Http\Controllers\LoginSlideController::class, 'store'])->name('admin.maintenance.login-slides.store');
-    Route::delete('admin/maintenance/login-slides/{slide}', [App\Http\Controllers\LoginSlideController::class, 'destroy'])->name('admin.maintenance.login-slides.destroy');
-    Route::post('admin/maintenance/login-slides/order', [App\Http\Controllers\LoginSlideController::class, 'updateOrder'])->name('admin.maintenance.login-slides.order');
+    Route::get('admin/maintenance/login-slides', [App\Http\Controllers\LoginSlideController::class, 'index'])->name('admin.login-slides');
+    Route::post('admin/maintenance/login-slides', [App\Http\Controllers\LoginSlideController::class, 'store'])->name('admin.login-slides.store');
+    Route::post('admin/maintenance/login-slides/{loginSlide}', [App\Http\Controllers\LoginSlideController::class, 'update'])->name('admin.login-slides.update');
+    Route::delete('admin/maintenance/login-slides/{loginSlide}', [App\Http\Controllers\LoginSlideController::class, 'destroy'])->name('admin.login-slides.destroy');
+
+    // Settings (School Year)
+    Route::get('admin/maintenance/settings', [App\Http\Controllers\SettingsController::class, 'index'])->name('admin.settings');
+    Route::post('admin/maintenance/settings/school-year', [App\Http\Controllers\SettingsController::class, 'updateSchoolYear'])->name('admin.settings.school-year.update');
     Route::post('admin/maintenance/login-slides/{slide}/toggle', [App\Http\Controllers\LoginSlideController::class, 'toggleActive'])->name('admin.maintenance.login-slides.toggle');
 
     // API route for getting approved announcements

@@ -43,8 +43,7 @@ class TeacherController extends Controller
             ->distinct('subject_id')
             ->count('subject_id');
 
-        $currentSchoolYear = Student::orderBy('school_year', 'desc')
-            ->value('school_year') ?? date('Y') . '-' . (date('Y') + 1);
+        $currentSchoolYear = \App\Services\SchoolYearService::current();
 
         return Inertia::render('teacher/dashboard/page', [
             'stats' => [
@@ -54,6 +53,11 @@ class TeacherController extends Controller
                 'currentSchoolYear' => $currentSchoolYear,
             ],
         ]);
+    }
+
+    public function transcriptOfRecords()
+    {
+        return Inertia::render('teacher/transcript-of-records/page');
     }
 
     public function index(Request $request)
@@ -430,8 +434,7 @@ class TeacherController extends Controller
         $perPage = (int) $request->input('per_page', 10);
 
         if (!$schoolYear) {
-            $schoolYear = Student::orderBy('school_year', 'desc')
-                ->value('school_year') ?? date('Y') . '-' . (date('Y') + 1);
+            $schoolYear = \App\Services\SchoolYearService::current();
         }
 
         $subjects = $this->getTeacherSubjects($teacher, $sectionId ? (int) $sectionId : null);
@@ -529,9 +532,7 @@ class TeacherController extends Controller
         $sectionId = $request->input('section_id');
         $subjectId = $request->input('subject_id');
         $search = $request->input('search');
-        $schoolYear = $request->input('school_year')
-            ?? Student::orderBy('school_year', 'desc')->value('school_year')
-            ?? date('Y') . '-' . (date('Y') + 1);
+        $schoolYear = $request->input('school_year') ?? \App\Services\SchoolYearService::current();
         $perPage = (int) $request->input('per_page', 10);
 
         $result = $this->getFinalReportStudents($sectionId, $subjectId, $schoolYear, $teacher, $perPage, $search);
@@ -540,7 +541,7 @@ class TeacherController extends Controller
             'gradeLevels' => $this->getGradeLevels(),
             'sections' => $this->getTeacherSections($teacher, $gradeLevelId),
             'subjects' => $this->getTeacherSubjects($teacher, $sectionId ? (int) $sectionId : null),
-            'schoolYears' => $this->getSchoolYears(),
+            'schoolYears' => \App\Services\SchoolYearService::getSchoolYears(),
             'students' => $result['students'],
             'pagination' => $result['pagination'],
             'filters' => compact('gradeLevelId', 'sectionId', 'subjectId', 'schoolYear', 'perPage', 'search'),
@@ -590,36 +591,7 @@ class TeacherController extends Controller
             ->toArray();
     }
 
-    private function getSchoolYears()
-    {
-        // Get school years from database
-        $dbSchoolYears = Student::select('school_year')
-            ->distinct()
-            ->pluck('school_year')
-            ->toArray();
 
-        // Generate school years from 2018 to current year + 1
-        $currentYear = (int) date('Y');
-        $generatedYears = [];
-
-        for ($year = 2018; $year <= $currentYear + 1; $year++) {
-            $generatedYears[] = $year . '-' . ($year + 1);
-        }
-
-        // Merge and get unique values
-        $allYears = array_unique(array_merge($generatedYears, $dbSchoolYears));
-
-        // Sort in descending order
-        rsort($allYears);
-
-        // Format for select dropdown
-        return collect($allYears)->map(function ($year) {
-            return [
-                'value' => $year,
-                'label' => $year,
-            ];
-        });
-    }
 
     private function getFinalReportStudents($sectionId, $subjectId, $schoolYear, Teacher $teacher, int $perPage = 10, $search = null): array
     {
@@ -705,8 +677,7 @@ class TeacherController extends Controller
         // Get school year filter
         $schoolYear = $request->input('school_year');
         if (!$schoolYear) {
-            $schoolYear = Student::orderBy('school_year', 'desc')
-                ->value('school_year') ?? date('Y') . '-' . (date('Y') + 1);
+            $schoolYear = \App\Services\SchoolYearService::current();
         }
 
         // Get available school years
@@ -784,7 +755,7 @@ class TeacherController extends Controller
             return redirect()->route('login')->withErrors(['error' => 'Teacher profile not found.']);
         }
 
-        // Get assigned classes with student counts
+        // Get assigned classes
         $assignedClasses = DB::table('tbl_schedules')
             ->join('tbl_subjects', 'tbl_schedules.subject_id', '=', 'tbl_subjects.id')
             ->join('tbl_class_sections', 'tbl_schedules.class_section_id', '=', 'tbl_class_sections.id')
@@ -797,16 +768,23 @@ class TeacherController extends Controller
                 'tbl_class_sections.id as section_id'
             )
             ->distinct()
-            ->get()
-            ->map(function ($class) {
-                // Count students in this section
-                $studentCount = Student::where('current_section_id', $class->section_id)->count();
+            ->get();
 
+        // Batch-load student counts for all sections in a single query (avoids N+1)
+        $sectionIds = $assignedClasses->pluck('section_id')->unique();
+        $studentCounts = $sectionIds->isNotEmpty()
+            ? Student::selectRaw('current_section_id, COUNT(*) as count')
+                ->whereIn('current_section_id', $sectionIds)
+                ->groupBy('current_section_id')
+                ->pluck('count', 'current_section_id')
+            : collect();
+
+        $assignedClasses = $assignedClasses->map(function ($class) use ($studentCounts) {
                 return [
                     'gradeLevel' => $class->grade_level,
                     'section' => $class->section,
                     'subject' => $class->subject,
-                    'students' => $studentCount
+                    'students' => $studentCounts->get($class->section_id, 0),
                 ];
             });
 
@@ -917,7 +895,7 @@ class TeacherController extends Controller
     public function uploadProfilePicture(Request $request)
     {
         $request->validate([
-            'profile_picture' => ['required', 'image', 'mimes:jpeg,jpg,png', 'max:2048'],
+            'profile_picture' => ['required', 'image', 'mimes:jpeg,jpg,png,webp', 'max:2048'],
         ]);
 
         $user = Auth::user();
@@ -1025,8 +1003,7 @@ class TeacherController extends Controller
         }
         if (!$schoolYear) {
             // Fall back to most recent school year in the system
-            $schoolYear = Student::orderBy('school_year', 'desc')->value('school_year')
-                ?? date('Y') . '-' . (date('Y') + 1);
+            $schoolYear = \App\Services\SchoolYearService::current();
         }
         
         $search = trim((string) $request->input('search', ''));

@@ -409,12 +409,15 @@ class StudentController extends Controller
         // Get grades for the student using the correct section for the selected year
         $grades = [];
         if ($sectionId) {
-            $grades = DB::table('tbl_grades')
-                ->join('tbl_subjects', 'tbl_grades.subject_id', '=', 'tbl_subjects.id')
-                ->join('tbl_teachers', 'tbl_grades.teacher_id', '=', 'tbl_teachers.id')
-                ->where('tbl_grades.student_id', $student->id)
-                ->where('tbl_grades.class_section_id', $sectionId)
-                ->where('tbl_grades.school_year', $schoolYear)
+            $grades = DB::table('tbl_schedules')
+                ->join('tbl_subjects', 'tbl_schedules.subject_id', '=', 'tbl_subjects.id')
+                ->join('tbl_teachers', 'tbl_schedules.teacher_id', '=', 'tbl_teachers.id')
+                ->where('tbl_schedules.class_section_id', $sectionId)
+                ->leftJoin('tbl_grades', function ($join) use ($student, $schoolYear) {
+                    $join->on('tbl_grades.subject_id', '=', 'tbl_schedules.subject_id')
+                         ->where('tbl_grades.student_id', '=', $student->id)
+                         ->where('tbl_grades.school_year', '=', $schoolYear);
+                })
                 ->select(
                     'tbl_grades.id',
                     'tbl_subjects.name as subject',
@@ -425,6 +428,7 @@ class StudentController extends Controller
                     'tbl_grades.quarter_4',
                     'tbl_grades.final_grade'
                 )
+                ->distinct()
                 ->get()
                 ->map(function ($grade) {
                     // Format grades to remove unnecessary decimals

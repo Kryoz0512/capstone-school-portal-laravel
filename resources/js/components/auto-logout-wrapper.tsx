@@ -6,8 +6,8 @@ type AutoLogoutWrapperProps = {
 }
 
 export default function AutoLogoutWrapper({ children }: AutoLogoutWrapperProps) {
-    // 30 seconds idle time, 5 seconds warning time
-    const { isWarning, timeRemaining, resetIdleTimer } = useAutoLogout(30000, 5000)
+    // Default is 30 minutes idle time, 5 seconds warning time (defined in hook)
+    const { isWarning, timeRemaining, resetIdleTimer } = useAutoLogout()
 
     return (
         <>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { router } from '@inertiajs/react'
 
-export function useAutoLogout(idleTimeMs = 30000, warningTimeMs = 5000) {
+export function useAutoLogout(idleTimeMs = 1800000, warningTimeMs = 5000) {
     const [isWarning, setIsWarning] = useState(false)
     const [timeRemaining, setTimeRemaining] = useState(warningTimeMs / 1000)
     
